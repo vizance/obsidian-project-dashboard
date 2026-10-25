@@ -1,0 +1,248 @@
+.project-dashboard {
+	--proj-col-width: 280px;
+	--bg: #ffffff;
+	--panel: #f8fafc;
+	--grid: #94a3b8;
+	--grid-soft: #e2e8f0;
+	--text: #0f172a;
+	--text-dim: #64748b;
+	--today: #ef4444;
+	--quarter-bg: #fef3c7;
+	--month-bg: #e2e8f0;
+	--quarter-text: #b45309;
+
+	padding: 0;
+	background: var(--bg);
+	color: var(--text);
+	font-family: -apple-system, "PingFang TC", "Helvetica Neue", sans-serif;
+	font-size: 13px;
+	position: relative;
+}
+.project-dashboard * { box-sizing: border-box; }
+
+.project-dashboard header {
+	padding: 16px 24px;
+	border-bottom: 1px solid var(--grid);
+	display: flex;
+	align-items: baseline;
+	gap: 16px;
+	background: var(--bg);
+}
+.project-dashboard header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+.project-dashboard header .meta { color: var(--text-dim); font-size: 12px; }
+.project-dashboard header .legend { margin-left: auto; display: flex; gap: 14px; flex-wrap: wrap; }
+.project-dashboard .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); cursor: pointer; padding: 4px 8px; border-radius: 4px; border: 1px solid transparent; user-select: none; transition: all 0.15s; }
+.project-dashboard .legend-item:hover { background: #f1f5f9; color: var(--text); }
+.project-dashboard .legend-item.active { background: #fef3c7; border-color: #f59e0b; color: var(--text); font-weight: 600; }
+.project-dashboard .legend-swatch { width: 14px; height: 10px; border-radius: 2px; background: var(--pd-cat-color); }
+
+.project-dashboard .controls { padding: 8px 24px; display: flex; gap: 12px; font-size: 12px; color: var(--text-dim); border-bottom: 1px solid var(--grid-soft); }
+.project-dashboard .controls label { cursor: pointer; user-select: none; }
+.project-dashboard .controls input { vertical-align: middle; margin-right: 4px; }
+.project-dashboard .legend-item.dragging { opacity: 0.5; }
+.project-dashboard .legend-item.drop-target { border-left: 2px solid #f59e0b; }
+
+.project-dashboard #chart { overflow-x: auto; }
+.project-dashboard table.gantt { border-collapse: separate; border-spacing: 0; min-width: 100%; }
+.project-dashboard table.gantt th { border-bottom: 1px solid var(--grid-soft); padding: 0; }
+.project-dashboard table.gantt td { border-bottom: 1px solid var(--grid-soft); padding: 0; }
+.project-dashboard table.gantt thead th { background: var(--panel); }
+.project-dashboard th.proj-col { width: var(--proj-col-width); min-width: var(--proj-col-width); max-width: var(--proj-col-width); text-align: left; padding: 6px 10px; font-weight: 600; position: sticky; left: 0; z-index: 5; background: var(--panel); border-right: 2px solid var(--grid) !important; }
+.project-dashboard th.proj-col .resize-handle { position: absolute; top: 0; right: 0; bottom: 0; width: 4px; cursor: col-resize; user-select: none; background: transparent; z-index: 6; }
+.project-dashboard th.proj-col .resize-handle:hover, .project-dashboard th.proj-col .resize-handle.dragging { background: var(--grid); }
+.project-dashboard.col-resizing, .project-dashboard.col-resizing * { cursor: col-resize !important; user-select: none !important; }
+.project-dashboard th.quarter { text-align: center; font-size: 14px; font-weight: 700; color: var(--quarter-text); background: var(--quarter-bg); padding: 8px 0; letter-spacing: 2px; border-left: 2px solid var(--grid) !important; border-right: 2px solid var(--grid) !important; }
+.project-dashboard th.month-label { font-size: 12px; font-weight: 600; color: var(--text); background: var(--month-bg); padding: 5px 0; text-align: center; border-left: 1px solid var(--grid) !important; border-right: 1px solid var(--grid) !important; }
+.project-dashboard th.week { font-size: 10px; font-weight: 500; color: var(--text-dim); width: 32px; min-width: 32px; max-width: 32px; padding: 4px 0; text-align: center; background: var(--panel); box-sizing: border-box; }
+.project-dashboard td.week-cell { width: 32px; min-width: 32px; max-width: 32px; box-sizing: border-box; box-shadow: inset 1px 0 0 #f1f5f9; }
+.project-dashboard th.week.q-start { border-left: 2px solid var(--grid) !important; }
+.project-dashboard th.week.m-start { border-left: 1px solid var(--grid) !important; }
+/* 用 inset box-shadow 代替 border-left，避免邊框繪製在色條之上 */
+.project-dashboard td.week-cell.q-start { box-shadow: inset 2px 0 0 var(--grid); }
+.project-dashboard td.week-cell.m-start { box-shadow: inset 1px 0 0 var(--grid); }
+
+.project-dashboard table.gantt td.proj-cell { width: var(--proj-col-width); min-width: var(--proj-col-width); max-width: var(--proj-col-width); position: sticky; left: 0; background: #ffffff; padding: 8px 16px; font-size: 12px; line-height: 1.4; z-index: 4; border-right: 2px solid var(--grid) !important; overflow: hidden; }
+.project-dashboard td.proj-cell .cat-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; background: var(--pd-cat-color); }
+.project-dashboard td.proj-cell .name { color: var(--text); cursor: pointer; }
+.project-dashboard td.proj-cell .name:hover { text-decoration: underline; }
+.project-dashboard td.proj-cell.status-done .name { color: var(--text-dim); text-decoration: line-through; }
+.project-dashboard td.proj-cell .warn { color: #f59e0b; font-size: 10px; margin-left: 4px; }
+.project-dashboard td.proj-cell .cat-select { display: none; margin-top: 4px; max-width: 100%; font-size: 11px; color: var(--text-dim); border: 1px solid var(--grid); border-radius: 4px; padding: 1px 4px; background: #fff; cursor: pointer; }
+.project-dashboard.editing-categories td.proj-cell .cat-select { display: block; }
+.project-dashboard td.proj-cell .cat-select:hover { color: var(--text); border-color: #bbb; }
+.project-dashboard td.week-cell { height: 28px; position: relative; }
+.project-dashboard td.today-col { background: rgba(239, 68, 68, 0.12) !important; }
+
+.project-dashboard .bar {
+	position: absolute;
+	left: 2px;
+	top: 6px;
+	bottom: 6px;
+	width: calc(100% - 4px);
+	border-radius: 3px;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+	z-index: 3;
+}
+.project-dashboard .bar.bar-span { width: calc(var(--pd-span) * 100% - 4px); }
+.project-dashboard .bar.bar-solid { background: var(--pd-cat-color) !important; border: none; }
+.project-dashboard .bar.bar-dashed { background: transparent !important; border: 1.5px dashed var(--pd-cat-color); }
+.project-dashboard .bar.bar-overflow { background: #e3563a !important; border: none; }
+.project-dashboard .bar.done, .project-dashboard .bar.cancelled { filter: grayscale(100%); opacity: 0.35; }
+/* settled：該週任務全完成 — 類別色淡化 + 疊一個 ✓，遠看退場、近看可辨 */
+.project-dashboard .bar.bar-settled::before {
+	content: ""; position: absolute; inset: 0;
+	background: rgba(255,255,255,0.58); border-radius: inherit;
+}
+.project-dashboard .bar.bar-settled::after {
+	content: "✓"; position: absolute; inset: 0;
+	display: flex; align-items: center; justify-content: center;
+	font-size: 11px; font-weight: 800; line-height: 1; color: rgba(0,0,0,0.6);
+}
+.project-dashboard .bar:hover { filter: brightness(1.15); cursor: default; }
+
+.project-dashboard .today-line {
+	position: absolute;
+	top: 0; bottom: 0;
+	width: 2px;
+	background: var(--today);
+	z-index: 10;
+	pointer-events: none;
+}
+.project-dashboard .empty { padding: 40px 24px; color: var(--text-dim); }
+
+.project-dashboard #help-panel {
+	position: fixed;
+	top: 16px;
+	right: 16px;
+	z-index: 100;
+	background: #ffffff;
+	border: 1px solid #d9d9d9;
+	border-radius: 6px;
+	padding: 14px 18px;
+	box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+	max-width: 340px;
+	font-size: 12px;
+	line-height: 1.65;
+}
+.project-dashboard #help-panel[hidden] { display: none; }
+
+/* 點擊週格子彈出的浮窗（week-popover），與 help-panel 同一套浮層風格 */
+.project-dashboard #week-popover {
+	position: fixed;
+	left: var(--pd-popover-left, 0px);
+	top: var(--pd-popover-top, 0px);
+	z-index: 101;
+	background: #ffffff;
+	border: 1px solid #d9d9d9;
+	border-radius: 6px;
+	padding: 10px 12px;
+	box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+	max-width: 320px;
+	font-size: 12px;
+	line-height: 1.6;
+	white-space: pre-line;
+	color: var(--text);
+	pointer-events: auto;
+}
+.project-dashboard #week-popover[hidden] { display: none; }
+
+/* 儲存回饋小浮條（toast），底部置中，同一時間只有一個 */
+.project-dashboard #toast {
+	position: fixed;
+	bottom: 24px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 200;
+	max-width: 80vw;
+	background: #2b2b2b;
+	color: #fff;
+	border-radius: 8px;
+	padding: 10px 16px;
+	font-size: 13px;
+	line-height: 1.5;
+	box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+.project-dashboard #toast.toast-error { background: #b4231a; }
+.project-dashboard #toast[hidden] { display: none; }
+.project-dashboard #help-panel h3 { margin: 0 0 8px; font-size: 13px; }
+.project-dashboard #help-panel section + section { margin-top: 12px; }
+.project-dashboard #help-panel kbd {
+	display: inline-block;
+	min-width: 18px;
+	padding: 1px 6px;
+	border: 1px solid #bbb;
+	border-bottom-width: 2px;
+	border-radius: 3px;
+	background: #f6f6f6;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 11px;
+	text-align: center;
+}
+.project-dashboard #help-panel .shortcuts ul,
+.project-dashboard #help-panel .legend-visual ul { list-style: none; padding: 0; margin: 0; }
+.project-dashboard #help-panel .shortcuts li { margin-bottom: 4px; }
+.project-dashboard #help-panel .legend-visual li {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	margin-bottom: 6px;
+}
+.project-dashboard #help-panel .swatch {
+	flex: 0 0 18px;
+	width: 18px;
+	height: 14px;
+	border-radius: 2px;
+	margin-top: 3px;
+}
+.project-dashboard #help-panel .swatch.solid { background: #3B82F6; }
+.project-dashboard #help-panel .swatch.settled {
+	position: relative; background: #3B82F6;
+}
+.project-dashboard #help-panel .swatch.settled::before {
+	content: ""; position: absolute; inset: 0;
+	background: rgba(255,255,255,0.58); border-radius: inherit;
+}
+.project-dashboard #help-panel .swatch.settled::after {
+	content: "✓"; position: absolute; inset: 0;
+	display: flex; align-items: center; justify-content: center;
+	font-size: 10px; font-weight: 800; line-height: 1; color: rgba(0,0,0,0.6);
+}
+.project-dashboard #help-panel .swatch.dashed { background: transparent; border: 1.5px dashed #3B82F6; }
+.project-dashboard #help-panel .swatch.overflow { background: #e3563a; }
+.project-dashboard #help-panel .swatch.blank { background: transparent; border: 1px dotted #ccc; }
+.project-dashboard #help-panel .close-btn {
+	position: absolute;
+	top: 6px;
+	right: 8px;
+	background: none;
+	border: none;
+	font-size: 16px;
+	color: #999;
+	cursor: pointer;
+	padding: 2px 6px;
+	line-height: 1;
+}
+.project-dashboard #help-panel .close-btn:hover { color: #333; }
+
+.project-dashboard #help-fab {
+	position: fixed;
+	bottom: 20px;
+	right: 20px;
+	z-index: 99;
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	border: 1px solid #ccc;
+	background: #ffffff;
+	color: #666;
+	font-size: 18px;
+	font-weight: 600;
+	cursor: pointer;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s, color 0.15s;
+}
+.project-dashboard #help-fab:hover { background: #f0f0f0; color: #333; }
+.project-dashboard #help-fab[hidden] { display: none; }

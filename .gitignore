@@ -1,0 +1,8 @@
+node_modules/
+main.js
+src/core/personal-rules.local.ts
+deploy.local.json
+.spectra/
+openspec/.vector-search.db*
+.DS_Store
+.privacy-patterns.local

@@ -1,0 +1,9 @@
+{
+	"id": "project-dashboard",
+	"name": "Project Dashboard",
+	"version": "0.1.0",
+	"minAppVersion": "1.11.7",
+	"description": "Year-at-a-glance project dashboard for Obsidian project notes.",
+	"author": "朱騏",
+	"isDesktopOnly": true
+}
