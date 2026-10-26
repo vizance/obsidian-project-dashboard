@@ -64,6 +64,20 @@ export class Vault {
 		return this.contents.get(file.path) ?? '';
 	}
 
+	// Mirrors Obsidian's Vault.process: reads the current content, runs `fn`, and
+	// writes the result back. A throw from `fn` leaves stored content untouched
+	// and rejects, matching the real API's atomic-or-nothing behaviour.
+	async process(file: TFile, fn: (data: string) => string): Promise<string> {
+		const current = this.contents.get(file.path) ?? '';
+		const next = fn(current);
+		this.contents.set(file.path, next);
+		return next;
+	}
+
+	getFileContent(path: string): string {
+		return this.contents.get(path) ?? '';
+	}
+
 	on(name: VaultEventName, callback: (...args: never[]) => unknown): EventRef {
 		this.handlers[name].push(callback);
 		return { name, callback };

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildWeeks, taskDateToWeekLabel, todayLocal, todayWeekIndex } from '../src/core/weeks';
+import {
+	addDaysISO,
+	buildWeeks,
+	mondayOfWeek,
+	taskDateToWeekLabel,
+	todayLocal,
+	todayWeekIndex,
+	weekRangeLabel,
+} from '../src/core/weeks';
 
 describe('buildWeeks', () => {
 	it('covers W1 through W53 for 2026', () => {
@@ -39,5 +47,31 @@ describe('taskDateToWeekLabel', () => {
 
 	it('bumps a Saturday task to the following week', () => {
 		expect(taskDateToWeekLabel('2026-10-31')).toEqual({ label: '2026-W45', isBumpedSat: true });
+	});
+});
+
+describe('addDaysISO', () => {
+	it('subtracts across a year boundary: 2026-01-02 - 7 -> 2025-12-26', () => {
+		expect(addDaysISO('2026-01-02', -7)).toBe('2025-12-26');
+	});
+
+	it('adds days within a month', () => {
+		expect(addDaysISO('2026-10-30', 7)).toBe('2026-11-06');
+	});
+});
+
+describe('mondayOfWeek', () => {
+	it("gives 2026-12-28 for 2026-W53's Monday", () => {
+		expect(mondayOfWeek('2026-W53')).toBe('2026-12-28');
+	});
+
+	it('works for a label in a different year (2027-W01)', () => {
+		expect(mondayOfWeek('2027-W01')).toBe('2027-01-04');
+	});
+});
+
+describe('weekRangeLabel', () => {
+	it('matches the spec example for W44', () => {
+		expect(weekRangeLabel('2026-W44')).toBe('W44　10/26（一）– 11/1（日）');
 	});
 });

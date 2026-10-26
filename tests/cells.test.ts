@@ -27,6 +27,7 @@ function project(overrides: Partial<ProjectRecord>): ProjectRecord {
 		settled_weeks: [],
 		warnings: [],
 		path: '/tmp/P-測試專案.md',
+		task_lines: [],
 		...overrides,
 	};
 }

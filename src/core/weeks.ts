@@ -18,6 +18,45 @@ function isoWeekStart(year: number, week: number): Date {
 	return d;
 }
 
+function pad2(n: number): string {
+	return String(n).padStart(2, '0');
+}
+
+function formatISODate(d: Date): string {
+	return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+}
+
+export function addDaysISO(date: string, days: number): string {
+	const d = new Date(`${date}T00:00:00Z`);
+	d.setUTCDate(d.getUTCDate() + days);
+	return formatISODate(d);
+}
+
+// 把 "YYYY-Wnn" 標籤還原成那週星期一的 ISO 日期；對任何年份（含 W53、跨年）都成立，
+// 因為直接重用 isoWeekStart 的算法，而不是只處理當年。
+export function mondayOfWeek(weekLabel: string): string {
+	const m = /^(\d{4})-W(\d{2})$/.exec(weekLabel);
+	if (!m) throw new Error(`invalid week label: ${weekLabel}`);
+	const year = Number(m[1]);
+	const week = Number(m[2]);
+	return formatISODate(isoWeekStart(year, week));
+}
+
+export function weekRangeLabel(weekLabel: string): string {
+	const m = /^(\d{4})-W(\d{2})$/.exec(weekLabel);
+	if (!m) throw new Error(`invalid week label: ${weekLabel}`);
+	const week = m[2]!;
+	const monday = mondayOfWeek(weekLabel);
+	const sunday = addDaysISO(monday, 6);
+	const fmt = (iso: string): string => {
+		const dm = /^\d{4}-(\d{2})-(\d{2})$/.exec(iso)!;
+		return `${Number(dm[1])}/${Number(dm[2])}`;
+	};
+	// \u3000 is the full-width space the UI copy uses between the week and its range;
+	// written as an escape so the separator stays visible to readers and linters.
+	return `W${week}\u3000${fmt(monday)}（一）– ${fmt(sunday)}（日）`;
+}
+
 export function quarterOf(month: number): number {
 	return Math.floor(month / 3) + 1;
 }

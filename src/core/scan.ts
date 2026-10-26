@@ -1,4 +1,5 @@
 import { CATEGORIES, CATEGORY_KEYS, EXCLUDED_PROJECTS, KEYWORD_RULES, MANUAL_OVERRIDES } from './config';
+import { cleanTaskText, parseTaskLines, type TaskLine } from './task-lines';
 
 export type ProjectStatus = 'pending' | 'active' | 'done' | 'cancelled';
 
@@ -24,6 +25,7 @@ export interface ProjectRecord {
 	settled_weeks: string[];
 	warnings: string[];
 	path: string;
+	task_lines: TaskLine[];
 }
 
 export interface ScanInput {
@@ -55,8 +57,6 @@ const SHORT_DATE_RE = /&\s*(\d{4})(?!\d)/g;
 const TASK_DATE_RE = /(?:📅|✅)\s+(\d{4}-\d{2}-\d{2})/g;
 // 帶類型的任務標記：📅=預計、✅=已完成
 const TASK_MARKER_RE = /(📅|✅)\s+(\d{4}-\d{2}-\d{2})/g;
-// 行首 bullet / checkbox 前綴
-const BULLET_RE = /^[-*+]\s+(?:\[[ xX]\]\s+)?/;
 // 已打勾的 checkbox（任務層級「完成」訊號之一）
 const CHECKBOX_DONE_RE = /^[-*+]\s*\[[xX]\]/;
 
@@ -206,16 +206,6 @@ export function parseTaskDates(text: string): string[] {
 	return Array.from(text.matchAll(TASK_DATE_RE), (m) => m[1]!);
 }
 
-function cleanTaskText(line: string): string {
-	let s = line.trim().replace(BULLET_RE, '');
-	const cut = s.indexOf(' > ');
-	if (cut !== -1) {
-		s = s.slice(0, cut);
-	}
-	s = s.replace(TASK_MARKER_RE, '');
-	return s.replace(/\s+/g, ' ').trim();
-}
-
 export function parseTasks(text: string): TaskEntry[] {
 	const tasks: TaskEntry[] = [];
 	for (const line of text.split(/\r\n|\r|\n/)) {
@@ -310,6 +300,7 @@ export function scanProjectNote(input: ScanInput, ctx: ScanContext): ProjectReco
 		settled_weeks: settledWeeks,
 		warnings,
 		path: input.path,
+		task_lines: parseTaskLines(text),
 	};
 }
 

@@ -287,6 +287,42 @@ describe('scanProjectNote', () => {
 		expect(result?.start).toBeNull();
 		expect(result?.warnings).toContain('缺開始日期');
 	});
+
+	it('adds task_lines without changing any field that existed before it', () => {
+		const filename = '🚧 P-20260101 ~ 1231 測試.md';
+		const text = '- [ ] 確認拍攝服裝 📅 2026-10-30\n- [x] 寄出提案 📅 2026-05-14 ✅ 2026-05-15';
+		const result = scanProjectNote({ filename, text, path: 'x.md' }, { overrides: {}, today });
+
+		// Every non-task_lines field is recomputed here from the same unchanged
+		// helper functions the other tests in this file exercise directly, so a
+		// mismatch would mean scanProjectNote started computing that field
+		// differently rather than just gaining task_lines.
+		const expectedTaskDates = Array.from(new Set(parseTaskDates(text))).sort();
+		const expectedTasks = parseTasks(text);
+		const expectedOccupied = computeOccupiedWeeks(expectedTaskDates);
+		const expectedNotDone = expectedTasks.filter((t) => !t.done).map((t) => t.date);
+		const expectedOutstanding = new Set(computeOccupiedWeeks(expectedNotDone));
+		const expectedSettled = expectedOccupied.filter((w) => !expectedOutstanding.has(w));
+
+		const { task_lines: taskLines, ...rest } = result!;
+		expect(rest).toEqual({
+			name: 'P-20260101 ~ 1231 測試',
+			category: 'other',
+			color: rest.color,
+			status: 'active',
+			start: '2026-01-01',
+			end: '2026-12-31',
+			promised_end: expectedTaskDates.at(-1)!,
+			overflow_end: null,
+			task_dates: expectedTaskDates,
+			tasks: expectedTasks,
+			occupied_weeks: expectedOccupied,
+			settled_weeks: expectedSettled,
+			warnings: ['起日由檔名推得', '迄日由檔名推得'],
+			path: 'x.md',
+		});
+		expect(taskLines.map((l) => l.line)).toEqual([0, 1]);
+	});
 });
 
 describe('scanProjectFolder', () => {
