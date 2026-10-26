@@ -97,7 +97,7 @@ The week popover for a project and an ISO week SHALL list each task line of that
 
 The popover SHALL show a two-line header: the project name, then the ISO week and its Monday–Sunday range, for example `W44　10/26（一）– 11/1（日）`. When the week lies in the project's overflow range, the header SHALL add `⚠ 已超出預計結束日期 <end>`. When no task line maps to the week, the list SHALL show `這週還沒有任務`.
 
-Each row SHALL show the task text and a date label: `<M/D>（<weekday>）` of `due` for an open line, `已完成 <M/D>` of `doneDate` for a done line, plus `六 → 本週` when the date shown is a Saturday mapped into this week. Each row SHALL offer:
+Each row SHALL show the task text and a date label: `<M/D>（<weekday>）` of `due` for an open line, `已完成 <M/D>` of `doneDate` for a done line (`已完成` alone when a done line has no `doneDate`), plus, when the date shown is a Saturday mapped into this week, `預排在上週六，算進本週` for an open line or `上週六完成，算進本週` for a done line. Each row SHALL offer:
 
 - a checkbox reflecting `done`, enabled only when `checkbox = true` and `recurring = false`; for a recurring line it SHALL be disabled with the tooltip `重複任務請在筆記裡勾選`
 - `◀` and `▶` buttons, shown only when `checkbox = true`, `done = false`, and `due` is not null
@@ -115,7 +115,7 @@ While a write for a row is in flight, that row's controls SHALL be disabled and 
 
 - **GIVEN** the line `- [ ] 寄出合約 📅 2026-10-31` (Saturday)
 - **WHEN** the popover for `2026-W45` opens
-- **THEN** a row for `寄出合約` MUST be listed with the label `10/31（六）` and `六 → 本週`
+- **THEN** a row for `寄出合約` MUST be listed with the label `10/31（六）` and `預排在上週六，算進本週`
 - **AND** the popover for `2026-W44` MUST NOT list it
 
 #### Scenario: Non-checkbox dated line is read-only

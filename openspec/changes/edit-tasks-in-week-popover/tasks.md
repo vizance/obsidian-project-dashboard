@@ -12,7 +12,7 @@
 
 ## 3. 週浮窗與畫面
 
-- [x] 3.1 浮窗獨立成元件：在 src/week-popover.ts 實作 `WeekPopover`，以 DOM API 畫出兩行標題（含 overflow 警示）、任務列（勾選框、文字、日期標籤含 `六 → 本週`、`◀` `▶` `↗` 的顯示與停用規則、重複任務停用提示）、`這週還沒有任務`、兩個底部入口與展開內容，樣式放 styles.css，對應「Popover lists the week's task lines with controls」。驗證：`npm run build` 成功；在 Obsidian 打開含已完成、未完成、週六、無核取方塊、重複任務各一行的範例筆記，逐項比對規格文字與按鈕顯示。
+- [x] 3.1 浮窗獨立成元件：在 src/week-popover.ts 實作 `WeekPopover`，以 DOM API 畫出兩行標題（含 overflow 警示）、任務列（勾選框、文字、日期標籤含 `預排在上週六，算進本週`／`上週六完成，算進本週`、`◀` `▶` `↗` 的顯示與停用規則、重複任務停用提示）、`這週還沒有任務`、兩個底部入口與展開內容，樣式放 styles.css，對應「Popover lists the week's task lines with controls」。驗證：`npm run build` 成功；在 Obsidian 打開含已完成、未完成、週六、無核取方塊、重複任務各一行的範例筆記，逐項比對規格文字與按鈕顯示。
 - [x] 3.2 浮窗動作接上寫入模組：勾選框 → `toggle`、`◀` `▶` → `shift`、點還沒排日期的任務 → `schedule`、輸入框 Enter → `add`；寫入中該列停用並先顯示目標勾選狀態；`stale`／`invalid` 顯示 `這一行在筆記裡剛被改過，畫面已更新，請再試一次` 並立即重新掃描，`missing-file` 顯示 `找不到這則筆記`，成功不顯示訊息。驗證：在 Obsidian 逐一操作四個動作並確認筆記內容符合規格範例；先在筆記裡改掉那一行再按 `▶`，確認出現提示且筆記未被改。
 - [x] 3.3 虛線週格與整條虛線可開浮窗（Click a week cell to open a popover）：逐週模式下每個畫出的週格帶 `data-path`、`data-week`，整條虛線帶起始週與跨週數；可開浮窗的格子擴充為實心、已完成、overflow、虛線週格、整條虛線，空白格不開；整條虛線用純函式 `spanWeekOffset(offset, width, weeks)` 算出點到哪一週；timeline 模式維持只顯示 `title` 文字的唯讀浮窗。驗證：tests/cells.test.ts 斷言 offset 95、寬 400、10 週 → 2，以及小於 0 與超出寬度時夾在 0 與 9；在 Obsidian 確認虛線週格、整條虛線、空白格、timeline 模式四種點擊結果。
 - [x] 3.4 Popover positioning stays within the viewport 與 A single popover with explicit dismissal：整條虛線以算出的那週表格格子為錨點，展開或收起底部區塊後重新定位，內容過高時清單在浮窗內捲動；在浮窗內捲動與點擊不關閉、輸入框裡按 Esc 只關輸入框、按 `↗` 會關閉、再點同一格（或同一條虛線的同一週）會關閉。驗證：在 Obsidian 對畫面右下角的格子打開浮窗並展開清單，確認完整可見；逐一確認上述五種關閉與不關閉的情況。
@@ -25,4 +25,4 @@
 
 - [x] 4.1 文件與版本：openspec/LANGUAGE.md 新增 `task line`、`unscheduled task`、`schedule date` 三個詞並更新 `week-popover` 的定義；README.md 的英文與繁體中文段落各加一段「在週浮窗裡編輯任務」，寫明固定寫 Tasks 外掛的 emoji 格式、排進某週寫星期五；CHANGELOG.md 新增 `## 0.2.0 — 當天的 Asia/Taipei 日期`（以 `date` 確認）；manifest.json、package.json、package-lock.json 版本一起改成 0.2.0。驗證：重讀 diff，確認三個版本號一致、文件不含任何私人名稱或本機路徑。
 - [x] 4.2 自動驗收：`npm test` 全數通過、`npm run lint` 0 錯誤、`npm run build` 成功、`npm run deploy` 部署到本機 vault；依 AGENTS.md 的隱私檢查指令（私人路徑、密碼金鑰、`.privacy-patterns.local` 名單、規格裡的追蹤標記）確認追蹤中的檔案沒有命中。驗證：貼出四個指令的結果與檢查命中數為 0。
-- [ ] 4.3 朱騏在 Obsidian 手動驗收：依 3.1 到 3.6 的驗證清單逐項操作，全部符合後才勾選本項。驗證：朱騏在對話中確認每一項結果。
+- [x] 4.3 朱騏在 Obsidian 手動驗收：依 3.1 到 3.6 的驗證清單逐項操作，全部符合後才勾選本項。驗證：朱騏在對話中確認每一項結果。

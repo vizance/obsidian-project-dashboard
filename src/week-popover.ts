@@ -141,7 +141,8 @@ export class WeekPopover {
 			row.createSpan({ cls: 'wp-date', text: label });
 			const mapped = taskDateToWeekLabel(shown);
 			if (mapped.isBumpedSat && mapped.label === weekLabel) {
-				row.createSpan({ cls: 'wp-sat', text: '六 → 本週' });
+				// 已完成的行顯示的是完成日，不是預排日，所以兩種說法分開。
+				row.createSpan({ cls: 'wp-sat', text: line.done ? '上週六完成，算進本週' : '預排在上週六，算進本週' });
 			}
 		}
 
