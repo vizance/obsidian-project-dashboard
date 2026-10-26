@@ -237,6 +237,20 @@ describe('scanProjectNote', () => {
 		expect(result?.settled_weeks).toContain(doneWeek);
 	});
 
+	it('A link to a finished note does not complete a task: its week stays outstanding', () => {
+		const result = scanProjectNote(
+			{
+				filename: '🚧 P-20260101 ~ 1231 測試.md',
+				text: '- [ ] 追蹤後續 [[✅ P-2026 範例：已完成專案]] 📅 2026-06-02',
+				path: 'x.md',
+			},
+			{ overrides: {}, today },
+		);
+		expect(result?.occupied_weeks).toContain('2026-W23');
+		expect(result?.settled_weeks).not.toContain('2026-W23');
+		expect(result?.tasks).toEqual([{ date: '2026-06-02', kind: 'planned', text: '追蹤後續 [[✅ P-2026 範例：已完成專案]]', done: false }]);
+	});
+
 	it('defaults the end date to the year of today (2026-10-25 -> 2026-12-31)', () => {
 		const text = '---\n開始日期: 2026-01-01\n---\n';
 		const result = scanProjectNote(

@@ -170,6 +170,15 @@ export function timelineCells(project: ProjectRecord, weeks: WeekInfo[]): Cell[]
 	});
 }
 
+// 整條虛線（span-dashed）只畫在起始格裡、用寬度蓋過後面的格子，所以點擊時要自己
+// 換算是第幾週：點擊位置到左緣的距離 ÷ 每週寬度，夾在 0 與 weeks - 1 之間。
+export function spanWeekOffset(offset: number, width: number, weeks: number): number {
+	if (weeks <= 1 || width <= 0) return 0;
+	const weekWidth = width / weeks;
+	const index = Math.floor(offset / weekWidth);
+	return Math.max(0, Math.min(weeks - 1, index));
+}
+
 export function visibleProjects(projects: ProjectRecord[], showClosed: boolean): ProjectRecord[] {
 	return projects.filter((p) => {
 		const isClosed = p.status === 'done' || p.status === 'cancelled';

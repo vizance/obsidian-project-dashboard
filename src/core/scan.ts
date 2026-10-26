@@ -59,6 +59,8 @@ const TASK_DATE_RE = /(?:📅|✅)\s+(\d{4}-\d{2}-\d{2})/g;
 const TASK_MARKER_RE = /(📅|✅)\s+(\d{4}-\d{2}-\d{2})/g;
 // 已打勾的 checkbox（任務層級「完成」訊號之一）
 const CHECKBOX_DONE_RE = /^[-*+]\s*\[[xX]\]/;
+// 完成標記要「✅ 後面接日期」才算；連到已完成筆記的 [[✅ …]] 只是連結，不代表這個任務做完了。
+const DONE_MARKER_RE = /✅\s+\d{4}-\d{2}-\d{2}/;
 
 function compareByCodePoint(a: string, b: string): number {
 	const ca = Array.from(a);
@@ -213,7 +215,7 @@ export function parseTasks(text: string): TaskEntry[] {
 		if (markers.length === 0) continue;
 		const desc = cleanTaskText(line);
 		const trimmed = line.trim();
-		const lineDone = CHECKBOX_DONE_RE.test(trimmed) || line.includes('✅');
+		const lineDone = CHECKBOX_DONE_RE.test(trimmed) || DONE_MARKER_RE.test(line);
 		for (const m of markers) {
 			const emoji = m[1]!;
 			const date = m[2]!;

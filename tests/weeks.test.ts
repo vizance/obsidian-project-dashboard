@@ -3,10 +3,13 @@ import {
 	addDaysISO,
 	buildWeeks,
 	mondayOfWeek,
+	monthDayLabel,
+	monthDayWeekdayLabel,
 	taskDateToWeekLabel,
 	todayLocal,
 	todayWeekIndex,
 	weekRangeLabel,
+	weekdayChar,
 } from '../src/core/weeks';
 
 describe('buildWeeks', () => {
@@ -73,5 +76,29 @@ describe('mondayOfWeek', () => {
 describe('weekRangeLabel', () => {
 	it('matches the spec example for W44', () => {
 		expect(weekRangeLabel('2026-W44')).toBe('W44　10/26（一）– 11/1（日）');
+	});
+});
+
+describe('monthDayLabel', () => {
+	it('drops the zero padding of both month and day', () => {
+		expect(monthDayLabel('2026-10-26')).toBe('10/26');
+		expect(monthDayLabel('2026-11-01')).toBe('11/1');
+		expect(monthDayLabel('2027-01-08')).toBe('1/8');
+	});
+});
+
+describe('weekdayChar', () => {
+	it('names the weekday of a date', () => {
+		expect(weekdayChar('2026-10-26')).toBe('一');
+		expect(weekdayChar('2026-10-30')).toBe('五');
+		expect(weekdayChar('2026-10-31')).toBe('六');
+		expect(weekdayChar('2026-11-01')).toBe('日');
+	});
+});
+
+describe('monthDayWeekdayLabel', () => {
+	it('matches the popover row labels in the spec', () => {
+		expect(monthDayWeekdayLabel('2026-10-30')).toBe('10/30（五）');
+		expect(monthDayWeekdayLabel('2026-10-31')).toBe('10/31（六）');
 	});
 });

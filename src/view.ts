@@ -1,7 +1,7 @@
-import { ItemView, Scope, TFile, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, MarkdownView, Scope, TFile, type WorkspaceLeaf } from 'obsidian';
 import { CATEGORIES, CATEGORY_KEYS } from './core/config';
 import type { Cell } from './core/cells';
-import { perWeekCells, sortProjects, timelineCells, visibleProjects } from './core/cells';
+import { perWeekCells, sortProjects, spanWeekOffset, timelineCells, visibleProjects } from './core/cells';
 import {
 	applyCategoryOverride,
 	clampProjColWidth,
@@ -12,9 +12,23 @@ import {
 	resolveInitialHelpPanel,
 } from './core/prefs';
 import type { ProjectRecord } from './core/scan';
+import {
+	locateLine,
+	scheduleDateForWeek,
+	taskLinesForWeek,
+	unscheduledTasks,
+	type TaskLine,
+} from './core/task-lines';
 import { buildWeeks, groupMonths, groupQuarters, todayLocal, todayWeekIndex, type WeekInfo } from './core/weeks';
 import type ProjectDashboardPlugin from './main';
+import { TaskWriter, type TaskEdit } from './task-writer';
 import type { VaultSource } from './vault-source';
+import {
+	CLOSED_POPOVER_STATE,
+	WeekPopover,
+	type PopoverViewState,
+	type WeekPopoverActionResult,
+} from './week-popover';
 
 export const VIEW_TYPE_DASHBOARD = 'project-dashboard-view';
 
@@ -24,6 +38,34 @@ const MONTH_NAMES = [
 ];
 
 const LEGEND_DRAG_THRESHOLD = 5;
+// Long enough to cover the frame in which programmatic scroll events arrive.
+const SCROLL_RESTORE_GRACE_MS = 250;
+
+const MSG_STALE = '這一行在筆記裡剛被改過，畫面已更新，請再試一次';
+const MSG_MISSING_FILE = '找不到這則筆記';
+const MSG_LINE_NOT_FOUND = '找不到那一行，可能剛被改過';
+const MSG_WRITE_FAILED = '寫入筆記失敗，請再試一次';
+
+// 這些 input type 不是文字輸入，Escape 不必讓給它們。
+const NON_TEXT_INPUT_TYPES = ['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file'];
+
+// 焦點是不是在「打字的地方」。不用 instanceof：浮窗可能在 Obsidian 的獨立視窗裡，
+// 那裡的 HTMLInputElement 與主視窗不同，instanceof 會判成 false。
+function isTextEntryTarget(target: EventTarget | null): boolean {
+	const el = target as (HTMLElement & { type?: string }) | null;
+	const tag = el?.tagName;
+	if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+	if (el?.isContentEditable) return true;
+	if (tag !== 'INPUT') return false;
+	const type = (el?.type ?? 'text').toLowerCase();
+	return !NON_TEXT_INPUT_TYPES.includes(type);
+}
+
+// 浮窗用「筆記路徑 + ISO 週」辨識，不用元素本身 — 每次重繪都會換掉整張表。
+interface PopoverTarget {
+	path: string;
+	week: string;
+}
 
 export class ProjectDashboardView extends ItemView {
 	private today = '';
@@ -34,12 +76,19 @@ export class ProjectDashboardView extends ItemView {
 	private showClosed = false;
 	private helpPanelOpen = false;
 	private popoverAnchor: HTMLElement | null = null;
+	private popoverTarget: PopoverTarget | null = null;
+	// Restoring scroll after a re-render fires scroll events on the next frame;
+	// they must not close the popover that was just re-opened.
+	private suppressScrollCloseUntil = 0;
 	private toastTimer: number | null = null;
 	private noteLeaf: WorkspaceLeaf | null = null;
 	private unsubscribeVaultSource: (() => void) | null = null;
 
 	private projects: ProjectRecord[] = [];
+	private weeks: WeekInfo[] = [];
 	private missingFolderMessage: string | null = null;
+	private popover!: WeekPopover;
+	private taskWriter!: TaskWriter;
 
 	private metaEl!: HTMLElement;
 	private legendEl!: HTMLElement;
@@ -71,6 +120,7 @@ export class ProjectDashboardView extends ItemView {
 
 	async onOpen(): Promise<void> {
 		this.today = todayLocal();
+		this.taskWriter = new TaskWriter(this.app.vault);
 		this.loadPreferences();
 		this.scope = new Scope(this.app.scope);
 		this.registerShortcuts();
@@ -90,15 +140,27 @@ export class ProjectDashboardView extends ItemView {
 
 	// Triggered by vault-source's debounced re-scan notification (design.md:
 	// "重繪時保留畫面狀態") — rebuild only stats/legend/chart, restore scroll,
-	// and drop any open popover since the cell it pointed at is gone.
+	// and re-open the popover on the new cell for the same project and week.
 	private async handleVaultChange(): Promise<void> {
+		this.today = todayLocal();
+		await this.refreshPreservingPopover();
+	}
+
+	// Shared by the debounced vault change and the immediate re-scan after a
+	// stale/invalid edit (dashboard-note-sync: "The same rule SHALL apply to the
+	// immediate re-scan"). renderChart() closes the popover because every anchor
+	// is replaced, so the target is captured before and re-opened after.
+	private async refreshPreservingPopover(): Promise<void> {
 		const scrollLeft = this.chartEl.scrollLeft;
 		const scrollTop = this.contentEl.scrollTop;
-		this.closeWeekPopover();
-		this.today = todayLocal();
+		const previous = this.popoverTarget ? { ...this.popoverTarget, state: this.popover.captureState() } : null;
 		await this.rescanAndRender();
 		this.chartEl.scrollLeft = scrollLeft;
 		this.contentEl.scrollTop = scrollTop;
+		if (previous) {
+			this.suppressScrollCloseUntil = Date.now() + SCROLL_RESTORE_GRACE_MS;
+			this.reopenWeekPopover(previous);
+		}
 	}
 
 	// Later tasks call this after a background re-scan; rebuilds the stats,
@@ -187,6 +249,45 @@ export class ProjectDashboardView extends ItemView {
 			attr: { id: 'week-popover', role: 'dialog', 'aria-label': '本週任務' },
 		});
 		this.popoverEl.hidden = true;
+		this.popover = new WeekPopover(this.popoverEl, {
+			toggle: (line) => this.runPopoverEdit((target) => ({
+				kind: 'toggle',
+				path: target.path,
+				line: line.line,
+				raw: line.raw,
+				// 用按下去那一刻的本地日期，台北清晨才不會被算成前一天。
+				today: todayLocal(),
+			})),
+			shift: (line, days) => this.runPopoverEdit((target) => ({
+				kind: 'shift',
+				path: target.path,
+				line: line.line,
+				raw: line.raw,
+				days,
+			})),
+			schedule: (line) => this.runPopoverEdit((target) => ({
+				kind: 'schedule',
+				path: target.path,
+				line: line.line,
+				raw: line.raw,
+				date: scheduleDateForWeek(target.week),
+			})),
+			addTask: (text) => this.runPopoverEdit((target) => ({
+				kind: 'add',
+				path: target.path,
+				text,
+				date: scheduleDateForWeek(target.week),
+			})),
+			jump: (line) => {
+				const path = this.popoverTarget?.path;
+				if (!path) return;
+				this.closeWeekPopover();
+				void this.jumpToTaskLine(path, line);
+			},
+			onContentResize: () => {
+				if (this.popoverAnchor) this.positionWeekPopover(this.popoverAnchor);
+			},
+		});
 
 		this.toastEl = this.contentEl.createDiv({ attr: { id: 'toast', role: 'status', 'aria-live': 'polite' } });
 		this.toastEl.hidden = true;
@@ -265,7 +366,9 @@ export class ProjectDashboardView extends ItemView {
 			return false;
 		};
 		const closeOnEscape = (evt: KeyboardEvent): boolean => {
-			if (this.shouldIgnoreShortcut(evt)) return true;
+			// Escape 的讓行條件比 T／?／/ 窄：只有真正在輸入文字時才讓行。任務列的
+			// 勾選框點下去就有焦點，那時 Escape 仍要關掉浮窗。
+			if (isTextEntryTarget(evt.target)) return true;
 			if (!this.popoverAnchor) return true;
 			this.closeWeekPopover();
 			return false;
@@ -436,10 +539,18 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	private async openProjectNote(path: string): Promise<void> {
+		await this.openNoteInSplit(path);
+	}
+
+	// Shared by the project-name click and the popover's `↗` so both reuse the
+	// same note split (dashboard-task-editing: "using the same reuse rule as
+	// clicking a project name"). Returns null when the note is gone.
+	private async openNoteInSplit(path: string): Promise<WorkspaceLeaf | null> {
 		const file = this.app.vault.getAbstractFileByPath(path);
-		if (!(file instanceof TFile)) return;
+		if (!(file instanceof TFile)) return null;
 		const leaf = this.getOrCreateNoteLeaf();
 		await leaf.openFile(file);
+		return leaf;
 	}
 
 	private getOrCreateNoteLeaf(): WorkspaceLeaf {
@@ -471,36 +582,199 @@ export class ProjectDashboardView extends ItemView {
 
 	private registerWeekPopover(): void {
 		this.registerDomEvent(activeDocument, 'click', (e: MouseEvent) => {
+			// A click handler inside the popover may have rebuilt the popover's DOM
+			// before this document-level listener runs, which detaches e.target and
+			// would make contains() false. composedPath() still holds the popover,
+			// so expanding a footer section never closes the popover itself.
+			if (!this.popoverEl.hidden && e.composedPath().includes(this.popoverEl)) return;
 			const target = e.target as HTMLElement;
-			if (!this.popoverEl.hidden && this.popoverEl.contains(target)) return;
-			const cell = target.closest ? target.closest<HTMLElement>('.bar-solid, .bar-overflow') : null;
-			const title = cell?.getAttribute('title')?.trim();
-			if (cell && title) {
-				if (this.popoverAnchor === cell && !this.popoverEl.hidden) {
-					this.closeWeekPopover();
-				} else {
-					this.openWeekPopover(cell);
-				}
-				return;
-			}
+			const bar = target.closest ? target.closest<HTMLElement>('.bar') : null;
+			if (bar && this.handleBarClick(bar, e)) return;
 			this.closeWeekPopover();
 		});
-		this.registerDomEvent(activeWindow, 'scroll', () => this.closeWeekPopover(), true);
+		this.registerDomEvent(activeWindow, 'scroll', (e: Event) => {
+			if (this.popoverEl.hidden || !this.popoverAnchor) return;
+			if (Date.now() < this.suppressScrollCloseUntil) return;
+			// Only a scroll that moves the anchor detaches the fixed-position popover
+			// from its cell. Scrolling inside the popover, or in another pane such as
+			// the note beside the dashboard (which Obsidian may scroll by itself when
+			// our edit lands), must leave it open.
+			// Duck typing instead of `instanceof Node`: in a pop-out window the node
+			// comes from another realm, where `instanceof` against this window's
+			// constructors is always false.
+			const node = e.target as { contains?: (other: Node | null) => boolean } | null;
+			if (typeof node?.contains !== 'function' || !node.contains(this.popoverAnchor)) return;
+			this.closeWeekPopover();
+		}, true);
 	}
 
-	private openWeekPopover(cell: HTMLElement): void {
-		this.popoverEl.setText(cell.getAttribute('title') ?? '');
-		this.popoverAnchor = cell;
-		this.positionWeekPopover(cell);
+	// Returns true when the click was consumed by the popover logic.
+	private handleBarClick(bar: HTMLElement, e: MouseEvent): boolean {
+		if (this.viewMode === 'timeline') {
+			const title = bar.classList.contains('bar-span') ? bar.getAttribute('title')?.trim() : '';
+			if (!title) return false;
+			if (this.popoverAnchor === bar && !this.popoverEl.hidden) {
+				this.closeWeekPopover();
+				return true;
+			}
+			this.popover.renderText(title);
+			this.popoverTarget = null;
+			this.popoverAnchor = bar;
+			this.positionWeekPopover(bar);
+			return true;
+		}
+
+		const path = bar.dataset.path;
+		const week = this.weekOfBarClick(bar, e.clientX);
+		if (!path || !week) return false;
+		// 同一格（整條虛線則是同一週）再點一次關閉。
+		if (this.popoverTarget?.path === path && this.popoverTarget.week === week && !this.popoverEl.hidden) {
+			this.closeWeekPopover();
+			return true;
+		}
+		this.openWeekPopover({ path, week }, bar, CLOSED_POPOVER_STATE);
+		return true;
+	}
+
+	// 整條虛線要用它蓋住的表格格子來換算週，不能用畫出來的色條：色條左右各內縮
+	// 幾個 pixel，用它量會讓剛過格線的點擊落到前一週去。
+	private weekOfBarClick(bar: HTMLElement, clientX: number): string | null {
+		const spanStart = bar.dataset.spanStart;
+		const spanWeeks = bar.dataset.spanWeeks;
+		if (spanStart === undefined || spanWeeks === undefined) return bar.dataset.week ?? null;
+		const start = Number(spanStart);
+		const weeks = Number(spanWeeks);
+		const row = bar.closest('tr');
+		const cells = row ? Array.from(row.querySelectorAll<HTMLElement>('td.week-cell')) : [];
+		const first = cells[start];
+		const last = cells[Math.min(start + weeks - 1, cells.length - 1)];
+		const firstRect = (first ?? bar).getBoundingClientRect();
+		const lastRect = last ? last.getBoundingClientRect() : firstRect;
+		const width = first ? lastRect.right - firstRect.left : firstRect.width;
+		const offset = spanWeekOffset(clientX - firstRect.left, width, weeks);
+		return this.weeks[start + offset]?.label ?? null;
+	}
+
+	// 整條虛線只畫在起始格，所以錨點要換成算出來那一週的表格格子。
+	private anchorForWeek(bar: HTMLElement, week: string): HTMLElement {
+		const row = bar.closest('tr');
+		const index = this.weeks.findIndex((w) => w.label === week);
+		if (!row || index === -1) return bar;
+		return row.querySelectorAll<HTMLElement>('td.week-cell')[index] ?? bar;
+	}
+
+	private openWeekPopover(target: PopoverTarget, bar: HTMLElement, state: PopoverViewState): void {
+		const project = this.projects.find((p) => p.path === target.path);
+		if (!project) {
+			this.closeWeekPopover();
+			return;
+		}
+		this.popover.render({
+			projectName: project.name,
+			weekLabel: target.week,
+			overflowEnd: bar.classList.contains('bar-overflow') ? project.end : null,
+			rows: taskLinesForWeek(project.task_lines, target.week),
+			unscheduled: unscheduledTasks(project.task_lines),
+		}, state);
+		this.popoverTarget = target;
+		this.popoverAnchor = this.anchorForWeek(bar, target.week);
+		this.positionWeekPopover(this.popoverAnchor);
+	}
+
+	private reopenWeekPopover(previous: PopoverTarget & { state: PopoverViewState }): void {
+		if (this.viewMode !== 'per-week') {
+			this.closeWeekPopover();
+			return;
+		}
+		const bar = this.findWeekBar(previous.path, previous.week);
+		if (!bar) {
+			this.closeWeekPopover();
+			return;
+		}
+		this.openWeekPopover({ path: previous.path, week: previous.week }, bar, previous.state);
+	}
+
+	// 找該專案該週畫出來的色條：同一週的格子，或蓋住那一週的整條虛線。
+	private findWeekBar(path: string, week: string): HTMLElement | null {
+		const weekIndex = this.weeks.findIndex((w) => w.label === week);
+		for (const bar of Array.from(this.chartEl.querySelectorAll<HTMLElement>('.bar'))) {
+			if (bar.dataset.path !== path) continue;
+			if (bar.dataset.week === week) return bar;
+			const spanStart = bar.dataset.spanStart;
+			const spanWeeks = bar.dataset.spanWeeks;
+			if (spanStart === undefined || spanWeeks === undefined) continue;
+			const start = Number(spanStart);
+			if (weekIndex >= start && weekIndex < start + Number(spanWeeks)) return bar;
+		}
+		return null;
 	}
 
 	private closeWeekPopover(): void {
 		this.popoverEl.hidden = true;
 		this.popoverAnchor = null;
+		this.popoverTarget = null;
 	}
 
+	private async runPopoverEdit(build: (target: PopoverTarget) => TaskEdit): Promise<WeekPopoverActionResult> {
+		const target = this.popoverTarget;
+		if (!target) return 'restore';
+		return this.applyEdit(build(target));
+	}
+
+	// 寫入失敗一律有 toast（Implementation Contract：寫入失敗不靜默）；成功不顯示
+	// 訊息，等 vault 事件帶來的重繪當回饋。
+	private async applyEdit(edit: TaskEdit): Promise<WeekPopoverActionResult> {
+		try {
+			const result = await this.taskWriter.apply(edit);
+			if (result.status === 'ok') return 'rerender';
+			if (result.status === 'missing-file') {
+				this.showToast(MSG_MISSING_FILE, true);
+				return 'restore';
+			}
+			this.showToast(MSG_STALE, true);
+			await this.refreshPreservingPopover();
+			return 'rerender';
+		} catch (err) {
+			// TaskWriter re-throws a real read/write failure instead of reporting a
+			// status, so this is the only place that failure becomes visible.
+			console.error('[project-dashboard] 寫入任務失敗', err);
+			this.showToast(MSG_WRITE_FAILED, true);
+			return 'restore';
+		}
+	}
+
+	// dashboard-task-editing: 用與點專案名稱相同的分割重用規則打開筆記，選取整行
+	// 並捲到畫面中；行已經被改過就照常打開筆記並提示。
+	private async jumpToTaskLine(path: string, task: TaskLine): Promise<void> {
+		const leaf = await this.openNoteInSplit(path);
+		if (!leaf) {
+			this.showToast(MSG_MISSING_FILE, true);
+			return;
+		}
+		const view = leaf.view;
+		if (!(view instanceof MarkdownView)) return;
+		const editor = view.editor;
+		const lines = editor.getValue().split(/\r\n|\r|\n/);
+		const index = locateLine(lines, task.line, task.raw);
+		if (index === -1) {
+			this.showToast(MSG_LINE_NOT_FOUND, true);
+			return;
+		}
+		const from = { line: index, ch: 0 };
+		const to = { line: index, ch: lines[index]!.length };
+		editor.setSelection(from, to);
+		editor.scrollIntoView({ from, to }, true);
+		// An unfocused editor barely shows its selection; the user asked to go there.
+		editor.focus();
+	}
+
+	// 固定座標 + 超出邊界就翻面；高度由 styles.css 的 max-height 夾在視窗內，
+	// 所以 offsetHeight 量到的已經是夾過的高度。
 	private positionWeekPopover(cell: HTMLElement): void {
 		this.popoverEl.hidden = false; // 先顯示才能量到尺寸
+		// 先歸零再量：留著上一次靠右邊界的位置，瀏覽器會把浮窗壓窄，量到的寬度
+		// 就比實際需要的小，翻面判斷會失準。
+		this.popoverEl.setCssProps({ '--pd-popover-left': '0px', '--pd-popover-top': '0px' });
 		const rect = cell.getBoundingClientRect();
 		const pw = this.popoverEl.offsetWidth;
 		const ph = this.popoverEl.offsetHeight;
@@ -545,6 +819,9 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	private renderChart(): void {
+		// 每個錨點都會被換掉，所以先關閉浮窗；需要留著的呼叫端（重繪）會在之後
+		// 用 reopenWeekPopover 在新的格子上重開。
+		this.closeWeekPopover();
 		this.chartEl.empty();
 		if (this.missingFolderMessage) {
 			this.chartEl.createDiv({ cls: 'empty', text: this.missingFolderMessage });
@@ -553,6 +830,7 @@ export class ProjectDashboardView extends ItemView {
 
 		const year = Number(this.today.slice(0, 4));
 		const weeks = buildWeeks(year);
+		this.weeks = weeks;
 		const quarterGroups = groupQuarters(weeks);
 		const monthGroups = groupMonths(weeks);
 		const todayIdx = todayWeekIndex(weeks, this.today);
@@ -638,11 +916,18 @@ export class ProjectDashboardView extends ItemView {
 			const borderCls = w.isQuarterStart ? 'q-start' : w.isMonthStart ? 'm-start' : '';
 			const cellCls = ['week-cell', i === todayIdx ? 'today-col' : '', borderCls].filter(Boolean).join(' ');
 			const td = tr.createEl('td', { cls: cellCls });
-			this.renderBar(td, cell, project.color, stateCls);
+			this.renderBar(td, cell, project, stateCls, w.label, i);
 		});
 	}
 
-	private renderBar(td: HTMLTableCellElement, cell: Cell, color: string, stateCls: string): void {
+	private renderBar(
+		td: HTMLTableCellElement,
+		cell: Cell,
+		project: ProjectRecord,
+		stateCls: string,
+		weekLabel: string,
+		weekIndex: number,
+	): void {
 		if (cell.kind === 'blank') return;
 
 		const classes = ['bar'];
@@ -675,7 +960,15 @@ export class ProjectDashboardView extends ItemView {
 		if (stateCls) classes.push(stateCls);
 
 		const bar = td.createDiv({ cls: classes.join(' '), attr: { title: cell.tooltip } });
-		if (needsColor) bar.setCssProps({ '--pd-cat-color': color });
+		// 每個畫出來的色條都帶路徑與 ISO 週，點擊時才知道要開哪個專案的哪一週；
+		// 空白格不畫色條，所以永遠不會打開浮窗。
+		bar.dataset.path = project.path;
+		bar.dataset.week = weekLabel;
+		if (cell.kind === 'span-dashed') {
+			bar.dataset.spanStart = String(weekIndex);
+			bar.dataset.spanWeeks = String(cell.spanWeeks);
+		}
+		if (needsColor) bar.setCssProps({ '--pd-cat-color': project.color });
 		if (cell.spanWeeks > 1) bar.setCssProps({ '--pd-span': String(cell.spanWeeks) });
 	}
 }

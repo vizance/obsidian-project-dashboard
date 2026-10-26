@@ -42,16 +42,34 @@ export function mondayOfWeek(weekLabel: string): string {
 	return formatISODate(isoWeekStart(year, week));
 }
 
+// 星期的中文單字，索引與 Date#getUTCDay() 一致（0 = 星期日）。
+const WEEKDAY_CHARS = ['日', '一', '二', '三', '四', '五', '六'];
+
+// M/D，不補零（規格的 10/26、11/1、10/30）。
+export function monthDayLabel(iso: string): string {
+	const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(iso);
+	if (!m) throw new Error(`invalid ISO date: ${iso}`);
+	return `${Number(m[1])}/${Number(m[2])}`;
+}
+
+export function weekdayChar(iso: string): string {
+	const day = new Date(`${iso}T00:00:00Z`).getUTCDay();
+	if (Number.isNaN(day)) throw new Error(`invalid ISO date: ${iso}`);
+	return WEEKDAY_CHARS[day]!;
+}
+
+// 浮窗任務列的日期標籤，例如 10/30（五）。
+export function monthDayWeekdayLabel(iso: string): string {
+	return `${monthDayLabel(iso)}（${weekdayChar(iso)}）`;
+}
+
 export function weekRangeLabel(weekLabel: string): string {
 	const m = /^(\d{4})-W(\d{2})$/.exec(weekLabel);
 	if (!m) throw new Error(`invalid week label: ${weekLabel}`);
 	const week = m[2]!;
 	const monday = mondayOfWeek(weekLabel);
 	const sunday = addDaysISO(monday, 6);
-	const fmt = (iso: string): string => {
-		const dm = /^\d{4}-(\d{2})-(\d{2})$/.exec(iso)!;
-		return `${Number(dm[1])}/${Number(dm[2])}`;
-	};
+	const fmt = monthDayLabel;
 	// \u3000 is the full-width space the UI copy uses between the week and its range;
 	// written as an escape so the separator stays visible to readers and linters.
 	return `W${week}\u3000${fmt(monday)}（一）– ${fmt(sunday)}（日）`;

@@ -1,0 +1,27 @@
+## 1. 任務行與日期規則（純邏輯，src/core）
+
+- [x] 1.1 任務行模型與掃描（Scanner exposes task lines per project）：在 src/core/task-lines.ts 實作 `TaskLine` 型別與 `parseTaskLines(text)`，`scanProjectNote` 多輸出依行號排序的 `task_lines`；核取方塊只認 `[ ]`、`[x]`、`[X]`，其他狀態有日期才收、且 `checkbox = false`。驗證：tests/task-lines.test.ts 逐列比對規格「one note, five lines」表格與「Custom checkbox status stays read-only」情境；tests/scan.test.ts 新增一則測試，斷言既有範例筆記除 `task_lines` 外的每個欄位與加入前完全相同。
+- [x] 1.2 Unscheduled tasks 與週對應：實作 `unscheduledTasks(lines)` 與 `taskLinesForWeek(lines, weekLabel)`，後者套用 occupied 規則（週六算下一週）、每行最多出現一次、依「對應到該週的最早日期 → 行號」排序，作為「Popover lists the week's task lines with controls」的資料來源。驗證：tests/task-lines.test.ts 涵蓋「Only open undated checkbox lines count」「A line with two dates in the same week appears once」「Saturday task shows in the following week」三個情境。
+- [x] 1.3 排程日期規則集中一處：在 src/core/weeks.ts 實作不含個人規則的 `addDaysISO(date, days)`、`mondayOfWeek(weekLabel)`、`weekRangeLabel(weekLabel)`（輸出 `W44　10/26（一）– 11/1（日）`）；在 src/core/task-lines.ts 用同一組常數（星期一加 4 天、換週 7 天）實作 `scheduleDateForWeek(weekLabel)`，程式註解寫明之後與週六規則一起開放設定。驗證：tests/weeks.test.ts 斷言 2026-01-02 減 7 天 → 2025-12-26、2026-W53 的星期一是 2026-12-28，以及 W44 的範圍文字；tests/task-lines.test.ts 斷言 2026-W45 → 2026-11-06、2026-W53 → 2027-01-01、2027-W01 → 2027-01-08。
+- [x] 1.4 勾完成自己改行，不呼叫 Tasks 外掛，並實作換週與排進某週的改寫：`toggleDoneLine(raw, today)`（Completing and reopening a task，含區塊 ID 前插入與 tab 縮排）、`shiftDueLine(raw, days)`（Moving a task to the previous or next week，只改第一個 `📅`）、`scheduleLine(raw, date)`（Scheduling an unscheduled task into the week）。驗證：tests/task-lines.test.ts 逐列跑規格的 completion、shift、schedule 三張範例表。
+- [x] 1.5 新增任務插在最後一個任務行之後，並提供行定位：`buildNewTaskLine(text, date)`（收合換行與空白、已有 `📅` 不補、空字串回傳 null）、`newTaskInsertIndex(lines)`（最後一個核取方塊行的下一行，沒有就是檔尾）、`locateLine(lines, index, expected)`（同行號且相同 → 唯一相同行 → 找不到回傳 -1），對應 Adding a new task to the week。驗證：tests/task-lines.test.ts 涵蓋「New task lands after the last task line」「Empty input writes nothing」，以及 locateLine 的同行、下移兩行、兩行重複三種情況。
+
+## 2. 單一寫入模組
+
+- [x] 2.1 單一寫入模組與寫入前比對（All note writes go through one writer that verifies the line first）：在 tests/stubs/obsidian.ts 的 `Vault` 加上 `process(file, fn)`（回呼丟錯時不寫入）與讀出內容的輔助方法；在 src/task-writer.ts 實作 `TaskWriter.apply(edit)`，支援 `toggle`、`shift`、`schedule`、`add` 四種編輯，回傳 `ok`、`stale`、`invalid`、`missing-file`，寫入時保留 `\n`／`\r\n` 與檔尾換行、只動目標行。驗證：tests/task-writer.test.ts 涵蓋「Line changed since the scan」「Line moved down but unique」「Ambiguous duplicate is rejected」、對已完成行換週回傳 `invalid` 且內容不變、檔案不存在回傳 `missing-file`，以及規格的換行符號範例表。
+
+## 3. 週浮窗與畫面
+
+- [x] 3.1 浮窗獨立成元件：在 src/week-popover.ts 實作 `WeekPopover`，以 DOM API 畫出兩行標題（含 overflow 警示）、任務列（勾選框、文字、日期標籤含 `六 → 本週`、`◀` `▶` `↗` 的顯示與停用規則、重複任務停用提示）、`這週還沒有任務`、兩個底部入口與展開內容，樣式放 styles.css，對應「Popover lists the week's task lines with controls」。驗證：`npm run build` 成功；在 Obsidian 打開含已完成、未完成、週六、無核取方塊、重複任務各一行的範例筆記，逐項比對規格文字與按鈕顯示。
+- [x] 3.2 浮窗動作接上寫入模組：勾選框 → `toggle`、`◀` `▶` → `shift`、點還沒排日期的任務 → `schedule`、輸入框 Enter → `add`；寫入中該列停用並先顯示目標勾選狀態；`stale`／`invalid` 顯示 `這一行在筆記裡剛被改過，畫面已更新，請再試一次` 並立即重新掃描，`missing-file` 顯示 `找不到這則筆記`，成功不顯示訊息。驗證：在 Obsidian 逐一操作四個動作並確認筆記內容符合規格範例；先在筆記裡改掉那一行再按 `▶`，確認出現提示且筆記未被改。
+- [x] 3.3 虛線週格與整條虛線可開浮窗（Click a week cell to open a popover）：逐週模式下每個畫出的週格帶 `data-path`、`data-week`，整條虛線帶起始週與跨週數；可開浮窗的格子擴充為實心、已完成、overflow、虛線週格、整條虛線，空白格不開；整條虛線用純函式 `spanWeekOffset(offset, width, weeks)` 算出點到哪一週；timeline 模式維持只顯示 `title` 文字的唯讀浮窗。驗證：tests/cells.test.ts 斷言 offset 95、寬 400、10 週 → 2，以及小於 0 與超出寬度時夾在 0 與 9；在 Obsidian 確認虛線週格、整條虛線、空白格、timeline 模式四種點擊結果。
+- [x] 3.4 Popover positioning stays within the viewport 與 A single popover with explicit dismissal：整條虛線以算出的那週表格格子為錨點，展開或收起底部區塊後重新定位，內容過高時清單在浮窗內捲動；在浮窗內捲動與點擊不關閉、輸入框裡按 Esc 只關輸入框、按 `↗` 會關閉、再點同一格（或同一條虛線的同一週）會關閉。驗證：在 Obsidian 對畫面右下角的格子打開浮窗並展開清單，確認完整可見；逐一確認上述五種關閉與不關閉的情況。
+- [x] 3.5 Jumping to the task line：`↗` 用與點專案名稱相同的右側分割重用規則打開筆記，讀目前內容並用 `locateLine` 找到那一行，選取整行並捲到畫面中，浮窗關閉；找不到時照常打開筆記並顯示 `找不到那一行，可能剛被改過`。驗證：在 Obsidian 對第 12 行之後的任務按 `↗`，確認右側選取正確整行；在筆記裡改掉那一行後再按，確認出現提示。
+- [x] 3.6 重繪後在同一格重新打開浮窗（Re-render preserves the user's view state）：重繪前記下浮窗的筆記路徑、ISO 週與展開中的底部區塊，重繪後（包含 `stale` 後的立即重新掃描）若該專案該週仍是可開浮窗的格子就重開並還原展開狀態，否則關閉；輸入框文字不還原。驗證：在 Obsidian 連續勾兩個任務，浮窗不消失；展開還沒排日期的清單後排入一個任務，重開後清單仍展開且該任務已不在清單；把專案改名為 `✅` 開頭後浮窗關閉。
+- [x] 3.7 審查後的邊界修正：Keyboard shortcuts act only in the active dashboard tab（勾選框有焦點時 `Escape` 仍能關閉浮窗，打字欄位才攔截）；程式碼區塊與 frontmatter 裡的核取方塊只能看、不能寫，也不當新增任務的插入點；含 `📅`／`✅` 字元的行不列入還沒排日期的任務；區塊 ID 後面有空白時，新標記仍插在區塊 ID 前；寫入模組依掃描器的方式切行、保留每一行原本的換行符號，空筆記與檔尾的插入照規格；新增成功後輸入框保持開啟、清空並保有焦點，重繪時保留還沒送出的文字，焦點只在原本就在輸入框時才還原；輸入法組字中的 Enter／Esc 不送出也不關閉；整條虛線依它蓋住的週格寬度換算週次；量浮窗尺寸前先把位置歸零，避免靠右時寬度量錯；跨視窗不靠 `instanceof` 判斷 DOM 節點；Settled week rendering 與任務行的完成判斷改成 `[x]` 或「`✅` 後面接日期」，連到已完成筆記的 `[[✅ …]]` 不再算完成；寫入結果與原行相同時回傳 `invalid`。驗證：tests 加入規格新增的範例（程式碼區塊與 frontmatter 表、變體日期、區塊 ID 尾端空白兩列、檔尾插入四列、混用換行符號兩列），`npm test`、`npm run lint`、`npm run build` 通過；Escape、連續新增、輸入法與虛線點擊列入 4.3 手動驗收。
+
+## 4. 文件與驗收
+
+- [x] 4.1 文件與版本：openspec/LANGUAGE.md 新增 `task line`、`unscheduled task`、`schedule date` 三個詞並更新 `week-popover` 的定義；README.md 的英文與繁體中文段落各加一段「在週浮窗裡編輯任務」，寫明固定寫 Tasks 外掛的 emoji 格式、排進某週寫星期五；CHANGELOG.md 新增 `## 0.2.0 — 當天的 Asia/Taipei 日期`（以 `date` 確認）；manifest.json、package.json、package-lock.json 版本一起改成 0.2.0。驗證：重讀 diff，確認三個版本號一致、文件不含任何私人名稱或本機路徑。
+- [x] 4.2 自動驗收：`npm test` 全數通過、`npm run lint` 0 錯誤、`npm run build` 成功、`npm run deploy` 部署到本機 vault；依 AGENTS.md 的隱私檢查指令（私人路徑、密碼金鑰、`.privacy-patterns.local` 名單、規格裡的追蹤標記）確認追蹤中的檔案沒有命中。驗證：貼出四個指令的結果與檢查命中數為 0。
+- [ ] 4.3 朱騏在 Obsidian 手動驗收：依 3.1 到 3.6 的驗證清單逐項操作，全部符合後才勾選本項。驗證：朱騏在對話中確認每一項結果。

@@ -25,6 +25,20 @@ The plugin classifies project notes using rules you define in `src/core/personal
 
 Category labels and colors (`CATEGORIES` in `src/core/config.ts`) are not private and can be edited directly.
 
+## Edit tasks from the week popover
+
+In the per-week view, click a project's week cell to open that week's popover. Filled cells, empty dashed weeks, and the long dashed bar of a project that has no task dates yet all open it. From there you can:
+
+- tick a task done, or untick it
+- move a task to the previous or next week with `◀` / `▶` (the date moves by 7 days, so the weekday stays the same)
+- pick one of the note's tasks that has no date yet and put it in this week
+- add a new task to this week
+- jump to the task's line in the note with `↗`
+
+Every change is written straight into the project note in the Tasks plugin's emoji format, `- [ ] task 📅 YYYY-MM-DD`, and ticking a task adds `✅ <today>`. A task placed into a week (picked or newly added) is dated on that week's Friday; this is fixed for now and will become a setting together with the Saturday rule. New tasks go right after the last checkbox task in the note, and the input stays open so you can add several in a row. Checkbox lines inside code blocks or the frontmatter are never edited. Recurring tasks (`🔁`) have to be ticked in the note itself, because creating the next occurrence is the Tasks plugin's job. If the line changed in the note after the dashboard last read it, nothing is written and the dashboard asks you to try again.
+
+If your Tasks plugin uses the Dataview format or doesn't add done dates, the dashboard still writes the emoji format above.
+
 ## Development
 
 ```bash
@@ -65,6 +79,20 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 - `EXCLUDED_PROJECTS` — 不顯示的專案筆記
 
 分類標籤與配色（`src/core/config.ts` 的 `CATEGORIES`）沒有隱私考量，可以直接編輯。
+
+### 在週浮窗裡編輯任務
+
+在逐週模式下點專案的週格子，就會打開那一週的浮窗。實心的格子、空的虛線週，還有還沒有任何任務日期的整條虛線都可以點。打開後可以：
+
+- 勾選任務完成，或取消勾選
+- 用 `◀` `▶` 把任務移到前一週或下一週（日期加減 7 天，星期幾不變）
+- 從這則筆記還沒排日期的任務挑一個，排進這週
+- 在這週新增一個任務
+- 按 `↗` 跳到筆記裡那一行
+
+所有改動都直接寫回專案筆記，格式固定用 Tasks 外掛的 emoji 寫法 `- [ ] 任務 📅 YYYY-MM-DD`，勾完成時會補上 `✅ 今天日期`。排進某一週的任務（挑選或新增的都算）會寫那週的星期五，目前固定，之後會跟「週六算下一週」一起開放設定。新增的任務放在筆記裡最後一個任務的下一行，輸入框會保持開著，可以連續新增好幾個。程式碼區塊與 frontmatter 裡的核取方塊不會被修改。有 `🔁` 的重複任務要到筆記裡勾，因為產生下一次的任務是 Tasks 外掛的工作。如果那一行在儀表板讀取之後又被改過，儀表板不會寫入，會請你再按一次。
+
+如果你的 Tasks 外掛設定成 Dataview 格式，或沒有開啟完成日期，儀表板仍然會寫上面的 emoji 格式。
 
 ### 開發
 

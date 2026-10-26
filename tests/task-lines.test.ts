@@ -4,6 +4,7 @@ import {
 	locateLine,
 	newTaskInsertIndex,
 	parseTaskLines,
+	readOnlyLineFlags,
 	scheduleDateForWeek,
 	scheduleLine,
 	shiftDueLine,
@@ -90,6 +91,73 @@ describe('parseTaskLines', () => {
 			expect(parseTaskLines('- [-] 取消的任務')).toEqual([]);
 		});
 	});
+
+	describe('lines in code fences and frontmatter stay read-only', () => {
+		// 規格 "Example: fenced and frontmatter lines" 的八行筆記。
+		const FENCED_NOTE = [
+			'---',
+			'tags: [project]',
+			'---',
+			'- [ ] 真的任務',
+			'```md',
+			'- [x] 範例任務 📅 2026-11-06',
+			'- [ ] 範例待辦',
+			'```',
+		].join('\n');
+
+		it.each([
+			[0, false, undefined],
+			[1, false, undefined],
+			[2, false, undefined],
+			[3, true, true],
+			[4, false, undefined],
+			[5, true, false],
+			[6, false, undefined],
+			[7, false, undefined],
+		])('line %i: in task_lines = %s, checkbox = %s', (line, included, checkbox) => {
+			const found = parseTaskLines(FENCED_NOTE).find((l) => l.line === line);
+			expect(found !== undefined).toBe(included);
+			if (included) expect(found!.checkbox).toBe(checkbox);
+		});
+
+		it('lists exactly the real task and the dated fenced line', () => {
+			expect(parseTaskLines(FENCED_NOTE).map((l) => l.line)).toEqual([3, 5]);
+		});
+	});
+});
+
+describe('readOnlyLineFlags', () => {
+	it('marks the leading frontmatter including both delimiters', () => {
+		expect(readOnlyLineFlags(['---', 'tags: [a]', '---', '- [ ] 任務'])).toEqual([true, true, true, false]);
+	});
+
+	it('treats a --- that is not on line 0 as ordinary content', () => {
+		expect(readOnlyLineFlags(['# 標題', '---', '- [ ] 任務'])).toEqual([false, false, false]);
+	});
+
+	it('marks a whole note as frontmatter when the closing delimiter is missing', () => {
+		expect(readOnlyLineFlags(['---', 'tags: [a]'])).toEqual([true, true]);
+	});
+
+	it('marks a fenced block including its fence lines', () => {
+		expect(readOnlyLineFlags(['a', '```md', '- [ ] x', '```', 'b'])).toEqual([false, true, true, true, false]);
+	});
+
+	it('closes a fence only on the same fence character', () => {
+		expect(readOnlyLineFlags(['```', '~~~', '- [ ] x', '```', 'b'])).toEqual([true, true, true, true, false]);
+	});
+
+	it('supports ~~~ fences', () => {
+		expect(readOnlyLineFlags(['~~~', '- [ ] x', '~~~'])).toEqual([true, true, true]);
+	});
+
+	it('marks the rest of the note when a fence is never closed', () => {
+		expect(readOnlyLineFlags(['a', '```', '- [ ] x'])).toEqual([false, true, true]);
+	});
+
+	it('keeps an indented fence a fence (its trimmed start opens it)', () => {
+		expect(readOnlyLineFlags(['  ```', '- [ ] x', '  ```', 'b'])).toEqual([true, true, true, false]);
+	});
 });
 
 describe('unscheduledTasks', () => {
@@ -98,6 +166,19 @@ describe('unscheduledTasks', () => {
 		const result = unscheduledTasks(lines);
 		expect(result).toHaveLength(1);
 		expect(result[0]!.text).toBe('製作學習日曆');
+	});
+
+	it('does not offer a line with a variant date marker for scheduling', () => {
+		// 日曆 emoji 後面多了 U+FE0F，解析不出日期，但不能再排一次。
+		const lines = parseTaskLines('- [ ] 任務 📅️ 2026-11-06');
+		expect(lines).toHaveLength(1);
+		expect(lines[0]!.dates).toEqual([]);
+		expect(unscheduledTasks(lines)).toEqual([]);
+	});
+
+	it('does not offer a checkbox line inside a code fence', () => {
+		const lines = parseTaskLines(['```md', '- [ ] 範例待辦', '```'].join('\n'));
+		expect(unscheduledTasks(lines)).toEqual([]);
 	});
 });
 
@@ -135,6 +216,10 @@ describe('toggleDoneLine', () => {
 		['- [ ] 確認拍攝服裝 📅 2026-10-30 ^abc123', '- [x] 確認拍攝服裝 📅 2026-10-30 ✅ 2026-10-28 ^abc123'],
 		['- [ ] 回覆信件 ✅ 2026-10-20', '- [ ] 回覆信件'],
 		['\t- [ ] 子任務 📅 2026-10-29', '\t- [x] 子任務 📅 2026-10-29 ✅ 2026-10-28'],
+		[
+			'- [ ] 確認拍攝服裝 📅 2026-10-30 ^abc123 ',
+			'- [x] 確認拍攝服裝 📅 2026-10-30 ✅ 2026-10-28 ^abc123 ',
+		],
 	])('%s -> %s', (before, after) => {
 		expect(toggleDoneLine(before, today)).toBe(after);
 	});
@@ -155,6 +240,7 @@ describe('scheduleLine / scheduleDateForWeek', () => {
 		['2026-W45', '- [ ] 製作學習日曆', '- [ ] 製作學習日曆 📅 2026-11-06'],
 		['2026-W53', '- [ ] 年度回顧', '- [ ] 年度回顧 📅 2027-01-01'],
 		['2027-W01', '- [ ] 新年計畫 ^plan1', '- [ ] 新年計畫 📅 2027-01-08 ^plan1'],
+		['2027-W02', '- [ ] 新年計畫 ^plan1 ', '- [ ] 新年計畫 📅 2027-01-15 ^plan1 '],
 	])('%s: %s -> %s', (week, before, after) => {
 		const date = scheduleDateForWeek(week);
 		expect(scheduleLine(before, date)).toBe(after);
@@ -203,6 +289,14 @@ describe('newTaskInsertIndex', () => {
 	it('appends at the end when there is no checkbox task line', () => {
 		expect(newTaskInsertIndex(['## 拍攝', '會議紀錄'])).toBe(2);
 	});
+
+	it('ignores checkbox lines inside a code fence', () => {
+		expect(newTaskInsertIndex(['- [ ] A', '```md', '- [ ] 範例', '```', ''])).toBe(1);
+	});
+
+	it('ignores checkbox lines inside the frontmatter', () => {
+		expect(newTaskInsertIndex(['---', '- [ ] 不是任務', '---', '## 備註'])).toBe(4);
+	});
 });
 
 describe('locateLine', () => {
@@ -220,5 +314,27 @@ describe('locateLine', () => {
 	it('returns -1 when the recorded index no longer matches and the text is ambiguous', () => {
 		const duplicated = ['X', 'B', 'Y', 'B'];
 		expect(locateLine(duplicated, 0, 'B')).toBe(-1);
+	});
+});
+
+describe('completion needs a ✅ date marker', () => {
+	const LINKED = '- [ ] 追蹤後續 [[✅ P-2026 範例：已完成專案]] 📅 2026-11-07';
+
+	it('A link to a finished note does not mark a task done', () => {
+		const [line] = parseTaskLines(LINKED);
+		expect(line).toMatchObject({ done: false, due: '2026-11-07', doneDate: null, dates: ['2026-11-07'] });
+	});
+
+	it('ticking such a line appends today instead of being a no-op', () => {
+		expect(toggleDoneLine(LINKED, '2026-10-28')).toBe(`${LINKED.replace('- [ ]', '- [x]')} ✅ 2026-10-28`);
+	});
+
+	it('A link to a finished note can still be scheduled', () => {
+		const undated = parseTaskLines('- [ ] 追蹤後續 [[✅ P-2026 範例：已完成專案]]');
+		expect(unscheduledTasks(undated).map((l) => l.text)).toEqual(['追蹤後續 [[✅ P-2026 範例：已完成專案]]']);
+	});
+
+	it('a ✅ with a slash date still blocks scheduling (left to the note)', () => {
+		expect(unscheduledTasks(parseTaskLines('- [ ] 回覆信件 ✅ 2026/10/20'))).toEqual([]);
 	});
 });

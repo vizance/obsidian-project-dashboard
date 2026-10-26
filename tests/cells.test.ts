@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { perWeekCells, sortProjects, timelineCells } from '../src/core/cells';
+import { perWeekCells, sortProjects, spanWeekOffset, timelineCells } from '../src/core/cells';
 import type { ProjectRecord } from '../src/core/scan';
 import { buildWeeks, type WeekInfo } from '../src/core/weeks';
 
@@ -118,6 +118,20 @@ describe('timelineCells', () => {
 		expect(cells[startIdx]!.kind).toBe('span-solid');
 		expect(cells[startIdx]!.spanWeeks).toBe(rightIdx - startIdx + 1);
 		expect(cells[startIdx]!.tooltip).toBe('P-測試專案\n2026-02-02 ~ 2026-09-15');
+	});
+});
+
+describe('spanWeekOffset', () => {
+	it('maps a click inside a 10-week, 400 px span to the third week', () => {
+		expect(spanWeekOffset(95, 400, 10)).toBe(2);
+	});
+
+	it('clamps a click left of the span to the first week', () => {
+		expect(spanWeekOffset(-20, 400, 10)).toBe(0);
+	});
+
+	it('clamps a click past the span to the last week', () => {
+		expect(spanWeekOffset(500, 400, 10)).toBe(9);
 	});
 });
 

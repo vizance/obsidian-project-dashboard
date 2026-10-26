@@ -79,9 +79,27 @@ This file is the canonical vocabulary for the dashboard project. Use these terms
 
 ### `week-popover`
 
-- **Definition**: A single floating overlay (`position: fixed`) opened by **clicking** a task-bearing week cell (a `.bar-solid` — including the settled variant — or `.bar-overflow` with a non-empty `title`). It shows that cell's existing `title` content (the [[occupied]] week's tasks as produced by `buildWeekTooltip`: project name, ISO week label, and one `✓`/`·` line per task), rendered via `textContent` + CSS `white-space: pre-line`. Belongs to the same floating-layer family as [[help-panel]] and [[help-fab]]. At most one exists at a time; dismissed by re-clicking the same cell, `Escape`, an outside click, or scroll.
-- **Avoid**: `tooltip` (reserved for the native hover `title`), `modal`, `dialog-box`, `card`. The `week-popover` is non-modal and is the click-triggered counterpart to the native hover tooltip — both read the same `title`, so they never diverge.
-- **Why**: The native hover tooltip is delayed, vanishes on pointer-move, and is absent on touch devices. The `week-popover` gives a persistent, instantly-readable, touch-friendly view of a week's tasks while reusing the exact same content source, so no data plumbing or content duplication is introduced. It coexists with — does not replace — the native tooltip.
+- **Definition**: A single floating overlay (`position: fixed`) opened by clicking a project's drawn week cell in the `per-week` [[view-mode]]: a solid cell (including the [[settled]] variant), an [[overflow]] cell, an in-range dashed cell, or the dashed span of a project without task dates (for the span, the clicked week is computed from the click position). It lists the week's [[task line]]s, each with a checkbox, a date label, `◀` `▶` to move the task by one week, and `↗` to jump to that line in the note, plus two footer entries: pick an [[unscheduled task]] for this week, or add a new task; both write the [[schedule date]]. Every edit goes through one task writer that re-checks the line against the note before saving. Built with DOM element APIs. At most one exists at a time, and after a re-render it re-opens on the same note and ISO week. In the `timeline` view-mode it stays a read-only view of the bar's `title` text. Dismissed by re-clicking the same cell (or the same week of a dashed span), `Escape` while focus is outside its text input, an outside click, `↗`, or a scroll that moves its anchor cell (the chart, the dashboard tab, or the document).
+- **Avoid**: `tooltip` (reserved for the native hover `title`), `modal`, `dialog-box`, `card`. The `week-popover` is non-modal, and the native hover tooltip still exists and lists the same tasks.
+- **Why**: Weekly planning happens while looking at the chart: seeing a week and adjusting it in the same place saves hopping between the chart and a dozen notes. The popover only edits the project note itself, so the note stays the single store of tasks and the chart, the note, and the Tasks plugin never disagree. It belongs to the same floating-layer family as [[help-panel]] and [[help-fab]].
+
+### `task line`
+
+- **Definition**: One line of a project note that the dashboard can show as a task: a checkbox task (optional indentation, a `-`, `*`, or `+` bullet, then `[ ]`, `[x]`, or `[X]`) or any line carrying at least one `📅`/`✅` ISO date. Exposed per project as `task_lines`, each with its 0-based line index at scan time, the raw text, the display text, `checkbox`, `done`, `recurring`, `due` (first `📅`), `doneDate` (first `✅`), and every date on the line in order. Only checkbox task lines can be ticked, moved, or scheduled; a dated line without a checkbox, or with a custom status such as `[/]`, is shown read-only.
+- **Avoid**: `task` alone when line identity matters: an entry of `tasks` (`TaskEntry`) is one *date*, so a line with both `📅` and `✅` gives two entries but one task line. Also avoid `todo`, `item`, and `row` (a row is the popover's visual row for a task line).
+- **Why**: Editing a note needs a handle on one *line*, not one date. Keeping `task_lines` beside the per-date `tasks` lets the task writer target exactly one line while every existing week and bar calculation stays untouched.
+
+### `unscheduled task`
+
+- **Definition**: A [[task line]] that is a checkbox task, is not done, and carries no `📅`/`✅` date. These are the candidates the [[week-popover]] offers under `＋ 從還沒排日期的任務挑一個（N）`, listed in note order.
+- **Avoid**: `undated task`, `backlog`, `inbox` (the latter is a common vault folder name).
+- **Why**: The weekly planning step is "pick from what is still open and give it a week". Naming that pool makes the step a first-class concept instead of a filter hidden in UI code.
+
+### `schedule date`
+
+- **Definition**: The date written when a task is placed into an ISO week from the [[week-popover]], either by scheduling an [[unscheduled task]] or by adding a new task: that week's Monday plus 4 days, i.e. its Friday. Moving a task with `◀` / `▶` is not scheduling; it shifts the line's first `📅` date by 7 days and keeps its weekday. Fixed in this version; it will become a setting together with the Saturday rule of [[occupied]].
+- **Avoid**: `due date` for this specific value (`due` is whatever `📅` date a line carries, which the user may set to any day), `deadline`.
+- **Why**: The user plans on Friday and marks next week's tasks with that week's Friday (see [[occupied]] → Why), so writing Friday keeps scheduled tasks consistent with hand-written ones. The rule lives in one place (`scheduleDateForWeek` in `src/core/task-lines.ts`) so opening it as a setting later touches only that spot.
 
 ### `closed`（已結案）
 

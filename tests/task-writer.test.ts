@@ -186,6 +186,106 @@ describe('TaskWriter.apply', () => {
 		expect(vault.getFileContent(PATH)).toBe(content);
 	});
 
+	// 規格 "Example: end-of-note insertion"（week 2026-W45, text `寄出 邀請函`）。
+	describe('end-of-note insertion', () => {
+		const NEW_LINE = '- [ ] 寄出 邀請函 📅 2026-11-06';
+
+		it.each([
+			['## 備註\n', `## 備註\n${NEW_LINE}\n`],
+			['## 備註', `## 備註\n${NEW_LINE}`],
+			['', NEW_LINE],
+			['- [ ] A\n```md\n- [ ] 範例\n```\n', `- [ ] A\n${NEW_LINE}\n\`\`\`md\n- [ ] 範例\n\`\`\`\n`],
+		])('%j -> %j', async (before, after) => {
+			const vault = setupVault(before);
+			const writer = new TaskWriter(vault);
+			const result = await writer.apply({ kind: 'add', path: PATH, text: '寄出 邀請函', date: '2026-11-06' });
+			expect(result).toEqual({ status: 'ok' });
+			expect(vault.getFileContent(PATH)).toBe(after);
+		});
+	});
+
+	// 規格 "Example: line terminators preserved"。
+	describe('line terminators preserved', () => {
+		it('toggle line 0 keeps both \\r\\n terminators', async () => {
+			const vault = setupVault('- [ ] A 📅 2026-10-30\r\n- [ ] B\r\n');
+			const writer = new TaskWriter(vault);
+			const result = await writer.apply({
+				kind: 'toggle',
+				path: PATH,
+				line: 0,
+				raw: '- [ ] A 📅 2026-10-30',
+				today: '2026-10-28',
+			});
+			expect(result).toEqual({ status: 'ok' });
+			expect(vault.getFileContent(PATH)).toBe('- [x] A 📅 2026-10-30 ✅ 2026-10-28\r\n- [ ] B\r\n');
+		});
+
+		it('shift line 0 of a note without a trailing terminator', async () => {
+			const vault = setupVault('- [ ] A 📅 2026-10-30');
+			const writer = new TaskWriter(vault);
+			const result = await writer.apply({ kind: 'shift', path: PATH, line: 0, raw: '- [ ] A 📅 2026-10-30', days: 7 });
+			expect(result).toEqual({ status: 'ok' });
+			expect(vault.getFileContent(PATH)).toBe('- [ ] A 📅 2026-11-06');
+		});
+
+		it('shift line 1 keeps the mixed \\r\\n and \\n terminators', async () => {
+			const vault = setupVault('## h\r\n- [ ] A 📅 2026-10-30\n- [ ] B 📅 2026-10-31\n');
+			const writer = new TaskWriter(vault);
+			const result = await writer.apply({ kind: 'shift', path: PATH, line: 1, raw: '- [ ] A 📅 2026-10-30', days: 7 });
+			expect(result).toEqual({ status: 'ok' });
+			expect(vault.getFileContent(PATH)).toBe('## h\r\n- [ ] A 📅 2026-11-06\n- [ ] B 📅 2026-10-31\n');
+		});
+
+		it('add takes the terminator of the line before it', async () => {
+			const vault = setupVault('## h\n- [ ] A\r\n- [ ] B\n');
+			const writer = new TaskWriter(vault);
+			const result = await writer.apply({ kind: 'add', path: PATH, text: 'new', date: '2026-11-06' });
+			expect(result).toEqual({ status: 'ok' });
+			expect(vault.getFileContent(PATH)).toBe('## h\n- [ ] A\r\n- [ ] B\n- [ ] new 📅 2026-11-06\n');
+		});
+	});
+
+	describe('code-fence and frontmatter lines are never written', () => {
+		it('rejects toggling a checkbox line inside a code fence as invalid', async () => {
+			const content = '```md\n- [ ] 範例待辦\n```\n';
+			const vault = setupVault(content);
+			const writer = new TaskWriter(vault);
+			const result = await writer.apply({
+				kind: 'toggle',
+				path: PATH,
+				line: 1,
+				raw: '- [ ] 範例待辦',
+				today: '2026-10-28',
+			});
+			expect(result).toEqual({ status: 'invalid' });
+			expect(vault.getFileContent(PATH)).toBe(content);
+		});
+
+		it('rejects scheduling a checkbox line inside the frontmatter as invalid', async () => {
+			const content = '---\n- [ ] 不是任務\n---\n';
+			const vault = setupVault(content);
+			const writer = new TaskWriter(vault);
+			const result = await writer.apply({
+				kind: 'schedule',
+				path: PATH,
+				line: 1,
+				raw: '- [ ] 不是任務',
+				date: '2026-11-06',
+			});
+			expect(result).toEqual({ status: 'invalid' });
+			expect(vault.getFileContent(PATH)).toBe(content);
+		});
+
+		it('rejects scheduling a line whose date marker is a variant as invalid', async () => {
+			const content = '- [ ] 任務 📅️ 2026-11-06';
+			const vault = setupVault(content);
+			const writer = new TaskWriter(vault);
+			const result = await writer.apply({ kind: 'schedule', path: PATH, line: 0, raw: content, date: '2026-11-06' });
+			expect(result).toEqual({ status: 'invalid' });
+			expect(vault.getFileContent(PATH)).toBe(content);
+		});
+	});
+
 	it('re-throws a real read/write failure instead of reporting ok', async () => {
 		const vault = setupVault('- [ ] A 📅 2026-10-30');
 		vault.process = () => Promise.reject(new Error('disk full'));
@@ -193,5 +293,26 @@ describe('TaskWriter.apply', () => {
 		await expect(
 			writer.apply({ kind: 'shift', path: PATH, line: 0, raw: '- [ ] A 📅 2026-10-30', days: 7 }),
 		).rejects.toThrow('disk full');
+	});
+
+	it('rejects an edit whose rewrite would leave the line unchanged as invalid', async () => {
+		// U+2028 is not a line break for the scanner, but the toggle rewrite cannot
+		// span it, so the rewrite is a no-op; reporting ok would leave the popover
+		// waiting for a re-render that never comes.
+		const content = '- [ ] A\u2028B 📅 2026-10-30';
+		const vault = setupVault(content);
+		const writer = new TaskWriter(vault);
+		const result = await writer.apply({ kind: 'toggle', path: PATH, line: 0, raw: content, today: '2026-10-28' });
+		expect(result).toEqual({ status: 'invalid' });
+		expect(vault.getFileContent(PATH)).toBe(content);
+	});
+
+	it('schedules a line whose only ✅ is inside a link', async () => {
+		const raw = '- [ ] 追蹤後續 [[✅ P-2026 範例：已完成專案]]';
+		const vault = setupVault(raw);
+		const writer = new TaskWriter(vault);
+		const result = await writer.apply({ kind: 'schedule', path: PATH, line: 0, raw, date: '2026-11-06' });
+		expect(result).toEqual({ status: 'ok' });
+		expect(vault.getFileContent(PATH)).toBe(`${raw} 📅 2026-11-06`);
 	});
 });
