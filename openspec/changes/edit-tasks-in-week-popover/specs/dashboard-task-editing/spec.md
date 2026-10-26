@@ -247,6 +247,18 @@ Clicking `↗` SHALL open the row's note in the dashboard's note split, using th
 - **AND** the popover MUST close
 
 ---
+### Requirement: Opening the project note from the popover header
+
+The project name in the popover header SHALL be clickable and SHALL open that project's note in the dashboard's note split, using the same reuse rule as clicking a project name in the project column. The popover SHALL stay open and SHALL be re-positioned against its anchor after the note opens; when the anchor cell is no longer visible within the dashboard pane, the popover SHALL close.
+
+#### Scenario: Header name opens the note beside the dashboard
+
+- **GIVEN** the popover for `範例專案 A` and `2026-W44` is open and no note split is open
+- **WHEN** the user clicks `範例專案 A` in the popover header
+- **THEN** that project's note MUST open to the right of the dashboard
+- **AND** the popover MUST remain open next to its cell if that cell is still visible
+
+---
 ### Requirement: All note writes go through one writer that verifies the line first
 
 Every popover action that changes a note SHALL go through a single task writer that reads, modifies, and saves the note atomically. For an edit of an existing line, the writer SHALL locate the target line in the current content: the line at the recorded index when its text equals the recorded `raw`; otherwise the only line whose text equals `raw`; otherwise the edit SHALL be rejected as stale. The writer SHALL re-check the action's precondition against the located line's current text (toggle: checkbox and not recurring; shift: open checkbox with a `📅` date; schedule: open checkbox without any date-like marker, by the same rule as unscheduled tasks), judging the line in the context of the whole current note so that code-fence and frontmatter lines are never treated as checkbox tasks, and reject the edit as invalid when it fails. A rejected edit SHALL leave the note byte-for-byte unchanged.

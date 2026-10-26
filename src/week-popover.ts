@@ -35,6 +35,8 @@ export interface WeekPopoverHost {
 	schedule(line: TaskLine): Promise<WeekPopoverActionResult>;
 	addTask(text: string): Promise<WeekPopoverActionResult>;
 	jump(line: TaskLine): void;
+	// 標題的專案名稱：在右側分割打開這則筆記，浮窗留著。
+	openNote(): void;
 	// 展開／收起底部區塊會改變高度，view 要重新算位置。
 	onContentResize(): void;
 }
@@ -92,7 +94,13 @@ export class WeekPopover {
 		this.inputEl = null;
 
 		const header = this.el.createDiv({ cls: 'wp-header' });
-		header.createDiv({ cls: 'wp-project', text: model.projectName });
+		// 用 button 而不是 div：鍵盤可以 Tab 到並用 Enter／空白鍵打開筆記。
+		const project = header.createEl('button', {
+			cls: 'wp-project',
+			text: model.projectName,
+			attr: { type: 'button', title: '在右側開啟筆記' },
+		});
+		project.addEventListener('click', () => this.host.openNote());
 		header.createDiv({ cls: 'wp-week', text: weekRangeLabel(model.weekLabel) });
 		if (model.overflowEnd) {
 			header.createDiv({ cls: 'wp-overflow', text: `⚠ 已超出預計結束日期 ${model.overflowEnd}` });

@@ -51,13 +51,25 @@ The native hover `title` tooltip of every cell SHALL remain unchanged. For a tas
 ---
 ### Requirement: Popover positioning stays within the viewport
 
-The popover SHALL be positioned adjacent to its anchor using viewport coordinates (`position: fixed`), anchored below by default. The anchor SHALL be the clicked cell; for a dashed span it SHALL be the table cell of the computed week. When the popover would overflow the right edge of the viewport, it SHALL flip to align its right edge to the anchor and expand leftward. When it would overflow the bottom edge, it SHALL flip to appear above the anchor. The popover SHALL be re-positioned whenever its content height changes (a footer section is expanded or collapsed). The popover MUST be fully visible (not clipped) regardless of where the anchor sits in the horizontally scrollable chart; when its content is taller than the space available, the task list and the unscheduled list SHALL scroll inside the popover.
+The popover SHALL be attached to the document body, outside the dashboard tab, and removed when the dashboard tab closes: Obsidian's tab container applies `contain: strict` and `overflow: hidden`, which would re-anchor a fixed-position popover to the tab and clip it whenever a sidebar or a split beside the dashboard is open. The popover SHALL be positioned adjacent to its anchor using viewport coordinates (`position: fixed`), anchored below by default, and layered above the workspace like Obsidian's own popovers. The anchor SHALL be the clicked cell; for a dashed span it SHALL be the table cell of the computed week. Horizontally the popover SHALL stay within the dashboard pane when the pane is wide enough for it, so it does not cover the note beside the dashboard; when it would overflow the pane's right edge it SHALL flip to align its right edge to the anchor and expand leftward. When the pane is narrower than the popover, the viewport's edges SHALL be used instead. When it would overflow the bottom edge, it SHALL flip to appear above the anchor. The popover SHALL be re-positioned whenever its content height changes (a footer section is expanded or collapsed). The popover MUST be fully visible (not clipped) regardless of where the anchor sits in the horizontally scrollable chart; when its content is taller than the space available, the task list and the unscheduled list SHALL scroll inside the popover.
 
 #### Scenario: Cell near the right edge flips left
 
 - **GIVEN** a cell whose right edge is close to the viewport's right edge
 - **WHEN** the user clicks it
 - **THEN** the popover MUST remain fully within the viewport horizontally (flipped to expand leftward)
+
+#### Scenario: Left sidebar open does not clip the popover
+
+- **GIVEN** Obsidian's left sidebar is open beside the dashboard
+- **WHEN** the user clicks a week cell
+- **THEN** the popover MUST appear next to that cell, fully visible and fully usable (header, rows, and both footer entries reachable)
+
+#### Scenario: Note split open on the right still opens popovers
+
+- **GIVEN** a note is open in the split to the right of the dashboard
+- **WHEN** the user clicks a week cell near the dashboard's right edge
+- **THEN** the popover MUST appear fully visible, within the dashboard pane, flipped to expand leftward
 
 #### Scenario: Expanding a section keeps the popover visible
 

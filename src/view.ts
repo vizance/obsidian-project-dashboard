@@ -11,6 +11,7 @@ import {
 	parseViewMode,
 	resolveInitialHelpPanel,
 } from './core/prefs';
+import { placePopover } from './core/popover-position';
 import type { ProjectRecord } from './core/scan';
 import {
 	locateLine,
@@ -135,6 +136,8 @@ export class ProjectDashboardView extends ItemView {
 	async onClose(): Promise<void> {
 		this.unsubscribeVaultSource?.();
 		this.unsubscribeVaultSource = null;
+		// 浮窗不在 contentEl 裡，empty() 清不掉它，要自己移除。
+		this.popoverEl?.remove();
 		this.contentEl.empty();
 	}
 
@@ -245,8 +248,13 @@ export class ProjectDashboardView extends ItemView {
 		});
 		this.registerDomEvent(this.helpFabEl, 'click', () => this.toggleHelpPanel(true));
 
-		this.popoverEl = this.contentEl.createDiv({
-			attr: { id: 'week-popover', role: 'dialog', 'aria-label': '本週任務' },
+		// 浮窗掛在 document body，不放在分頁裡：Obsidian 的分頁容器是
+		// `contain: strict`，會讓 position: fixed 以分頁為基準並把超出的部分裁掉
+		// （開著側邊欄或右側分割時浮窗就被切掉）。用 class 而不是 id，因為可能
+		// 同時開著兩個儀表板分頁。
+		this.popoverEl = this.containerEl.ownerDocument.body.createDiv({
+			cls: 'pd-week-popover',
+			attr: { role: 'dialog', 'aria-label': '本週任務' },
 		});
 		this.popoverEl.hidden = true;
 		this.popover = new WeekPopover(this.popoverEl, {
@@ -283,6 +291,12 @@ export class ProjectDashboardView extends ItemView {
 				if (!path) return;
 				this.closeWeekPopover();
 				void this.jumpToTaskLine(path, line);
+			},
+			// 與 `↗` 不同：標題的專案名稱不關浮窗，打開筆記之後再重新定位。
+			openNote: () => {
+				const target = this.popoverTarget;
+				if (!target) return;
+				void this.openNoteFromHeader(target);
 			},
 			onContentResize: () => {
 				if (this.popoverAnchor) this.positionWeekPopover(this.popoverAnchor);
@@ -768,21 +782,54 @@ export class ProjectDashboardView extends ItemView {
 		editor.focus();
 	}
 
+	// dashboard-task-editing: 標題的專案名稱用與左欄專案名稱相同的分割重用規則打開
+	// 筆記；浮窗留著並重新定位，格子已經捲出儀表板可見範圍時才關閉。
+	private async openNoteFromHeader(target: PopoverTarget): Promise<void> {
+		const leaf = await this.openNoteInSplit(target.path);
+		if (!leaf) {
+			this.showToast(MSG_MISSING_FILE, true);
+			return;
+		}
+		// 開筆記是非同步的，這段時間浮窗可能已經被關掉或換成別的專案／週。
+		const current = this.popoverTarget;
+		if (!current || current.path !== target.path || current.week !== target.week) return;
+		const anchor = this.popoverAnchor;
+		if (this.popoverEl.hidden || !anchor) return;
+		if (!this.isAnchorVisible(anchor)) {
+			this.closeWeekPopover();
+			return;
+		}
+		this.positionWeekPopover(anchor);
+	}
+
+	// 右側打開筆記會壓窄儀表板，原本的格子可能被擠出圖表的可見範圍。
+	private isAnchorVisible(anchor: HTMLElement): boolean {
+		const cell = anchor.getBoundingClientRect();
+		const chart = this.chartEl.getBoundingClientRect();
+		const width = Math.min(cell.right, chart.right) - Math.max(cell.left, chart.left);
+		const height = Math.min(cell.bottom, chart.bottom) - Math.max(cell.top, chart.top);
+		return width > 0 && height > 0;
+	}
+
 	// 固定座標 + 超出邊界就翻面；高度由 styles.css 的 max-height 夾在視窗內，
 	// 所以 offsetHeight 量到的已經是夾過的高度。
 	private positionWeekPopover(cell: HTMLElement): void {
+		// 分頁被拖到 Obsidian 的獨立視窗時，浮窗要跟著搬到那個視窗的 body，
+		// 不然它會留在舊視窗裡量不到也看不到。
+		const doc = this.containerEl.ownerDocument;
+		if (this.popoverEl.ownerDocument !== doc) doc.body.appendChild(this.popoverEl);
+
 		this.popoverEl.hidden = false; // 先顯示才能量到尺寸
 		// 先歸零再量：留著上一次靠右邊界的位置，瀏覽器會把浮窗壓窄，量到的寬度
 		// 就比實際需要的小，翻面判斷會失準。
 		this.popoverEl.setCssProps({ '--pd-popover-left': '0px', '--pd-popover-top': '0px' });
-		const rect = cell.getBoundingClientRect();
-		const pw = this.popoverEl.offsetWidth;
-		const ph = this.popoverEl.offsetHeight;
-		const gap = 6;
-		let left = rect.left;
-		let top = rect.bottom + gap;
-		if (left + pw > activeWindow.innerWidth - 4) left = Math.max(4, rect.right - pw);
-		if (top + ph > activeWindow.innerHeight - 4) top = Math.max(4, rect.top - gap - ph);
+		const win = doc.defaultView ?? activeWindow;
+		const { left, top } = placePopover({
+			anchor: cell.getBoundingClientRect(),
+			size: { width: this.popoverEl.offsetWidth, height: this.popoverEl.offsetHeight },
+			pane: this.contentEl.getBoundingClientRect(),
+			viewport: { width: win.innerWidth, height: win.innerHeight },
+		});
 		this.popoverEl.setCssProps({ '--pd-popover-left': `${left}px`, '--pd-popover-top': `${top}px` });
 	}
 

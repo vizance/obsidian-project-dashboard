@@ -126,13 +126,25 @@
 }
 .project-dashboard #help-panel[hidden] { display: none; }
 
-/* 點擊週格子彈出的浮窗（week-popover），與 help-panel 同一套浮層風格 */
-.project-dashboard #week-popover {
+/*
+ * 點擊週格子彈出的浮窗（week-popover），與 help-panel 同一套浮層風格。
+ * 它掛在 document body 上（分頁容器是 contain: strict，放在裡面會被裁掉），
+ * 所以繼承不到 .project-dashboard 的變數與字體，要在這裡自己宣告一份。
+ */
+.pd-week-popover {
+	--bg: #ffffff;
+	--grid: #94a3b8;
+	--grid-soft: #e2e8f0;
+	--text: #0f172a;
+	--text-dim: #64748b;
+	font-family: -apple-system, "PingFang TC", "Helvetica Neue", sans-serif;
+
 	position: fixed;
 	left: var(--pd-popover-left, 0px);
 	top: var(--pd-popover-top, 0px);
-	z-index: 101;
-	background: #ffffff;
+	/* 用 Obsidian 自己的浮層層級，才會疊在側邊欄與分割之上 */
+	z-index: var(--layer-popover, 101);
+	background: var(--bg);
 	border: 1px solid #d9d9d9;
 	border-radius: 6px;
 	padding: 10px 12px;
@@ -149,26 +161,45 @@
 	color: var(--text);
 	pointer-events: auto;
 }
-.project-dashboard #week-popover[hidden] { display: none; }
+.pd-week-popover[hidden] { display: none; }
+.pd-week-popover, .pd-week-popover * { box-sizing: border-box; }
 
 /* timeline 模式的唯讀內容：維持原本把 title 原樣貼出來的換行行為 */
-.project-dashboard #week-popover .wp-plain { white-space: pre-line; }
+.pd-week-popover .wp-plain { white-space: pre-line; }
 
-.project-dashboard #week-popover .wp-header { padding-bottom: 6px; border-bottom: 1px solid var(--grid-soft); }
-.project-dashboard #week-popover .wp-project { font-weight: 600; }
-.project-dashboard #week-popover .wp-week { color: var(--text-dim); font-size: 11px; }
-.project-dashboard #week-popover .wp-overflow { color: #b4231a; font-size: 11px; }
+.pd-week-popover .wp-header { padding-bottom: 6px; border-bottom: 1px solid var(--grid-soft); }
+/* Obsidian 的全域按鈕樣式會加固定高度與陰影；浮窗裡的按鈕都是文字型，統一拿掉 */
+.pd-week-popover button {
+	height: auto;
+	box-shadow: none;
+}
+.pd-week-popover .wp-project {
+	display: block;
+	width: 100%;
+	text-align: left;
+	background: none;
+	border: none;
+	border-radius: 3px;
+	padding: 0;
+	color: var(--text);
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+.pd-week-popover .wp-project:hover { text-decoration: underline; }
+.pd-week-popover .wp-week { color: var(--text-dim); font-size: 11px; }
+.pd-week-popover .wp-overflow { color: #b4231a; font-size: 11px; }
 
-.project-dashboard #week-popover .wp-list { overflow-y: auto; max-height: 40vh; padding: 4px 0; }
-.project-dashboard #week-popover .wp-empty { color: var(--text-dim); padding: 2px 0; }
-.project-dashboard #week-popover .wp-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; }
-.project-dashboard #week-popover .wp-row.wp-pending { opacity: 0.6; }
-.project-dashboard #week-popover .wp-check { margin: 0; flex: 0 0 auto; }
-.project-dashboard #week-popover .wp-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.project-dashboard #week-popover .wp-date { flex: 0 0 auto; color: var(--text-dim); font-size: 11px; white-space: nowrap; }
-.project-dashboard #week-popover .wp-sat { flex: 0 0 auto; color: #b45309; font-size: 11px; white-space: nowrap; }
-.project-dashboard #week-popover .wp-actions { flex: 0 0 auto; display: flex; gap: 2px; }
-.project-dashboard #week-popover .wp-btn {
+.pd-week-popover .wp-list { overflow-y: auto; max-height: 40vh; padding: 4px 0; }
+.pd-week-popover .wp-empty { color: var(--text-dim); padding: 2px 0; }
+.pd-week-popover .wp-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; }
+.pd-week-popover .wp-row.wp-pending { opacity: 0.6; }
+.pd-week-popover .wp-check { margin: 0; flex: 0 0 auto; }
+.pd-week-popover .wp-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.pd-week-popover .wp-date { flex: 0 0 auto; color: var(--text-dim); font-size: 11px; white-space: nowrap; }
+.pd-week-popover .wp-sat { flex: 0 0 auto; color: #b45309; font-size: 11px; white-space: nowrap; }
+.pd-week-popover .wp-actions { flex: 0 0 auto; display: flex; gap: 2px; }
+.pd-week-popover .wp-btn {
 	background: none;
 	border: 1px solid transparent;
 	border-radius: 3px;
@@ -178,10 +209,10 @@
 	line-height: 1;
 	padding: 2px 4px;
 }
-.project-dashboard #week-popover .wp-btn:hover:not(:disabled) { background: #f1f5f9; border-color: var(--grid-soft); color: var(--text); }
+.pd-week-popover .wp-btn:hover:not(:disabled) { background: #f1f5f9; border-color: var(--grid-soft); color: var(--text); }
 
-.project-dashboard #week-popover .wp-footer { border-top: 1px solid var(--grid-soft); padding-top: 4px; }
-.project-dashboard #week-popover .wp-entry {
+.pd-week-popover .wp-footer { border-top: 1px solid var(--grid-soft); padding-top: 4px; }
+.pd-week-popover .wp-entry {
 	display: block;
 	width: 100%;
 	text-align: left;
@@ -192,9 +223,9 @@
 	font-size: 11px;
 	padding: 3px 2px;
 }
-.project-dashboard #week-popover .wp-entry:hover { color: var(--text); }
-.project-dashboard #week-popover .wp-unscheduled { overflow-y: auto; max-height: 30vh; padding: 2px 0 4px 12px; }
-.project-dashboard #week-popover .wp-pick {
+.pd-week-popover .wp-entry:hover { color: var(--text); }
+.pd-week-popover .wp-unscheduled { overflow-y: auto; max-height: 30vh; padding: 2px 0 4px 12px; }
+.pd-week-popover .wp-pick {
 	display: block;
 	width: 100%;
 	text-align: left;
@@ -206,8 +237,8 @@
 	font-size: 11px;
 	padding: 2px 4px;
 }
-.project-dashboard #week-popover .wp-pick:hover:not(:disabled) { background: #f1f5f9; border-color: var(--grid-soft); }
-.project-dashboard #week-popover .wp-input {
+.pd-week-popover .wp-pick:hover:not(:disabled) { background: #f1f5f9; border-color: var(--grid-soft); }
+.pd-week-popover .wp-input {
 	width: calc(100% - 12px);
 	margin: 2px 0 2px 12px;
 	border: 1px solid var(--grid);
@@ -216,10 +247,10 @@
 	font-size: 11px;
 }
 /* 停用的控制項要看得出來被停用（寫入中、重複任務、沒有核取方塊的行） */
-.project-dashboard #week-popover .wp-btn:disabled,
-.project-dashboard #week-popover .wp-pick:disabled,
-.project-dashboard #week-popover .wp-input:disabled,
-.project-dashboard #week-popover .wp-check:disabled {
+.pd-week-popover .wp-btn:disabled,
+.pd-week-popover .wp-pick:disabled,
+.pd-week-popover .wp-input:disabled,
+.pd-week-popover .wp-check:disabled {
 	opacity: 0.4;
 	cursor: not-allowed;
 }
