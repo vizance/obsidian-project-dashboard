@@ -31,7 +31,7 @@ This file is the canonical vocabulary for the dashboard project. Use these terms
 ### `tentative`
 
 - **Definition**: A property of a **bar segment** (not a project flag): any portion of a project's bar from `promised_end` onward to `end` is `tentative`. Rendered as a dashed border with transparent fill in the dashboard. When `promised_end` is `null`, the entire bar is tentative. Tentative no longer applies at project level and there is no manual list — the dashed visual is derived purely from task dates inside the note.
-- **Avoid**: Treating `tentative` as a project-level flag in `projects.json`. Maintaining any hand-curated list of "tentative projects" (the manual-list approach was removed in favor of task-date derivation). `maybe`, `unconfirmed`, `未確定` as a status (use `tentative` as the technical term; `未確定` is fine in user-facing UI copy).
+- **Avoid**: Treating `tentative` as a project-level flag in the scanned project record. Maintaining any hand-curated list of "tentative projects" (the manual-list approach was removed in favor of task-date derivation). `maybe`, `unconfirmed`, `未確定` as a status (use `tentative` as the technical term; `未確定` is fine in user-facing UI copy).
 - **Why**: Anchors uncertainty to the actual evidence (scheduled task dates) rather than a hand-curated list. A segment is tentative iff no committed task date supports it.
 
 ### `promised_end`
@@ -104,7 +104,7 @@ This file is the canonical vocabulary for the dashboard project. Use these terms
 ### `closed`（已結案）
 
 - **Definition**: A UI-only visual category that groups `done` + `cancelled` together for the purpose of fading them visually and providing a single show/hide control. It is NOT a lifecycle state in the data model — the underlying status remains `done` or `cancelled`.
-- **Avoid**: Treating `closed` as a status in `scan_obsidian.py` or `projects.json`. The data model SHALL keep `done` and `cancelled` distinct.
+- **Avoid**: Treating `closed` as a status in the scanner or the scanned project record. The data model SHALL keep `done` and `cancelled` distinct.
 - **Why**: The user mental model groups "no longer active" cases; the UI honors that without polluting the data layer.
 
 ## Principles

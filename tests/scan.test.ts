@@ -222,6 +222,15 @@ describe('scanProjectNote', () => {
 		expect(result?.promised_end).toBe('2026-10-31');
 	});
 
+	it('matches the spec example: Friday task sets promised_end and occupies its own week', () => {
+		const result = scanProjectNote(
+			{ filename: '🚧 P-20260101 ~ 1231 測試.md', text: '- [ ] 盤點 📅 2026-05-15', path: 'x.md' },
+			{ overrides: {}, today },
+		);
+		expect(result?.promised_end).toBe('2026-05-15');
+		expect(result?.occupied_weeks).toEqual(['2026-W20']);
+	});
+
 	it('matches the spec example: both dates of a done task settle when uncontested', () => {
 		const result = scanProjectNote(
 			{
