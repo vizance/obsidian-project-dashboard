@@ -34,6 +34,7 @@ In the per-week view, click a project's week cell to open that week's popover. F
 - pick one of the note's tasks that has no date yet and put it in this week
 - add a new task to this week
 - jump to the task's line in the note with `↗`
+- open the note beside the dashboard by clicking the project name at the top of the popover
 
 Every change is written straight into the project note in the Tasks plugin's emoji format, `- [ ] task 📅 YYYY-MM-DD`, and ticking a task adds `✅ <today>`. A task placed into a week (picked or newly added) is dated on that week's Friday; this is fixed for now and will become a setting together with the Saturday rule. New tasks go right after the last checkbox task in the note, and the input stays open so you can add several in a row. Checkbox lines inside code blocks or the frontmatter are never edited. Recurring tasks (`🔁`) have to be ticked in the note itself, because creating the next occurrence is the Tasks plugin's job. If the line changed in the note after the dashboard last read it, nothing is written and the dashboard asks you to try again.
 
@@ -89,6 +90,7 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 - 從這則筆記還沒排日期的任務挑一個，排進這週
 - 在這週新增一個任務
 - 按 `↗` 跳到筆記裡那一行
+- 點浮窗最上方的專案名稱，在儀表板右側打開這則筆記
 
 所有改動都直接寫回專案筆記，格式固定用 Tasks 外掛的 emoji 寫法 `- [ ] 任務 📅 YYYY-MM-DD`，勾完成時會補上 `✅ 今天日期`。排進某一週的任務（挑選或新增的都算）會寫那週的星期五，目前固定，之後會跟「週六算下一週」一起開放設定。新增的任務放在筆記裡最後一個任務的下一行，輸入框會保持開著，可以連續新增好幾個。程式碼區塊與 frontmatter 裡的核取方塊不會被修改。有 `🔁` 的重複任務要到筆記裡勾，因為產生下一次的任務是 Tasks 外掛的工作。如果那一行在儀表板讀取之後又被改過，儀表板不會寫入，會請你再按一次。
 
