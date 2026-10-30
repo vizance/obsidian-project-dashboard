@@ -8,7 +8,7 @@ Keep the dashboard tab in step with the project notes: re-scan and re-render aft
 
 ### Requirement: Project note changes trigger a debounced re-scan
 
-The plugin SHALL listen to the vault's `modify`, `create`, `delete`, and `rename` events. An event SHALL count as relevant only when the affected file is a Markdown file that is a direct child of the configured project folder (`PROJECT_FOLDER`, default `Projects`); for `rename`, the event SHALL count as relevant when either the new path or the old path satisfies this condition. Relevant events SHALL schedule a full re-scan of the project folder 400 ms after the most recent relevant event, so that a burst of events produces exactly one re-scan. After the re-scan the open dashboard tab SHALL re-render. Irrelevant events SHALL NOT trigger a re-scan. When no dashboard tab is open, the plugin SHALL NOT re-scan.
+The plugin SHALL listen to the vault's `modify`, `create`, `delete`, and `rename` events. An event SHALL count as relevant only when the affected file is a Markdown file that is a direct child of the project folder named by the `Project folder` setting at the time of the event (default `Projects`); for `rename`, the event SHALL count as relevant when either the new path or the old path satisfies this condition. Relevant events SHALL schedule a full re-scan of the project folder 400 ms after the most recent relevant event, so that a burst of events produces exactly one re-scan. After the re-scan the open dashboard tab SHALL re-render. Irrelevant events SHALL NOT trigger a re-scan. When no dashboard tab is open, the plugin SHALL NOT re-scan.
 
 #### Scenario: Moving a task date updates two week cells
 
@@ -29,6 +29,13 @@ The plugin SHALL listen to the vault's `modify`, `create`, `delete`, and `rename
 - **WHEN** the user edits a daily note or a note under `<the configured project folder>/Task notes/`
 - **THEN** no re-scan MUST occur
 
+#### Scenario: A changed folder setting changes which notes count
+
+- **GIVEN** the `Project folder` setting was changed from `Projects` to `Work/Projects`
+- **WHEN** the user edits `Projects/🚧 P-2026 範例專案 A.md`
+- **THEN** no re-scan MUST occur
+- **AND** editing `Work/Projects/🚧 P-2026 範例專案 B.md` MUST trigger a re-scan
+
 ##### Example: debounce timing
 
 | Relevant events (ms after first) | Re-scans | Re-scan time (ms after first) |
@@ -40,7 +47,7 @@ The plugin SHALL listen to the vault's `modify`, `create`, `delete`, and `rename
 ---
 ### Requirement: Re-render preserves the user's view state
 
-An automatic re-render triggered by a note change SHALL rebuild only the header statistics, the legend, and the gantt chart. It SHALL preserve the chart's horizontal scroll position, the tab's vertical scroll position, the `顯示已結案` and `編輯分類` checkbox states, the view mode, the pinned category, the category order, and the project column width. When a week popover was open before the re-render, the dashboard SHALL re-open it after the re-render for the same note path and the same ISO week, with the same footer section expanded (the unscheduled-task list, the new-task input, or none), provided that week of that project is still rendered as a cell that can open a popover. Otherwise the popover SHALL be closed. Text in the new-task input that was already submitted SHALL be cleared; text that was typed but not yet submitted SHALL be kept. The input SHALL regain focus only if it had focus before the re-render, so a re-render caused by typing in a note never moves focus into the dashboard. The same rule SHALL apply to the immediate re-scan that follows a stale or invalid edit.
+An automatic re-render triggered by a note change, by a settings change, or by plugin data changed outside the running plugin SHALL rebuild only the header statistics, the legend, and the gantt chart. It SHALL preserve the chart's horizontal scroll position, the tab's vertical scroll position, the `顯示已結案` and `編輯分類` checkbox states, the view mode, the pinned category, the category order, and the project column width. When a week popover was open before the re-render, the dashboard SHALL re-open it after the re-render for the same note path and the same ISO week, with the same footer section expanded (the unscheduled-task list, the new-task input, or none), provided that week of that project is still rendered as a cell that can open a popover. Otherwise the popover SHALL be closed. Text in the new-task input that was already submitted SHALL be cleared; text that was typed but not yet submitted SHALL be kept. The input SHALL regain focus only if it had focus before the re-render, so a re-render caused by typing in a note never moves focus into the dashboard. The same rule SHALL apply to the immediate re-scan that follows a stale or invalid edit.
 
 #### Scenario: Scroll position stays put
 
@@ -68,6 +75,13 @@ An automatic re-render triggered by a note change SHALL rebuild only the header 
 - **GIVEN** the popover for a project is open and `顯示已結案` is unchecked
 - **WHEN** the user renames that project's note so its status becomes `done` and the re-render runs
 - **THEN** no week popover MUST be visible
+
+#### Scenario: Popover stays on its week when the Saturday setting changes
+
+- **GIVEN** the project `範例專案 A` runs from `2026-10-01` to `2026-12-31`, its note contains `- [ ] 寄出合約 📅 2026-10-31`, `Saturday tasks count for next week` is off, and the popover for `2026-W44` is open listing `寄出合約`
+- **WHEN** the user turns on `Saturday tasks count for next week` and the change is applied
+- **THEN** a popover for `範例專案 A` and `2026-W44` MUST be visible and MUST NOT list `寄出合約`
+- **AND** the popover for `2026-W45`, when opened, MUST list `寄出合約` with `預排在上週六，算進本週`
 
 ---
 ### Requirement: Clicking a project name opens the note to the right
