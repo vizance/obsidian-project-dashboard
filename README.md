@@ -14,16 +14,31 @@ Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](
 
 BRAT support is planned once the plugin has a tagged release; for now use the manual install above.
 
-## Configure your project folder and categories
+## Configure the dashboard
 
-The plugin classifies project notes using rules you define in `src/core/personal-rules.local.ts`, which is git-ignored so your own project folder name, category keywords, and client/project overrides never leave your machine. On first `npm install` (or `npm run build`/`npm test`/`npm run lint`/`npm run deploy`), `scripts/ensure-local-rules.mjs` copies `src/core/personal-rules.example.ts` to `personal-rules.local.ts` if it doesn't exist yet. Edit that file to set:
+Everything is configured inside Obsidian, under **Settings → Project Dashboard**. No source editing, no rebuild. The tab has three sections.
 
-- `PROJECT_FOLDER` — the vault-relative folder containing your project notes (default `Projects`)
-- `KEYWORD_RULES` — filename-fragment → category keyword rules
-- `MANUAL_OVERRIDES` — full project names forced into a specific category
-- `EXCLUDED_PROJECTS` — project notes to skip entirely
+**`專案筆記` — project notes**
 
-Category labels and colors (`CATEGORIES` in `src/core/config.ts`) are not private and can be edited directly.
+- `專案資料夾` — the vault-relative folder holding your project notes, default `Projects`. Only notes directly inside that folder are scanned, never its subfolders. When no folder matches what you typed, the hint `找不到這個資料夾` appears under the field; clearing the field falls back to `Projects`.
+- `不列入的專案` — one filename fragment per line. A project note whose name contains any of these never shows up on the dashboard.
+
+**`分類` — categories**
+
+An ordered list of rules: a project whose name contains the rule's text gets the rule's category. The list is matched from top to bottom and **the first matching rule wins**, so keep a longer word above a shorter word it contains (`企業內訓` above `內訓`). A project that matches no rule is classified as `other`. Each row has `上移`, `下移`, and `刪除`; `新增分類規則` appends an empty row, which survives saving and takes no part in classification until you type something into it.
+
+The ten default rules are, in order: `企業內訓` → `企業內訓` (corporate), `內訓` → `企業內訓`, `線上課程` → `線上課程 / Cohort` (online course), `課程` → `線上課程 / Cohort`, `出版` → `出版` (publishing), `教練` → `1-on-1 教練` (coaching), `諮詢` → `1-on-1 教練`, `業配` → `業配 / 合作` (sponsorship), `合作` → `業配 / 合作`, `生活` → `生活` (life).
+
+A category you pick by hand on the dashboard (`編輯分類` on a project row) wins over every rule, and applies only to the project whose full name matches.
+
+**`日期規則` — date rules**
+
+- `排進某週時寫星期幾` — the weekday written into the note when you schedule a task into a week from the week popover. Default `星期五` (Friday).
+- `週六的任務算到下一週` — off by default. When it is on, a task dated on a Saturday is shown in the following week, which is how "on Saturday I set up next week's work" reads on the chart; when it is off, a Saturday task stays in its own week.
+
+Settings are saved into the vault's plugin data (`.obsidian/plugins/project-dashboard/data.json`), next to the category choices you make by hand, 400 ms after your last edit; an open dashboard then re-scans and re-renders by itself. Obsidian Sync carries that file like any other plugin data, so settings changed on one computer arrive on the others. Nothing you configure is stored in this repository.
+
+Category labels and colors (`CATEGORIES` in `src/core/config.ts`) are the one thing still edited in source.
 
 ## Edit tasks from the week popover
 
@@ -36,7 +51,7 @@ In the per-week view, click a project's week cell to open that week's popover. F
 - jump to the task's line in the note with `↗`
 - open the note beside the dashboard by clicking the project name at the top of the popover
 
-Every change is written straight into the project note in the Tasks plugin's emoji format, `- [ ] task 📅 YYYY-MM-DD`, and ticking a task adds `✅ <today>`. A task placed into a week (picked or newly added) is dated on that week's Friday; this is fixed for now and will become a setting together with the Saturday rule. New tasks go right after the last checkbox task in the note, and the input stays open so you can add several in a row. Checkbox lines inside code blocks or the frontmatter are never edited. Recurring tasks (`🔁`) have to be ticked in the note itself, because creating the next occurrence is the Tasks plugin's job. If the line changed in the note after the dashboard last read it, nothing is written and the dashboard asks you to try again.
+Every change is written straight into the project note in the Tasks plugin's emoji format, `- [ ] task 📅 YYYY-MM-DD`, and ticking a task adds `✅ <today>`. A task placed into a week (picked or newly added) is dated on the weekday chosen in `排進某週時寫星期幾`, that week's Friday by default. When you choose `星期六` while `週六的任務算到下一週` is on, the Saturday before that week's Monday is written instead, so the task still shows in the week you picked. New tasks go right after the last checkbox task in the note, and the input stays open so you can add several in a row. Checkbox lines inside code blocks or the frontmatter are never edited. Recurring tasks (`🔁`) have to be ticked in the note itself, because creating the next occurrence is the Tasks plugin's job. If the line changed in the note after the dashboard last read it, nothing is written and the dashboard asks you to try again.
 
 If your Tasks plugin uses the Dataview format or doesn't add done dates, the dashboard still writes the emoji format above.
 
@@ -70,16 +85,31 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 
 從[最新發布版本](https://github.com/vizance/obsidian-project-dashboard/releases/latest)下載 `main.js`、`manifest.json`、`styles.css`，放進你的 vault 裡的 `.obsidian/plugins/project-dashboard/`，再到**設定 → 第三方外掛**開啟。
 
-### 設定自己的專案資料夾與分類規則
+### 設定儀表板
 
-分類邏輯讀取 `src/core/personal-rules.local.ts`，這個檔案被 git 忽略，所以你的專案資料夾名稱、分類關鍵字與個案覆寫都不會外流。第一次執行 `npm install`（或 `npm run build` / `npm test` / `npm run lint` / `npm run deploy`）時，`scripts/ensure-local-rules.mjs` 會在這個檔案不存在時，自動從 `src/core/personal-rules.example.ts` 複製一份過去。打開後編輯：
+所有設定都在 Obsidian 裡的**設定 → Project Dashboard**，不用改程式、不用重新建置。設定頁分三區。
 
-- `PROJECT_FOLDER` — vault 內專案筆記所在的資料夾（預設 `Projects`）
-- `KEYWORD_RULES` — 檔名關鍵字 → 分類
-- `MANUAL_OVERRIDES` — 指定全名強制歸類
-- `EXCLUDED_PROJECTS` — 不顯示的專案筆記
+**`專案筆記`**
 
-分類標籤與配色（`src/core/config.ts` 的 `CATEGORIES`）沒有隱私考量，可以直接編輯。
+- `專案資料夾` — vault 內放專案筆記的資料夾，預設 `Projects`。只讀這一層，不含子資料夾。找不到你填的資料夾時，欄位下方會顯示 `找不到這個資料夾`；欄位清空時會回到 `Projects`。
+- `不列入的專案` — 一行一個檔名片段。檔名包含其中任何一段的專案筆記不會出現在儀表板。
+
+**`分類`**
+
+一份有順序的規則清單：專案名稱包含規則左邊的文字，就歸到右邊的分類。由上往下比對，**第一個符合的規則生效**，所以較長的詞要排在包含它的短詞上面（`企業內訓` 排在 `內訓` 之前）。沒有任何規則符合的專案歸到 `other`。每一列都有 `上移`、`下移`、`刪除`；按 `新增分類規則` 會加一列空白規則，存檔後不會消失，在你打字之前不參與分類。
+
+十條預設規則依序是：`企業內訓` → 企業內訓、`內訓` → 企業內訓、`線上課程` → 線上課程 / Cohort、`課程` → 線上課程 / Cohort、`出版` → 出版、`教練` → 1-on-1 教練、`諮詢` → 1-on-1 教練、`業配` → 業配 / 合作、`合作` → 業配 / 合作、`生活` → 生活。
+
+在儀表板上手動指定的分類（專案列的 `編輯分類`）優先於所有規則，而且只影響全名相同的那個專案。
+
+**`日期規則`**
+
+- `排進某週時寫星期幾` — 從週浮窗把任務排進某一週時，寫進筆記的那一天。預設 `星期五`。
+- `週六的任務算到下一週` — 預設關閉。開啟後，日期寫週六的任務會顯示在下一週，對應「週六先排好下週要做的事」的習慣；關閉時週六的任務算在當週。
+
+設定存進 vault 裡的外掛資料（`.obsidian/plugins/project-dashboard/data.json`），和你手動指定的分類放在同一份，在最後一次修改後 400 ms 存檔；開著的儀表板接著自己重新掃描、重繪。Obsidian Sync 會像同步其他外掛資料一樣同步這個檔案，所以在一台電腦改的設定會傳到其他電腦。你的設定不會留在這個 repository 裡。
+
+分類標籤與配色（`src/core/config.ts` 的 `CATEGORIES`）是唯一還要改程式的部分。
 
 ### 在週浮窗裡編輯任務
 
@@ -92,7 +122,7 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 - 按 `↗` 跳到筆記裡那一行
 - 點浮窗最上方的專案名稱，在儀表板右側打開這則筆記
 
-所有改動都直接寫回專案筆記，格式固定用 Tasks 外掛的 emoji 寫法 `- [ ] 任務 📅 YYYY-MM-DD`，勾完成時會補上 `✅ 今天日期`。排進某一週的任務（挑選或新增的都算）會寫那週的星期五，目前固定，之後會跟「週六算下一週」一起開放設定。新增的任務放在筆記裡最後一個任務的下一行，輸入框會保持開著，可以連續新增好幾個。程式碼區塊與 frontmatter 裡的核取方塊不會被修改。有 `🔁` 的重複任務要到筆記裡勾，因為產生下一次的任務是 Tasks 外掛的工作。如果那一行在儀表板讀取之後又被改過，儀表板不會寫入，會請你再按一次。
+所有改動都直接寫回專案筆記，格式固定用 Tasks 外掛的 emoji 寫法 `- [ ] 任務 📅 YYYY-MM-DD`，勾完成時會補上 `✅ 今天日期`。排進某一週的任務（挑選或新增的都算）會寫 `排進某週時寫星期幾` 設定的那一天，預設是那週的星期五；選 `星期六` 又開著 `週六的任務算到下一週` 時，寫的是那週星期一前面的那個星期六，所以任務仍然顯示在你挑的那一週。新增的任務放在筆記裡最後一個任務的下一行，輸入框會保持開著，可以連續新增好幾個。程式碼區塊與 frontmatter 裡的核取方塊不會被修改。有 `🔁` 的重複任務要到筆記裡勾，因為產生下一次的任務是 Tasks 外掛的工作。如果那一行在儀表板讀取之後又被改過，儀表板不會寫入，會請你再按一次。
 
 如果你的 Tasks 外掛設定成 Dataview 格式，或沒有開啟完成日期，儀表板仍然會寫上面的 emoji 格式。
 
