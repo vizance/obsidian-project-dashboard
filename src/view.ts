@@ -20,12 +20,10 @@ import {
 	unscheduledTasks,
 	type TaskLine,
 } from './core/task-lines';
+import type { DashboardSettings } from './core/settings';
 import { buildWeeks, groupMonths, groupQuarters, todayLocal, todayWeekIndex, type WeekInfo } from './core/weeks';
 import type ProjectDashboardPlugin from './main';
 import { TaskWriter, type TaskEdit } from './task-writer';
-// TEMPORARY until task 2.2: the view still reads the build-time rules instead of
-// the stored settings.
-import { TEMPORARY_SETTINGS } from './temporary-settings';
 import type { VaultSource } from './vault-source';
 import {
 	CLOSED_POPOVER_STATE,
@@ -87,6 +85,7 @@ export class ProjectDashboardView extends ItemView {
 	private toastTimer: number | null = null;
 	private noteLeaf: WorkspaceLeaf | null = null;
 	private unsubscribeVaultSource: (() => void) | null = null;
+	private unsubscribeStore: (() => void) | null = null;
 
 	private projects: ProjectRecord[] = [];
 	private weeks: WeekInfo[] = [];
@@ -122,6 +121,11 @@ export class ProjectDashboardView extends ItemView {
 		return 'calendar-range';
 	}
 
+	// 每次要用的時候才讀：設定可能在分頁開著的時候被改掉或同步進來。
+	private get settings(): DashboardSettings {
+		return this.plugin.store.data.settings;
+	}
+
 	async onOpen(): Promise<void> {
 		this.today = todayLocal();
 		this.taskWriter = new TaskWriter(this.app.vault);
@@ -132,22 +136,31 @@ export class ProjectDashboardView extends ItemView {
 		this.registerInteractions();
 		await this.rescanAndRender();
 		this.unsubscribeVaultSource = this.vaultSource.onChange(() => {
-			void this.handleVaultChange();
+			void this.handleExternalChange();
+		});
+		// 設定存檔成功或外部重新載入後，用同一條保留畫面狀態的路徑重掃、重繪，
+		// 分頁不用重開（dashboard-settings：Settings changes apply to open dashboards）。
+		this.unsubscribeStore = this.plugin.store.subscribe((reason) => {
+			if (reason !== 'settings-saved' && reason !== 'reloaded') return;
+			void this.handleExternalChange();
 		});
 	}
 
 	async onClose(): Promise<void> {
 		this.unsubscribeVaultSource?.();
 		this.unsubscribeVaultSource = null;
+		this.unsubscribeStore?.();
+		this.unsubscribeStore = null;
 		// 浮窗不在 contentEl 裡，empty() 清不掉它，要自己移除。
 		this.popoverEl?.remove();
 		this.contentEl.empty();
 	}
 
-	// Triggered by vault-source's debounced re-scan notification (design.md:
-	// "重繪時保留畫面狀態") — rebuild only stats/legend/chart, restore scroll,
-	// and re-open the popover on the new cell for the same project and week.
-	private async handleVaultChange(): Promise<void> {
+	// Triggered by vault-source's debounced re-scan notification and by a settings
+	// change or outside reload (design.md: "重繪時保留畫面狀態") — rebuild only
+	// stats/legend/chart, restore scroll, and re-open the popover on the new cell
+	// for the same project and week.
+	private async handleExternalChange(): Promise<void> {
 		this.today = todayLocal();
 		await this.refreshPreservingPopover();
 	}
@@ -281,13 +294,13 @@ export class ProjectDashboardView extends ItemView {
 				path: target.path,
 				line: line.line,
 				raw: line.raw,
-				date: scheduleDateForWeek(target.week, TEMPORARY_SETTINGS),
+				date: scheduleDateForWeek(target.week, this.settings),
 			})),
 			addTask: (text) => this.runPopoverEdit((target) => ({
 				kind: 'add',
 				path: target.path,
 				text,
-				date: scheduleDateForWeek(target.week, TEMPORARY_SETTINGS),
+				date: scheduleDateForWeek(target.week, this.settings),
 			})),
 			jump: (line) => {
 				const path = this.popoverTarget?.path;
@@ -304,6 +317,8 @@ export class ProjectDashboardView extends ItemView {
 			onContentResize: () => {
 				if (this.popoverAnchor) this.positionWeekPopover(this.popoverAnchor);
 			},
+			// 浮窗透過 host 拿目前的週六規則（design.md：浮窗透過 host 拿目前的設定）。
+			weekRules: () => this.settings,
 		});
 
 		this.toastEl = this.contentEl.createDiv({ attr: { id: 'toast', role: 'status', 'aria-live': 'polite' } });
@@ -526,12 +541,13 @@ export class ProjectDashboardView extends ItemView {
 		const project = select.dataset.project;
 		if (!project) return;
 		const category = select.value === '__auto__' ? null : select.value;
-		const result = applyCategoryOverride(this.plugin.data.categoryOverrides, project, category, CATEGORY_KEYS);
+		const result = applyCategoryOverride(this.plugin.store.data.categoryOverrides, project, category, CATEGORY_KEYS);
 		if (!result.ok) return;
 
 		try {
-			await this.plugin.saveData({ categoryOverrides: result.overrides });
-			this.plugin.data.categoryOverrides = result.overrides;
+			// 整份外掛資料一次寫進去，設定不會被蓋掉（dashboard-settings：
+			// Saving one part of plugin data keeps the other）。
+			await this.plugin.store.saveCategoryOverrides(result.overrides);
 			this.showToast('已更新分類');
 			await this.rescanAndRender();
 		} catch (err) {
@@ -690,7 +706,7 @@ export class ProjectDashboardView extends ItemView {
 			projectName: project.name,
 			weekLabel: target.week,
 			overflowEnd: bar.classList.contains('bar-overflow') ? project.end : null,
-			rows: taskLinesForWeek(project.task_lines, target.week, TEMPORARY_SETTINGS),
+			rows: taskLinesForWeek(project.task_lines, target.week, this.settings),
 			unscheduled: unscheduledTasks(project.task_lines),
 		}, state);
 		this.popoverTarget = target;
@@ -962,7 +978,7 @@ export class ProjectDashboardView extends ItemView {
 
 		const cells: Cell[] = this.viewMode === 'timeline'
 			? timelineCells(project, weeks)
-			: perWeekCells(project, weeks, TEMPORARY_SETTINGS);
+			: perWeekCells(project, weeks, this.settings);
 		weeks.forEach((w, i) => {
 			const cell = cells[i]!;
 			const borderCls = w.isQuarterStart ? 'q-start' : w.isMonthStart ? 'm-start' : '';

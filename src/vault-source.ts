@@ -1,7 +1,7 @@
 import { TFile, TFolder, type EventRef } from 'obsidian';
 import { scanProjectFolder, type ProjectRecord, type ScanInput } from './core/scan';
+import type { DashboardSettings } from './core/settings';
 import { createDebouncer, isRelevantChange } from './core/sync-rules';
-import { TEMPORARY_SETTINGS } from './temporary-settings';
 
 export type ScanResult =
 	| { status: 'ok'; projects: ProjectRecord[] }
@@ -41,14 +41,18 @@ export class VaultSource {
 	constructor(
 		private readonly vault: VaultLike,
 		private readonly getOverrides: () => Record<string, string>,
-		// TEMPORARY until task 2.2: the folder still comes from the build-time rules.
-		private readonly folder: string = TEMPORARY_SETTINGS.projectFolder,
+		// Getters, not values: the folder and the rules change while the plugin runs
+		// (dashboard-settings: "Every scan SHALL use the setting's value at the time
+		// of the scan"), so nothing may be captured at construction time.
+		private readonly getSettings: () => DashboardSettings,
 	) {}
 
 	async scan(today: string): Promise<ScanResult> {
-		const abstractFolder = this.vault.getAbstractFileByPath(this.folder);
+		const settings = this.getSettings();
+		const folder = settings.projectFolder;
+		const abstractFolder = this.vault.getAbstractFileByPath(folder);
 		if (!(abstractFolder instanceof TFolder)) {
-			return { status: 'missing-folder', folder: this.folder };
+			return { status: 'missing-folder', folder };
 		}
 
 		const inputs: ScanInput[] = [];
@@ -62,11 +66,10 @@ export class VaultSource {
 			}
 		}
 
-		// TEMPORARY until task 2.2: scan with the build-time rules.
 		const projects = scanProjectFolder(inputs, {
 			overrides: this.getOverrides(),
 			today,
-			settings: TEMPORARY_SETTINGS,
+			settings,
 		});
 		return { status: 'ok', projects };
 	}
@@ -76,7 +79,9 @@ export class VaultSource {
 	registerVaultEvents(plugin: EventRegistrar): void {
 		const notifyIfRelevant = (path: string, oldPath?: string): void => {
 			if (this.listeners.size === 0) return;
-			if (!isRelevantChange(path, oldPath, this.folder)) return;
+			// 每個事件都重新讀資料夾設定：改了資料夾以後，「哪些檔案變動要重掃」
+			// 立刻跟著改（dashboard-note-sync：at the time of the event）。
+			if (!isRelevantChange(path, oldPath, this.getSettings().projectFolder)) return;
 			this.debouncer.trigger();
 		};
 		plugin.registerEvent(this.vault.on('modify', (file) => notifyIfRelevant(file.path)));

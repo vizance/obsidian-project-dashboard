@@ -8,6 +8,7 @@ const weeks: WeekInfo[] = buildWeeks(2026);
 // 這些格子測試都用「週六算下一週」開啟的設定，與維護者目前的值相同；
 // 週六規則本身的開／關差異由 task 2.4 的測試負責。
 const SAT_ON = { saturdayCountsAsNextWeek: true };
+const SAT_OFF = { saturdayCountsAsNextWeek: false };
 
 function weekIndex(label: string): number {
 	const idx = weeks.findIndex((w) => w.label === label);
@@ -104,6 +105,36 @@ describe('perWeekCells — per-week cell kinds', () => {
 		expect(cells[weekIndex('2026-W45')]!.tooltip).toBe(
 			'P-測試專案\n2026-W45\n· 盤點（2026-10-31 預計 (Sat → 本週)）',
 		);
+	});
+
+	// Scenario: Tooltip annotates bumped Saturday dates（dashboard-gantt-rendering）。
+	it('annotates a bumped Saturday date in the next week when the setting is on', () => {
+		const p = project({
+			task_dates: ['2026-02-21'],
+			occupied_weeks: ['2026-W09'],
+			settled_weeks: [],
+			tasks: [{ date: '2026-02-21', kind: 'planned', text: '盤點', done: false }],
+		});
+		const cells = perWeekCells(p, weeks, SAT_ON);
+		const tooltip = cells[weekIndex('2026-W09')]!.tooltip;
+		expect(tooltip).toContain('2026-02-21');
+		expect(tooltip).toContain('(Sat → 本週)');
+		expect(cells[weekIndex('2026-W08')]!.kind).toBe('dashed');
+	});
+
+	// Scenario: Saturday dates carry no marker when the setting is off。
+	it('keeps a Saturday date in its own week without a marker when the setting is off', () => {
+		const p = project({
+			task_dates: ['2026-02-21'],
+			occupied_weeks: ['2026-W08'],
+			settled_weeks: [],
+			tasks: [{ date: '2026-02-21', kind: 'planned', text: '盤點', done: false }],
+		});
+		const cells = perWeekCells(p, weeks, SAT_OFF);
+		const tooltip = cells[weekIndex('2026-W08')]!.tooltip;
+		expect(tooltip).toBe('P-測試專案\n2026-W08\n· 盤點（2026-02-21 預計）');
+		expect(tooltip).not.toContain('Sat');
+		expect(cells[weekIndex('2026-W09')]!.kind).toBe('dashed');
 	});
 });
 

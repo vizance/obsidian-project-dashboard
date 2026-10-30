@@ -1,8 +1,5 @@
 import { SHIFT_WEEK_DAYS, type TaskLine } from './core/task-lines';
-import { monthDayLabel, monthDayWeekdayLabel, weekOfTaskDate, weekRangeLabel } from './core/weeks';
-// TEMPORARY until task 2.2: the popover still reads the build-time rules instead
-// of the settings its host holds.
-import { TEMPORARY_SETTINGS } from './temporary-settings';
+import { monthDayLabel, monthDayWeekdayLabel, weekOfTaskDate, weekRangeLabel, type WeekRules } from './core/weeks';
 
 // 重繪後要還原的底部區塊：「還沒排日期的任務」清單、新增任務輸入框，或都沒展開。
 export type PopoverSection = 'unscheduled' | 'input' | null;
@@ -42,6 +39,8 @@ export interface WeekPopoverHost {
 	openNote(): void;
 	// 展開／收起底部區塊會改變高度，view 要重新算位置。
 	onContentResize(): void;
+	// 目前的週六規則：每次畫都重新問，設定改掉時標記跟著對。
+	weekRules(): WeekRules;
 }
 
 type RowControl = HTMLInputElement | HTMLButtonElement;
@@ -142,7 +141,7 @@ export class WeekPopover {
 		if (shown) {
 			const label = line.done ? `已完成 ${monthDayLabel(shown)}` : monthDayWeekdayLabel(shown);
 			row.createSpan({ cls: 'wp-date', text: label });
-			const mapped = weekOfTaskDate(shown, TEMPORARY_SETTINGS);
+			const mapped = weekOfTaskDate(shown, this.host.weekRules());
 			if (mapped?.isBumpedSat && mapped.label === weekLabel) {
 				// 已完成的行顯示的是完成日，不是預排日，所以兩種說法分開。
 				row.createSpan({ cls: 'wp-sat', text: line.done ? '上週六完成，算進本週' : '預排在上週六，算進本週' });

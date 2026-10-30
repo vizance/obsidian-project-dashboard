@@ -248,6 +248,23 @@ describe('shiftDueLine', () => {
 	});
 });
 
+// Example: shift rewrites（dashboard-task-editing）：每一列的改寫結果，以及改寫後
+// 在週六規則關／開兩種設定下顯示在哪一週。
+describe('shift rewrites and the week shown afterwards', () => {
+	it.each([
+		['- [ ] 確認拍攝服裝 📅 2026-10-30', 7, '- [ ] 確認拍攝服裝 📅 2026-11-06', '2026-W45', '2026-W45'],
+		['- [ ] 寄出合約 📅 2026-10-31', 7, '- [ ] 寄出合約 📅 2026-11-07', '2026-W45', '2026-W46'],
+		['- [ ] 年度回顧 📅 2026-01-02', -7, '- [ ] 年度回顧 📅 2025-12-26', '2025-W52', '2025-W52'],
+	])('%s shifted by %i -> %s (off: %s, on: %s)', (before, days, after, weekOff, weekOn) => {
+		expect(shiftDueLine(before, days)).toBe(after);
+		const lines = parseTaskLines(after);
+		expect(taskLinesForWeek(lines, weekOff, SAT_OFF)).toHaveLength(1);
+		expect(taskLinesForWeek(lines, weekOn, SAT_ON)).toHaveLength(1);
+		expect(weekOfTaskDate(lines[0]!.due!, SAT_OFF)!.label).toBe(weekOff);
+		expect(weekOfTaskDate(lines[0]!.due!, SAT_ON)!.label).toBe(weekOn);
+	});
+});
+
 describe('scheduleLine / scheduleDateForWeek', () => {
 	// Example: schedule dates with the default settings（dashboard-task-editing）。
 	it.each([

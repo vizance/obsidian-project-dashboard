@@ -355,3 +355,20 @@
 }
 .project-dashboard #help-fab:hover { background: #f0f0f0; color: #333; }
 .project-dashboard #help-fab[hidden] { display: none; }
+
+/* 設定頁 --------------------------------------------------------------- */
+
+/* 「找不到這個資料夾」要顯示在輸入框下面，所以讓控制欄換行後整列給它。 */
+.pd-setting-folder .setting-item-control { flex-wrap: wrap; }
+.pd-setting-folder .pd-setting-hint {
+	flex-basis: 100%;
+	text-align: right;
+	color: var(--text-error);
+	font-size: var(--font-ui-smaller);
+}
+.pd-setting-folder .pd-setting-hint[hidden] { display: none; }
+
+/* 分類規則列沒有名稱，控制項直接從左邊排起，文字欄吃掉剩下的寬度。 */
+.pd-rule-row .setting-item-info { display: none; }
+.pd-rule-row .setting-item-control { justify-content: flex-start; }
+.pd-rule-row .setting-item-control input[type="text"] { flex: 1; }

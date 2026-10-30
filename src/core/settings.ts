@@ -104,6 +104,52 @@ export function normalizeSettings(raw: unknown): DashboardSettings {
 	};
 }
 
+// 設定頁的分類規則清單操作：都回傳新陣列與新規則物件，呼叫端把結果交給
+// updateSettings 就好，不必自己注意有沒有改到原本那一份。
+
+export function addClassificationRule(rules: readonly ClassificationRule[]): ClassificationRule[] {
+	// 新增的那一列文字空白、分類 other；normalize 會留著它，分類時跳過。
+	return [...rules.map((r) => ({ ...r })), { text: '', category: 'other' }];
+}
+
+export function removeClassificationRule(rules: readonly ClassificationRule[], index: number): ClassificationRule[] {
+	const next = rules.map((r) => ({ ...r }));
+	if (index < 0 || index >= next.length) return next;
+	next.splice(index, 1);
+	return next;
+}
+
+export function replaceClassificationRule(
+	rules: readonly ClassificationRule[],
+	index: number,
+	patch: Partial<ClassificationRule>,
+): ClassificationRule[] {
+	return rules.map((rule, i) => (i === index ? { ...rule, ...patch } : { ...rule }));
+}
+
+// delta 是 −1（上移）或 +1（下移）。移出範圍就原樣回傳：首列的上移與末列的下移
+// 在設定頁是停用的，這裡再擋一次，順序才不會因為誤用而亂掉。
+export function moveClassificationRule(
+	rules: readonly ClassificationRule[],
+	index: number,
+	delta: number,
+): ClassificationRule[] {
+	const next = rules.map((r) => ({ ...r }));
+	const target = index + delta;
+	if (index < 0 || index >= next.length || target < 0 || target >= next.length) return next;
+	const [moved] = next.splice(index, 1);
+	next.splice(target, 0, moved!);
+	return next;
+}
+
+// 星期幾下拉選單的選項值是 `"1"` 到 `"7"`，存進設定前轉成整數：文字 `"6"` 會被
+// 檢查規則當成無效而退回星期五。
+export function weekdayFromOption(value: string): number {
+	const parsed = Number(value);
+	if (!Number.isInteger(parsed) || parsed < 1 || parsed > 7) return DEFAULT_SCHEDULE_WEEKDAY;
+	return parsed;
+}
+
 function isPlainStringRecord(value: unknown): value is Record<string, string> {
 	if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
 	return Object.values(value).every((v) => typeof v === 'string');
