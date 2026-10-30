@@ -14,7 +14,7 @@
 
 ## 3. 移除建置時的個人規則
 
-- [ ] 3.1 建置不依賴本機檔案（Configuration needs no rebuild；設計：移除建置時的個人規則）：刪除 src/core/personal-rules.example.ts 與 scripts/ensure-local-rules.mjs，移除 package.json 的 postinstall、prebuild、pretest、prelint、predeploy 腳本、vitest.config.ts 的別名、eslint.config.mjs 的對應項目，src/core/config.ts 只留分類定義。驗證：在暫存資料夾重新 clone 這個分支，執行 `npm ci`、`npm test`、`npm run lint`、`npm run build` 全部成功，之後 `git status --porcelain` 沒有 src/ 底下的新檔案。
+- [x] 3.1 建置不依賴本機檔案（Configuration needs no rebuild；設計：移除建置時的個人規則）：刪除 src/core/personal-rules.example.ts 與 scripts/ensure-local-rules.mjs，移除 package.json 的 postinstall、prebuild、pretest、prelint、predeploy 腳本、vitest.config.ts 的別名、eslint.config.mjs 的對應項目，src/core/config.ts 只留分類定義。驗證：在暫存資料夾重新 clone 這個分支，執行 `npm ci`、`npm test`、`npm run lint`、`npm run build` 全部成功，之後 `git status --porcelain` 沒有 src/ 底下的新檔案。
 
 ## 4. 搬家、文件與驗收
 

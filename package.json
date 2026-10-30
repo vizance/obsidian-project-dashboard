@@ -6,11 +6,6 @@
   "main": "main.js",
   "type": "module",
   "scripts": {
-    "postinstall": "node scripts/ensure-local-rules.mjs",
-    "prebuild": "node scripts/ensure-local-rules.mjs",
-    "pretest": "node scripts/ensure-local-rules.mjs",
-    "prelint": "node scripts/ensure-local-rules.mjs",
-    "predeploy": "node scripts/ensure-local-rules.mjs",
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "test": "vitest run --passWithNoTests",

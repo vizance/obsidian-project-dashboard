@@ -14,5 +14,3 @@ export const CATEGORIES: Record<string, CategoryDef> = {
 };
 
 export const CATEGORY_KEYS: string[] = Object.keys(CATEGORIES);
-
-export { PROJECT_FOLDER, KEYWORD_RULES, MANUAL_OVERRIDES, EXCLUDED_PROJECTS } from './personal-rules.local';

@@ -24,7 +24,6 @@ export default defineConfig(
 						'eslint.config.mjs',
 						'esbuild.config.mjs',
 						'scripts/deploy.mjs',
-						'scripts/ensure-local-rules.mjs',
 					],
 				},
 				tsconfigRootDir: import.meta.dirname,
