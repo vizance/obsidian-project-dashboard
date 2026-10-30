@@ -5,7 +5,7 @@
 The scanner SHALL output a new `occupied_weeks` field of each project record. The value SHALL be a deduplicated, ascending-sorted list of ISO week labels in `YYYY-Www` format (where `ww` is zero-padded `01`–`53`), computed from the project's task dates as follows:
 
 - For each task date `d` in the project's `task_dates` set:
-  - If `d.weekday()` is Saturday and the `週六的任務算到下一週` setting (`saturdayCountsAsNextWeek`) is on → add the ISO week label of `d + 2 days` (i.e., the Monday of the following ISO week; `d + 1 day` would still fall in the same ISO week because ISO weeks end on Sunday).
+  - If `d.weekday()` is Saturday and the `Saturday tasks count for next week` setting (`saturdayCountsAsNextWeek`) is on → add the ISO week label of `d + 2 days` (i.e., the Monday of the following ISO week; `d + 1 day` would still fall in the same ISO week because ISO weeks end on Sunday).
   - Otherwise → add the ISO week label of `d` (year and week number per ISO 8601).
 
 Friday dates SHALL always occupy their own ISO week, identical to Monday–Thursday and Sunday. There is NO weekday that is excluded from occupation; Saturday is the only weekday whose contribution can be shifted, and only when the setting is on. The setting is off by default.
@@ -20,13 +20,13 @@ When the project has no task dates, `occupied_weeks` SHALL be `[]`.
 
 #### Scenario: Saturday task bumps to next week when the setting is on
 
-- **GIVEN** a project note containing `📅 2026-02-21` (Saturday, ISO W8) and `週六的任務算到下一週` is on
+- **GIVEN** a project note containing `📅 2026-02-21` (Saturday, ISO W8) and `Saturday tasks count for next week` is on
 - **WHEN** the scanner processes the file
 - **THEN** the project's `occupied_weeks` MUST contain `"2026-W09"` and MUST NOT contain `"2026-W08"`
 
 #### Scenario: Saturday task stays in its week when the setting is off
 
-- **GIVEN** a project note containing `📅 2026-02-21` (Saturday, ISO W8) and `週六的任務算到下一週` is off
+- **GIVEN** a project note containing `📅 2026-02-21` (Saturday, ISO W8) and `Saturday tasks count for next week` is off
 - **WHEN** the scanner processes the file
 - **THEN** the project's `occupied_weeks` MUST contain `"2026-W08"` and MUST NOT contain `"2026-W09"`
 
@@ -74,7 +74,7 @@ When the project has no task dates, `occupied_weeks` SHALL be `[]`.
 ---
 ### Requirement: Existing date fields preserved under per-week model
 
-Introducing `occupied_weeks` and `task_dates` SHALL NOT change the value, type, or computation of `start`, `end`, `promised_end`, `overflow_end`, or `status`. In particular, `promised_end` SHALL continue to equal `max(task_dates)` regardless of weekday and regardless of the `週六的任務算到下一週` setting. A Friday task date SHALL count toward `promised_end` and SHALL occupy its own ISO week. A Saturday task date SHALL count toward `promised_end` with its raw date, even when the week it occupies is shifted to the following ISO week.
+Introducing `occupied_weeks` and `task_dates` SHALL NOT change the value, type, or computation of `start`, `end`, `promised_end`, `overflow_end`, or `status`. In particular, `promised_end` SHALL continue to equal `max(task_dates)` regardless of weekday and regardless of the `Saturday tasks count for next week` setting. A Friday task date SHALL count toward `promised_end` and SHALL occupy its own ISO week. A Saturday task date SHALL count toward `promised_end` with its raw date, even when the week it occupies is shifted to the following ISO week.
 
 #### Scenario: Friday task contributes to promised_end and occupies its own week
 
@@ -85,7 +85,7 @@ Introducing `occupied_weeks` and `task_dates` SHALL NOT change the value, type, 
 
 #### Scenario: Saturday task contributes raw date to promised_end (no bump)
 
-- **GIVEN** a project whose latest task date is `📅 2026-02-21` (Saturday) and `週六的任務算到下一週` is on
+- **GIVEN** a project whose latest task date is `📅 2026-02-21` (Saturday) and `Saturday tasks count for next week` is on
 - **WHEN** the scanner processes the file
 - **THEN** `promised_end` MUST equal `"2026-02-21"` (the raw date, NOT the bumped following-week date)
 - **AND** `occupied_weeks` MUST contain `"2026-W09"` (the bumped week)

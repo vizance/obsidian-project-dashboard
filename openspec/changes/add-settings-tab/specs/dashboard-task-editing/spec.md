@@ -2,7 +2,7 @@
 
 ### Requirement: Popover lists the week's task lines with controls
 
-The week popover for a project and an ISO week SHALL list each task line of that project for which at least one date in `dates` maps to that week under the occupied rule (each date maps to its own ISO week, except that a Saturday maps to the following ISO week when the `週六的任務算到下一週` setting is on). Each task line SHALL appear at most once, even when several of its dates map to the week. Rows SHALL be sorted by the earliest of the line's dates that maps to the week, then by line index.
+The week popover for a project and an ISO week SHALL list each task line of that project for which at least one date in `dates` maps to that week under the occupied rule (each date maps to its own ISO week, except that a Saturday maps to the following ISO week when the `Saturday tasks count for next week` setting is on). Each task line SHALL appear at most once, even when several of its dates map to the week. Rows SHALL be sorted by the earliest of the line's dates that maps to the week, then by line index.
 
 The popover SHALL show a two-line header: the project name, then the ISO week and its Monday–Sunday range, for example `W44　10/26（一）– 11/1（日）`. When the week lies in the project's overflow range, the header SHALL add `⚠ 已超出預計結束日期 <end>`. When no task line maps to the week, the list SHALL show `這週還沒有任務`.
 
@@ -22,14 +22,14 @@ While a write for a row is in flight, that row's controls SHALL be disabled and 
 
 #### Scenario: Saturday task shows in the following week when the setting is on
 
-- **GIVEN** the line `- [ ] 寄出合約 📅 2026-10-31` (Saturday) and `週六的任務算到下一週` on
+- **GIVEN** the line `- [ ] 寄出合約 📅 2026-10-31` (Saturday) and `Saturday tasks count for next week` on
 - **WHEN** the popover for `2026-W45` opens
 - **THEN** a row for `寄出合約` MUST be listed with the label `10/31（六）` and `預排在上週六，算進本週`
 - **AND** the popover for `2026-W44` MUST NOT list it
 
 #### Scenario: Saturday task stays in its own week when the setting is off
 
-- **GIVEN** the line `- [ ] 寄出合約 📅 2026-10-31` (Saturday) and `週六的任務算到下一週` off
+- **GIVEN** the line `- [ ] 寄出合約 📅 2026-10-31` (Saturday) and `Saturday tasks count for next week` off
 - **WHEN** the popover for `2026-W44` opens
 - **THEN** a row for `寄出合約` MUST be listed with the label `10/31（六）` and without `預排在上週六，算進本週`
 - **AND** the popover for `2026-W45` MUST NOT list it
@@ -46,7 +46,7 @@ While a write for a row is in flight, that row's controls SHALL be disabled and 
 
 The popover footer SHALL offer `＋ 從還沒排日期的任務挑一個（N）`, where N is the number of the project's unscheduled tasks. Activating it SHALL expand a list of those tasks in line order, or the text `這則筆記沒有還沒排日期的任務` when N is 0. Clicking a listed task SHALL append ` 📅 <schedule date>` to that line (before a trailing block reference, by the same rule as completion).
 
-The schedule date SHALL be derived from the popover's ISO week and the `排進某週時寫星期幾` setting (`scheduleWeekday`, 1 = Monday … 7 = Sunday, default 5 = Friday): it SHALL be the week's Monday plus `scheduleWeekday − 1` days, except that when `scheduleWeekday` is 6 (Saturday) and the `週六的任務算到下一週` setting is on, it SHALL be the Saturday before the week's Monday (the Monday minus 2 days). Under both settings the scheduled line SHALL therefore map to the popover's week.
+The schedule date SHALL be derived from the popover's ISO week and the `Which day to write` setting (`scheduleWeekday`, 1 = Monday … 7 = Sunday, default 5 = Friday): it SHALL be the week's Monday plus `scheduleWeekday − 1` days, except that when `scheduleWeekday` is 6 (Saturday) and the `Saturday tasks count for next week` setting is on, it SHALL be the Saturday before the week's Monday (the Monday minus 2 days). Under both settings the scheduled line SHALL therefore map to the popover's week.
 
 #### Scenario: Picking an unscheduled task schedules it on the configured weekday
 
@@ -65,15 +65,15 @@ The schedule date SHALL be derived from the popover's ISO week and the `排進�
 
 ##### Example: schedule date by setting
 
-| Week | `排進某週時寫星期幾` | `週六的任務算到下一週` | Schedule date |
+| Week | `Which day to write` | `Saturday tasks count for next week` | Schedule date |
 | ---- | -------------------- | ---------------------- | ------------- |
-| 2026-W45 | 星期五 | off | `2026-11-06` |
-| 2026-W45 | 星期五 | on | `2026-11-06` |
-| 2026-W45 | 星期一 | off | `2026-11-02` |
-| 2026-W45 | 星期六 | off | `2026-11-07` |
-| 2026-W45 | 星期六 | on | `2026-10-31` |
-| 2026-W45 | 星期日 | on | `2026-11-08` |
-| 2027-W01 | 星期六 | on | `2027-01-02` |
+| 2026-W45 | Friday | off | `2026-11-06` |
+| 2026-W45 | Friday | on | `2026-11-06` |
+| 2026-W45 | Monday | off | `2026-11-02` |
+| 2026-W45 | Saturday | off | `2026-11-07` |
+| 2026-W45 | Saturday | on | `2026-10-31` |
+| 2026-W45 | Sunday | on | `2026-11-08` |
+| 2027-W01 | Saturday | on | `2027-01-02` |
 
 #### Scenario: No unscheduled tasks
 
@@ -84,7 +84,7 @@ The schedule date SHALL be derived from the popover's ISO week and the `排進�
 ---
 ### Requirement: Moving a task to the previous or next week
 
-Clicking `▶` SHALL replace the first `📅` date of the line with the date 7 days later; clicking `◀` SHALL replace it with the date 7 days earlier. The weekday SHALL therefore be preserved. No other part of the line SHALL change. The week in which the moved line is shown SHALL follow the occupied rule with the current `週六的任務算到下一週` setting.
+Clicking `▶` SHALL replace the first `📅` date of the line with the date 7 days later; clicking `◀` SHALL replace it with the date 7 days earlier. The weekday SHALL therefore be preserved. No other part of the line SHALL change. The week in which the moved line is shown SHALL follow the occupied rule with the current `Saturday tasks count for next week` setting.
 
 #### Scenario: Arrows shift the due date by one week
 

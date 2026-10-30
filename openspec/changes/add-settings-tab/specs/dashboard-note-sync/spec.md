@@ -2,7 +2,7 @@
 
 ### Requirement: Project note changes trigger a debounced re-scan
 
-The plugin SHALL listen to the vault's `modify`, `create`, `delete`, and `rename` events. An event SHALL count as relevant only when the affected file is a Markdown file that is a direct child of the project folder named by the `專案資料夾` setting at the time of the event (default `Projects`); for `rename`, the event SHALL count as relevant when either the new path or the old path satisfies this condition. Relevant events SHALL schedule a full re-scan of the project folder 400 ms after the most recent relevant event, so that a burst of events produces exactly one re-scan. After the re-scan the open dashboard tab SHALL re-render. Irrelevant events SHALL NOT trigger a re-scan. When no dashboard tab is open, the plugin SHALL NOT re-scan.
+The plugin SHALL listen to the vault's `modify`, `create`, `delete`, and `rename` events. An event SHALL count as relevant only when the affected file is a Markdown file that is a direct child of the project folder named by the `Project folder` setting at the time of the event (default `Projects`); for `rename`, the event SHALL count as relevant when either the new path or the old path satisfies this condition. Relevant events SHALL schedule a full re-scan of the project folder 400 ms after the most recent relevant event, so that a burst of events produces exactly one re-scan. After the re-scan the open dashboard tab SHALL re-render. Irrelevant events SHALL NOT trigger a re-scan. When no dashboard tab is open, the plugin SHALL NOT re-scan.
 
 #### Scenario: Moving a task date updates two week cells
 
@@ -25,7 +25,7 @@ The plugin SHALL listen to the vault's `modify`, `create`, `delete`, and `rename
 
 #### Scenario: A changed folder setting changes which notes count
 
-- **GIVEN** the `專案資料夾` setting was changed from `Projects` to `Work/Projects`
+- **GIVEN** the `Project folder` setting was changed from `Projects` to `Work/Projects`
 - **WHEN** the user edits `Projects/🚧 P-2026 範例專案 A.md`
 - **THEN** no re-scan MUST occur
 - **AND** editing `Work/Projects/🚧 P-2026 範例專案 B.md` MUST trigger a re-scan
@@ -72,7 +72,7 @@ An automatic re-render triggered by a note change, by a settings change, or by p
 
 #### Scenario: Popover stays on its week when the Saturday setting changes
 
-- **GIVEN** the project `範例專案 A` runs from `2026-10-01` to `2026-12-31`, its note contains `- [ ] 寄出合約 📅 2026-10-31`, `週六的任務算到下一週` is off, and the popover for `2026-W44` is open listing `寄出合約`
-- **WHEN** the user turns on `週六的任務算到下一週` and the change is applied
+- **GIVEN** the project `範例專案 A` runs from `2026-10-01` to `2026-12-31`, its note contains `- [ ] 寄出合約 📅 2026-10-31`, `Saturday tasks count for next week` is off, and the popover for `2026-W44` is open listing `寄出合約`
+- **WHEN** the user turns on `Saturday tasks count for next week` and the change is applied
 - **THEN** a popover for `範例專案 A` and `2026-W44` MUST be visible and MUST NOT list `寄出合約`
 - **AND** the popover for `2026-W45`, when opened, MUST list `寄出合約` with `預排在上週六，算進本週`

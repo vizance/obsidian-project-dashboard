@@ -50,70 +50,70 @@ The default classification rules SHALL be, in order: `企業內訓` → `corpora
 ---
 ### Requirement: Settings tab
 
-The plugin SHALL register a settings tab. Its text SHALL be Traditional Chinese, and it SHALL contain three sections in this order.
+The plugin SHALL register a settings tab. Its text SHALL be plain English that a fifth-grade student can read: short sentences, common words, no technical terms. The dashboard itself (year view and week popover) SHALL keep its Traditional Chinese text; the category names in the tab SHALL be the same Chinese category labels the dashboard shows, and the classification rule texts are user data that SHALL be shown as stored. The tab SHALL contain three sections in this order.
 
-`專案筆記`:
+`Project notes`:
 
-- `專案資料夾`: a text field holding `projectFolder`, described as `vault 裡放專案筆記的資料夾，只讀這一層，不含子資料夾。`. When no folder with that path exists in the vault, the text `找不到這個資料夾` SHALL be shown under the field.
-- `不列入的專案`: a multi-line text field holding `excludedProjects`, one entry per line, described as `檔名包含這些文字的筆記不會出現在儀表板，一行一個。`.
+- `Project folder`: a text field holding `projectFolder`, described as `The folder where your project notes live. Only notes right inside this folder are used. Notes in folders inside it are skipped.`. When no folder with that path exists in the vault, the text `Can't find this folder.` SHALL be shown under the field.
+- `Projects to skip`: a multi-line text field holding `excludedProjects`, one entry per line, described as `Write one word or phrase on each line. A note whose name has any of them will not show on the dashboard.`.
 
-`分類`:
+`Categories`:
 
-- The description `專案名稱包含左邊的文字，就歸到右邊的分類。由上往下比對，第一個符合的規則生效；在儀表板上手動指定的分類優先於這些規則。`
-- One row per stored classification rule, in the stored order, including rules whose text is empty, so that the rows and the stored list always correspond one to one. Each row has a text field (placeholder `名稱包含…`), a category dropdown listing the seven category labels, and three buttons labelled `上移`, `下移`, and `刪除`, which move or remove that rule in the stored list. `上移` SHALL be disabled on the first row and `下移` on the last row.
-- A button `新增分類規則` that appends a rule with empty text and category `other`. Such a rule SHALL survive saving and reloading and SHALL NOT take part in classification until its text is filled in.
+- The description `If a project's name has the words on the left, it goes into the category on the right. The rules are checked from top to bottom, and the first one that matches wins. A category you pick by hand on the dashboard always beats these rules.`
+- One row per stored classification rule, in the stored order, including rules whose text is empty, so that the rows and the stored list always correspond one to one. Each row has a text field (placeholder `Words in the name…`), a category dropdown listing the seven category labels, and three buttons labelled `Move up`, `Move down`, and `Delete`, which move or remove that rule in the stored list. `Move up` SHALL be disabled on the first row and `Move down` on the last row.
+- A button `Add a rule` that appends a rule with empty text and category `other`. Such a rule SHALL survive saving and reloading and SHALL NOT take part in classification until its text is filled in.
 
-`日期規則`:
+`Dates`:
 
-- `排進某週時寫星期幾`: a dropdown of `星期一` to `星期日` holding `scheduleWeekday`, described as `從浮窗把任務排進某一週或新增任務時，寫入那週的這一天。`. Choosing an option SHALL store the integer 1 (`星期一`) to 7 (`星期日`), never the option's text or a numeric string.
-- `週六的任務算到下一週`: a toggle holding `saturdayCountsAsNextWeek`, described as `開啟後，日期寫週六的任務會顯示在下一週，代表「週六先排好下週要做的事」。`.
+- `Which day to write`: a dropdown of `Monday` to `Sunday` holding `scheduleWeekday`, described as `When you add a task to a week from the week pop-up, the note gets this day of that week as the task's date.`. Choosing an option SHALL store the integer 1 (`Monday`) to 7 (`Sunday`), never the option's text or a numeric string.
+- `Saturday tasks count for next week`: a toggle holding `saturdayCountsAsNextWeek`, described as `Turn this on if you plan next week on Saturday. Then a task with a Saturday date shows up in the week after.`.
 
-The `找不到這個資料夾` hint SHALL be evaluated against the normalized folder, so an emptied field is checked as `Projects`.
+The `Can't find this folder.` hint SHALL be evaluated against the normalized folder, so an emptied field is checked as `Projects`.
 
 #### Scenario: Moving a rule up changes the result
 
 - **GIVEN** the rules are `課程` → `online_course` then `內訓` → `corporate`, and a project named `P-2026 範例內訓課程`
-- **WHEN** the user presses `上移` on the `內訓` row
+- **WHEN** the user presses `Move up` on the `內訓` row
 - **THEN** after the change is applied the project MUST be classified as `corporate`
 
 #### Scenario: Missing folder hint
 
-- **WHEN** the user types `Projets` into `專案資料夾` and no such folder exists
-- **THEN** the tab MUST show `找不到這個資料夾` under the field
+- **WHEN** the user types `Projets` into `Project folder` and no such folder exists
+- **THEN** the tab MUST show `Can't find this folder.` under the field
 
 #### Scenario: Emptied folder falls back to the default
 
 - **GIVEN** the vault has a folder `Projects` with project notes
-- **WHEN** the user clears `專案資料夾` and the change is applied
+- **WHEN** the user clears `Project folder` and the change is applied
 - **THEN** the plugin data MUST hold `projectFolder` `Projects`
-- **AND** the dashboard MUST show the projects from `Projects` without the `找不到這個資料夾` hint
+- **AND** the dashboard MUST show the projects from `Projects` without the `Can't find this folder.` hint
 
 #### Scenario: A new empty rule survives a save
 
-- **WHEN** the user presses `新增分類規則`, the change is saved, and Obsidian is relaunched
+- **WHEN** the user presses `Add a rule`, the change is saved, and Obsidian is relaunched
 - **THEN** the tab MUST still show the empty rule as the last row
 - **AND** classification of every project MUST be the same as before the rule was added
 
 #### Scenario: Saturday is stored as a number
 
-- **WHEN** the user picks `星期六` in `排進某週時寫星期幾` and the change is saved
+- **WHEN** the user picks `Saturday` in `Which day to write` and the change is saved
 - **THEN** the plugin data MUST hold `"scheduleWeekday": 6`
 
 ---
 ### Requirement: Settings changes apply to open dashboards
 
-Every change made in the settings tab SHALL be saved to plugin data and applied 400 ms after the most recent change in the tab, so that a burst of edits produces exactly one save and one re-scan. After a successful save every open dashboard tab SHALL re-scan and re-render with the new settings without being reopened. When the save fails, the plugin SHALL show the notice `設定儲存失敗，請再試一次`, restore the settings to the last successfully saved values, and redraw the settings tab with them.
+Every change made in the settings tab SHALL be saved to plugin data and applied 400 ms after the most recent change in the tab, so that a burst of edits produces exactly one save and one re-scan. After a successful save every open dashboard tab SHALL re-scan and re-render with the new settings without being reopened. When the save fails, the plugin SHALL show the notice `Your settings couldn't be saved. Please try again.`, restore the settings to the last successfully saved values, and redraw the settings tab with them.
 
 #### Scenario: Changing the folder rescans the dashboard
 
 - **GIVEN** a dashboard tab is open and the vault has a folder `Work/Projects` with project notes
-- **WHEN** the user sets `專案資料夾` to `Work/Projects` and stops typing
+- **WHEN** the user sets `Project folder` to `Work/Projects` and stops typing
 - **THEN** within 1 second the dashboard MUST show the projects from `Work/Projects`
 
 #### Scenario: Turning on the Saturday rule moves Saturday tasks
 
 - **GIVEN** a project note contains `- [ ] 盤點 📅 2026-10-31` (Saturday) and the dashboard shows it in `2026-W44`
-- **WHEN** the user turns on `週六的任務算到下一週`
+- **WHEN** the user turns on `Saturday tasks count for next week`
 - **THEN** after the change is applied the dashboard MUST show that task in `2026-W45` and not in `2026-W44`
 
 ---
@@ -141,7 +141,7 @@ When Obsidian reports that the plugin data changed outside the running plugin (f
 
 #### Scenario: Synced data arriving during a pending edit wins
 
-- **GIVEN** the user changed `排進某週時寫星期幾` to `星期一` less than 400 ms ago, so the save is still pending
+- **GIVEN** the user changed `Which day to write` to `Monday` less than 400 ms ago, so the save is still pending
 - **WHEN** synced plugin data arrives with `scheduleWeekday` `5`
 - **THEN** the settings MUST hold `5` after the reload
 - **AND** no later save MUST write `1`
