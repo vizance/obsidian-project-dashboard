@@ -275,7 +275,7 @@ describe('Emptied folder falls back to the default', () => {
 		const settings = { ...defaultSettings(), projectFolder: '' };
 		const stored = normalizePluginData({ settings }).settings;
 		expect(stored.projectFolder).toBe('Projects');
-		// 設定頁的「找不到這個資料夾」也用這個檢查後的值判斷。
+		// 設定頁的 `Can't find this folder.` 也用這個檢查後的值判斷。
 		expect(normalizeSettings(settings).projectFolder).toBe('Projects');
 	});
 });

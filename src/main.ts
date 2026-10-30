@@ -15,7 +15,7 @@ export default class ProjectDashboardPlugin extends Plugin {
 		timers: { set: (fn, ms) => window.setTimeout(fn, ms), clear: (id) => window.clearTimeout(id) },
 		onSaveError: (err) => {
 			console.error('[project-dashboard] 儲存設定失敗', err);
-			new Notice('設定儲存失敗，請再試一次');
+			new Notice(`Your settings couldn't be saved. Please try again.`);
 		},
 	});
 

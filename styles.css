@@ -358,7 +358,7 @@
 
 /* 設定頁 --------------------------------------------------------------- */
 
-/* 「找不到這個資料夾」要顯示在輸入框下面，所以讓控制欄換行後整列給它。 */
+/* `Can't find this folder.` 要顯示在輸入框下面，所以讓控制欄換行後整列給它。 */
 .pd-setting-folder .setting-item-control { flex-wrap: wrap; }
 .pd-setting-folder .pd-setting-hint {
 	flex-basis: 100%;

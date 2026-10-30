@@ -11,7 +11,8 @@ import {
 import type ProjectDashboardPlugin from './main';
 
 // 下拉選單的選項：值是 `"1"` 到 `"7"`，送進設定前由 weekdayFromOption 轉成整數。
-const WEEKDAY_LABELS = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
+// 設定頁屬於外掛層級，文字用淺白英文；儀表板本身維持繁體中文。
+const WEEKDAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export class DashboardSettingTab extends PluginSettingTab {
 	private unsubscribe: (() => void) | null = null;
@@ -57,11 +58,11 @@ export class DashboardSettingTab extends PluginSettingTab {
 	}
 
 	private buildProjectNotesSection(): void {
-		new Setting(this.containerEl).setName('專案筆記').setHeading();
+		new Setting(this.containerEl).setName('Project notes').setHeading();
 
 		const folderSetting = new Setting(this.containerEl)
-			.setName('專案資料夾')
-			.setDesc('vault 裡放專案筆記的資料夾，只讀這一層，不含子資料夾。');
+			.setName('Project folder')
+			.setDesc('The folder where your project notes live. Only notes right inside this folder are used. Notes in folders inside it are skipped.');
 		folderSetting.settingEl.addClass('pd-setting-folder');
 		// 提示在輸入框之後建立，才會換行顯示在欄位下方。
 		let hintEl: HTMLElement;
@@ -71,12 +72,12 @@ export class DashboardSettingTab extends PluginSettingTab {
 				this.updateFolderHint(hintEl);
 			});
 		});
-		hintEl = folderSetting.controlEl.createDiv({ cls: 'pd-setting-hint', text: '找不到這個資料夾' });
+		hintEl = folderSetting.controlEl.createDiv({ cls: 'pd-setting-hint', text: `Can't find this folder.` });
 		this.updateFolderHint(hintEl);
 
 		new Setting(this.containerEl)
-			.setName('不列入的專案')
-			.setDesc('檔名包含這些文字的筆記不會出現在儀表板，一行一個。')
+			.setName('Projects to skip')
+			.setDesc('Write one word or phrase on each line. A note whose name has any of them will not show on the dashboard.')
 			.addTextArea((text) => {
 				text.setValue(this.settings.excludedProjects.join('\n')).onChange((value) => {
 					// 檢查規則會把空白行去掉，所以這裡照原樣送進去就好。
@@ -85,7 +86,7 @@ export class DashboardSettingTab extends PluginSettingTab {
 			});
 	}
 
-	// 提示用「檢查過的資料夾」判斷：欄位清空時掃描與存檔都用 `Projects`，
+	// `Can't find this folder.` 用「檢查過的資料夾」判斷：欄位清空時掃描與存檔都用 `Projects`，
 	// 提示也要跟著用它判斷，不能用輸入框裡的空字串。
 	private updateFolderHint(hintEl: HTMLElement): void {
 		const folder = this.settings.projectFolder;
@@ -94,8 +95,8 @@ export class DashboardSettingTab extends PluginSettingTab {
 
 	private buildClassificationSection(): void {
 		new Setting(this.containerEl)
-			.setName('分類')
-			.setDesc('專案名稱包含左邊的文字，就歸到右邊的分類。由上往下比對，第一個符合的規則生效；在儀表板上手動指定的分類優先於這些規則。')
+			.setName('Categories')
+			.setDesc(`If a project's name has the words on the left, it goes into the category on the right. The rules are checked from top to bottom, and the first one that matches wins. A category you pick by hand on the dashboard always beats these rules.`)
 			.setHeading();
 
 		const rules = this.settings.classificationRules;
@@ -103,7 +104,7 @@ export class DashboardSettingTab extends PluginSettingTab {
 			const row = new Setting(this.containerEl);
 			row.settingEl.addClass('pd-rule-row');
 			row.addText((text) => {
-				text.setPlaceholder('名稱包含…')
+				text.setPlaceholder('Words in the name…')
 					.setValue(rule.text)
 					.onChange((value) => {
 						this.patch({ classificationRules: replaceClassificationRule(this.settings.classificationRules, index, { text: value }) });
@@ -117,7 +118,7 @@ export class DashboardSettingTab extends PluginSettingTab {
 			});
 			row.addExtraButton((button) => {
 				button.setIcon('arrow-up')
-					.setTooltip('上移')
+					.setTooltip('Move up')
 					.setDisabled(index === 0)
 					.onClick(() => {
 						this.patchRules(moveClassificationRule(this.settings.classificationRules, index, -1));
@@ -125,7 +126,7 @@ export class DashboardSettingTab extends PluginSettingTab {
 			});
 			row.addExtraButton((button) => {
 				button.setIcon('arrow-down')
-					.setTooltip('下移')
+					.setTooltip('Move down')
 					.setDisabled(index === rules.length - 1)
 					.onClick(() => {
 						this.patchRules(moveClassificationRule(this.settings.classificationRules, index, 1));
@@ -133,7 +134,7 @@ export class DashboardSettingTab extends PluginSettingTab {
 			});
 			row.addExtraButton((button) => {
 				button.setIcon('trash')
-					.setTooltip('刪除')
+					.setTooltip('Delete')
 					.onClick(() => {
 						this.patchRules(removeClassificationRule(this.settings.classificationRules, index));
 					});
@@ -141,18 +142,18 @@ export class DashboardSettingTab extends PluginSettingTab {
 		});
 
 		new Setting(this.containerEl).addButton((button) => {
-			button.setButtonText('新增分類規則').onClick(() => {
+			button.setButtonText('Add a rule').onClick(() => {
 				this.patchRules(addClassificationRule(this.settings.classificationRules));
 			});
 		});
 	}
 
 	private buildDateRulesSection(): void {
-		new Setting(this.containerEl).setName('日期規則').setHeading();
+		new Setting(this.containerEl).setName('Dates').setHeading();
 
 		new Setting(this.containerEl)
-			.setName('排進某週時寫星期幾')
-			.setDesc('從浮窗把任務排進某一週或新增任務時，寫入那週的這一天。')
+			.setName('Which day to write')
+			.setDesc(`When you add a task to a week from the week pop-up, the note gets this day of that week as the task's date.`)
 			.addDropdown((dropdown) => {
 				WEEKDAY_LABELS.forEach((label, i) => {
 					dropdown.addOption(String(i + 1), label);
@@ -163,8 +164,8 @@ export class DashboardSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(this.containerEl)
-			.setName('週六的任務算到下一週')
-			.setDesc('開啟後，日期寫週六的任務會顯示在下一週，代表「週六先排好下週要做的事」。')
+			.setName('Saturday tasks count for next week')
+			.setDesc('Turn this on if you plan next week on Saturday. Then a task with a Saturday date shows up in the week after.')
 			.addToggle((toggle) => {
 				toggle.setValue(this.settings.saturdayCountsAsNextWeek).onChange((value) => {
 					this.patch({ saturdayCountsAsNextWeek: value });

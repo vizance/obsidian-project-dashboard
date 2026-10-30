@@ -198,7 +198,7 @@ describe('computeOccupiedWeeks', () => {
 describe('scanProjectNote', () => {
 	const today = '2026-10-25';
 
-	it('returns null for a project the 不列入的專案 setting excludes', () => {
+	it('returns null for a project the Projects to skip setting excludes', () => {
 		const result = scanProjectNote(
 			{ filename: '🚧 P-2026 範例草稿.md', text: '', path: 'x.md' },
 			{ overrides: {}, today, settings: settingsWith({ excludedProjects: ['範例草稿'] }) },
