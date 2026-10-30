@@ -12,6 +12,15 @@ import {
 	scanProjectNote,
 	stripStatus,
 } from '../src/core/scan';
+import { defaultSettings, type ClassificationRule, type DashboardSettings } from '../src/core/settings';
+
+// 兩種週六規則：預設（關）與開啟。開啟是維護者目前在用的值。
+const SAT_OFF = { saturdayCountsAsNextWeek: false };
+const SAT_ON = { saturdayCountsAsNextWeek: true };
+
+function settingsWith(partial: Partial<DashboardSettings>): DashboardSettings {
+	return { ...defaultSettings(), ...partial };
+}
 
 describe('detectStatus', () => {
 	it.each([
@@ -55,24 +64,36 @@ describe('parseFrontmatter', () => {
 });
 
 describe('classify', () => {
+	const defaultRules = defaultSettings().classificationRules;
+
 	it('applies a full-name override with the highest priority', () => {
-		expect(classify('P-2026 範例：家庭生活專案 @小明 @小美', { 'P-2026 範例：家庭生活專案 @小明 @小美': 'life' })).toBe('life');
+		const overrides = { 'P-2026 範例：家庭生活專案 @小明 @小美': 'life' };
+		expect(classify('P-2026 範例：家庭生活專案 @小明 @小美', overrides, defaultRules)).toBe('life');
 	});
 
 	it('does not apply an override to a different project name', () => {
-		expect(classify('P-2026 其他專案', { 'P-2026 範例：家庭生活專案 @小明 @小美': 'life' })).toBe('other');
+		const overrides = { 'P-2026 範例：家庭生活專案 @小明 @小美': 'life' };
+		expect(classify('P-2026 其他專案', overrides, defaultRules)).toBe('other');
 	});
 
-	it('falls back to name-fragment rules', () => {
-		expect(classify('P-2026 特別接案專案')).toBe('coaching');
+	it('ignores an override whose category is not a known key', () => {
+		expect(classify('P-2026 範例專案 A', { 'P-2026 範例專案 A': 'unknown' }, defaultRules)).toBe('other');
 	});
 
-	it('falls back to keyword rules', () => {
-		expect(classify('P-2026 線上課程製作')).toBe('online_course');
+	// Example: rule order（dashboard-category-override），一列一個測試。
+	it.each<[string, ClassificationRule[], string]>([
+		['內訓 then 課程', [{ text: '內訓', category: 'corporate' }, { text: '課程', category: 'online_course' }], 'corporate'],
+		['課程 then 內訓', [{ text: '課程', category: 'online_course' }, { text: '內訓', category: 'corporate' }], 'online_course'],
+		['empty text then 內訓', [{ text: '', category: 'life' }, { text: '內訓', category: 'corporate' }], 'corporate'],
+		['出版 only', [{ text: '出版', category: 'publishing' }], 'other'],
+		['no rules', [], 'other'],
+	])('rule order (%s) -> %s', (_name, rules, expected) => {
+		expect(classify('P-2026 範例內訓課程', {}, rules)).toBe(expected);
 	});
 
-	it('returns other when nothing matches', () => {
-		expect(classify('P-2026 隨便一個名字')).toBe('other');
+	it('classifies with the default rules', () => {
+		expect(classify('P-2026 線上課程製作', {}, defaultRules)).toBe('online_course');
+		expect(classify('P-2026 隨便一個名字', {}, defaultRules)).toBe('other');
 	});
 });
 
@@ -151,32 +172,46 @@ describe('parseTasks', () => {
 });
 
 describe('computeOccupiedWeeks', () => {
-	it('maps a Friday to its own ISO week', () => {
-		expect(computeOccupiedWeeks(['2026-10-30'])).toEqual(['2026-W44']);
+	it('maps a Friday to its own ISO week under both settings', () => {
+		expect(computeOccupiedWeeks(['2026-10-30'], SAT_OFF)).toEqual(['2026-W44']);
+		expect(computeOccupiedWeeks(['2026-10-30'], SAT_ON)).toEqual(['2026-W44']);
 	});
 
-	it('rolls a Saturday into the following week', () => {
-		expect(computeOccupiedWeeks(['2026-10-31'])).toEqual(['2026-W45']);
+	it('rolls a Saturday into the following week only when the setting is on', () => {
+		expect(computeOccupiedWeeks(['2026-10-31'], SAT_ON)).toEqual(['2026-W45']);
+		expect(computeOccupiedWeeks(['2026-10-31'], SAT_OFF)).toEqual(['2026-W44']);
+	});
+
+	it('maps a Sunday to its own week', () => {
+		expect(computeOccupiedWeeks(['2026-11-01'], SAT_ON)).toEqual(['2026-W44']);
 	});
 
 	it('dedupes and sorts labels', () => {
-		expect(computeOccupiedWeeks(['2026-10-30', '2026-05-14', '2026-10-30'])).toEqual(['2026-W20', '2026-W44']);
+		expect(computeOccupiedWeeks(['2026-10-30', '2026-05-14', '2026-10-30'], SAT_ON)).toEqual(['2026-W20', '2026-W44']);
 	});
 
 	it('ignores unparseable dates', () => {
-		expect(computeOccupiedWeeks(['not-a-date'])).toEqual([]);
+		expect(computeOccupiedWeeks(['not-a-date'], SAT_ON)).toEqual([]);
 	});
 });
 
 describe('scanProjectNote', () => {
 	const today = '2026-10-25';
 
-	it('returns null for an excluded project', () => {
+	it('returns null for a project the 不列入的專案 setting excludes', () => {
 		const result = scanProjectNote(
-			{ filename: '🚧 P-2026 內部測試用專案.md', text: '', path: 'x.md' },
-			{ overrides: {}, today },
+			{ filename: '🚧 P-2026 範例草稿.md', text: '', path: 'x.md' },
+			{ overrides: {}, today, settings: settingsWith({ excludedProjects: ['範例草稿'] }) },
 		);
 		expect(result).toBeNull();
+	});
+
+	it('keeps the project when the exclusion list is empty', () => {
+		const result = scanProjectNote(
+			{ filename: '🚧 P-2026 範例草稿.md', text: '', path: 'x.md' },
+			{ overrides: {}, today, settings: defaultSettings() },
+		);
+		expect(result?.name).toBe('P-2026 範例草稿');
 	});
 
 	it('matches the spec example: filename-derived dates with life category', () => {
@@ -186,7 +221,7 @@ describe('scanProjectNote', () => {
 				text: '',
 				path: 'x.md',
 			},
-			{ overrides: {}, today },
+			{ overrides: {}, today, settings: defaultSettings() },
 		);
 		expect(result?.status).toBe('active');
 		expect(result?.start).toBe('2026-04-13');
@@ -198,7 +233,7 @@ describe('scanProjectNote', () => {
 	it('matches the spec example: done status with other category', () => {
 		const result = scanProjectNote(
 			{ filename: '✅ P-2026 範例：已完成專案.md', text: '', path: 'x.md' },
-			{ overrides: {}, today },
+			{ overrides: {}, today, settings: defaultSettings() },
 		);
 		expect(result?.status).toBe('done');
 		expect(result?.category).toBe('other');
@@ -207,25 +242,113 @@ describe('scanProjectNote', () => {
 	it('matches the spec example: planned task occupies W44', () => {
 		const result = scanProjectNote(
 			{ filename: '🚧 P-20260101 ~ 1231 測試.md', text: '- [ ] 確認拍攝服裝 📅 2026-10-30', path: 'x.md' },
-			{ overrides: {}, today },
+			{ overrides: {}, today, settings: defaultSettings() },
 		);
 		expect(result?.tasks).toEqual([{ date: '2026-10-30', kind: 'planned', text: '確認拍攝服裝', done: false }]);
 		expect(result?.occupied_weeks).toContain('2026-W44');
 	});
 
-	it('matches the spec example: Saturday task occupies W45 and sets promised_end', () => {
+	it('matches the spec example: a Saturday task stays in W44 with the default (off) setting', () => {
 		const result = scanProjectNote(
 			{ filename: '🚧 P-20260101 ~ 1231 測試.md', text: '- [ ] 盤點 📅 2026-10-31', path: 'x.md' },
-			{ overrides: {}, today },
+			{ overrides: {}, today, settings: defaultSettings() },
 		);
-		expect(result?.occupied_weeks).toContain('2026-W45');
+		expect(result?.occupied_weeks).toEqual(['2026-W44']);
 		expect(result?.promised_end).toBe('2026-10-31');
+	});
+
+	it('matches the spec example: a Saturday task occupies W45 when the setting is on', () => {
+		const result = scanProjectNote(
+			{ filename: '🚧 P-20260101 ~ 1231 測試.md', text: '- [ ] 盤點 📅 2026-10-31', path: 'x.md' },
+			{ overrides: {}, today, settings: settingsWith({ saturdayCountsAsNextWeek: true }) },
+		);
+		expect(result?.occupied_weeks).toEqual(['2026-W45']);
+		// promised_end 用原始日期，不是被推到下一週的日期。
+		expect(result?.promised_end).toBe('2026-10-31');
+	});
+
+	it('matches the spec example: 2026-02-21 (Saturday, W8) bumps to W09 only with the setting on', () => {
+		const text = '- [ ] 盤點 📅 2026-02-21';
+		const on = scanProjectNote(
+			{ filename: '🚧 P-20260101 ~ 1231 測試.md', text, path: 'x.md' },
+			{ overrides: {}, today, settings: settingsWith({ saturdayCountsAsNextWeek: true }) },
+		);
+		expect(on?.occupied_weeks).toEqual(['2026-W09']);
+		expect(on?.promised_end).toBe('2026-02-21');
+
+		const off = scanProjectNote(
+			{ filename: '🚧 P-20260101 ~ 1231 測試.md', text, path: 'x.md' },
+			{ overrides: {}, today, settings: defaultSettings() },
+		);
+		expect(off?.occupied_weeks).toEqual(['2026-W08']);
+	});
+
+	it('matches the spec example: a comprehensive multi-date project under both settings', () => {
+		const text = [
+			'- [ ] 開工 📅 2026-01-12',
+			'- [ ] 盤點 📅 2026-02-21',
+			'- [ ] 校稿 📅 2026-03-13',
+			'- [ ] 交付 📅 2026-05-15',
+		].join('\n');
+		const input = { filename: '🚧 P-20260101 ~ 1231 測試.md', text, path: 'x.md' };
+
+		const on = scanProjectNote(input, {
+			overrides: {},
+			today,
+			settings: settingsWith({ saturdayCountsAsNextWeek: true }),
+		});
+		expect(on?.occupied_weeks).toEqual(['2026-W03', '2026-W09', '2026-W11', '2026-W20']);
+		expect(on?.promised_end).toBe('2026-05-15');
+
+		const off = scanProjectNote(input, { overrides: {}, today, settings: defaultSettings() });
+		expect(off?.occupied_weeks).toEqual(['2026-W03', '2026-W08', '2026-W11', '2026-W20']);
+		expect(off?.promised_end).toBe('2026-05-15');
+	});
+
+	it('gives an empty occupied_weeks to a note with no task dates', () => {
+		const result = scanProjectNote(
+			{ filename: '🚧 P-20260101 ~ 1231 測試.md', text: '沒有任務', path: 'x.md' },
+			{ overrides: {}, today, settings: defaultSettings() },
+		);
+		expect(result?.occupied_weeks).toEqual([]);
+	});
+
+	it('maps a Monday task to its ISO week', () => {
+		const result = scanProjectNote(
+			{ filename: '🚧 P-20260101 ~ 1231 測試.md', text: '- [ ] 開工 📅 2026-01-12', path: 'x.md' },
+			{ overrides: {}, today, settings: defaultSettings() },
+		);
+		expect(result?.occupied_weeks).toEqual(['2026-W03']);
+	});
+
+	it('dedupes two tasks that fall in the same week', () => {
+		const text = '- [ ] 開工 📅 2026-01-12\n- [ ] 續做 📅 2026-01-14';
+		const result = scanProjectNote(
+			{ filename: '🚧 P-20260101 ~ 1231 測試.md', text, path: 'x.md' },
+			{ overrides: {}, today, settings: defaultSettings() },
+		);
+		expect(result?.occupied_weeks).toEqual(['2026-W03']);
+	});
+
+	it('applies an exact-name override and leaves a fragment-sharing project alone', () => {
+		const overrides = { 'P-2026 範例：家庭生活專案 @小明 @小美': 'life' };
+		const overridden = scanProjectNote(
+			{ filename: '🚧 P-2026 範例：家庭生活專案 @小明 @小美.md', text: '', path: 'a.md' },
+			{ overrides, today, settings: settingsWith({ classificationRules: [{ text: '家庭生活專案', category: 'corporate' }] }) },
+		);
+		expect(overridden?.category).toBe('life');
+
+		const other = scanProjectNote(
+			{ filename: '🚧 P-2026 另一個家庭生活專案.md', text: '', path: 'b.md' },
+			{ overrides, today, settings: settingsWith({ classificationRules: [{ text: '家庭生活專案', category: 'corporate' }] }) },
+		);
+		expect(other?.category).toBe('corporate');
 	});
 
 	it('matches the spec example: Friday task sets promised_end and occupies its own week', () => {
 		const result = scanProjectNote(
 			{ filename: '🚧 P-20260101 ~ 1231 測試.md', text: '- [ ] 盤點 📅 2026-05-15', path: 'x.md' },
-			{ overrides: {}, today },
+			{ overrides: {}, today, settings: defaultSettings() },
 		);
 		expect(result?.promised_end).toBe('2026-05-15');
 		expect(result?.occupied_weeks).toEqual(['2026-W20']);
@@ -238,10 +361,10 @@ describe('scanProjectNote', () => {
 				text: '- [x] 寄出提案 📅 2026-05-14 ✅ 2026-05-15',
 				path: 'x.md',
 			},
-			{ overrides: {}, today },
+			{ overrides: {}, today, settings: defaultSettings() },
 		);
-		const plannedWeek = computeOccupiedWeeks(['2026-05-14'])[0];
-		const doneWeek = computeOccupiedWeeks(['2026-05-15'])[0];
+		const plannedWeek = computeOccupiedWeeks(['2026-05-14'], SAT_OFF)[0];
+		const doneWeek = computeOccupiedWeeks(['2026-05-15'], SAT_OFF)[0];
 		expect(result?.settled_weeks).toContain(plannedWeek);
 		expect(result?.settled_weeks).toContain(doneWeek);
 	});
@@ -253,7 +376,7 @@ describe('scanProjectNote', () => {
 				text: '- [ ] 追蹤後續 [[✅ P-2026 範例：已完成專案]] 📅 2026-06-02',
 				path: 'x.md',
 			},
-			{ overrides: {}, today },
+			{ overrides: {}, today, settings: defaultSettings() },
 		);
 		expect(result?.occupied_weeks).toContain('2026-W23');
 		expect(result?.settled_weeks).not.toContain('2026-W23');
@@ -264,7 +387,7 @@ describe('scanProjectNote', () => {
 		const text = '---\n開始日期: 2026-01-01\n---\n';
 		const result = scanProjectNote(
 			{ filename: '🚧 P-測試.md', text, path: 'x.md' },
-			{ overrides: {}, today: '2026-10-25' },
+			{ overrides: {}, today: '2026-10-25', settings: defaultSettings() },
 		);
 		expect(result?.end).toBe('2026-12-31');
 		expect(result?.warnings).toContain('迄日預設為 2026-12-31');
@@ -274,7 +397,7 @@ describe('scanProjectNote', () => {
 		const text = '---\n開始日期: 2026-01-01\n---\n';
 		const result = scanProjectNote(
 			{ filename: '🚧 P-測試.md', text, path: 'x.md' },
-			{ overrides: {}, today: '2027-01-05' },
+			{ overrides: {}, today: '2027-01-05', settings: defaultSettings() },
 		);
 		expect(result?.end).toBe('2027-12-31');
 		expect(result?.warnings).toContain('迄日預設為 2027-12-31');
@@ -287,7 +410,7 @@ describe('scanProjectNote', () => {
 				text: '- [ ] 延後任務 📅 2026-11-15',
 				path: 'x.md',
 			},
-			{ overrides: {}, today: '2026-10-25' },
+			{ overrides: {}, today: '2026-10-25', settings: defaultSettings() },
 		);
 		expect(active?.overflow_end).toBe('2026-11-15');
 
@@ -297,7 +420,7 @@ describe('scanProjectNote', () => {
 				text: '- [x] 延後任務 📅 2026-11-15 ✅ 2026-11-16',
 				path: 'x.md',
 			},
-			{ overrides: {}, today: '2026-10-25' },
+			{ overrides: {}, today: '2026-10-25', settings: defaultSettings() },
 		);
 		expect(done?.overflow_end).toBeNull();
 	});
@@ -305,7 +428,7 @@ describe('scanProjectNote', () => {
 	it('reports missing start/end warnings when nothing can be derived', () => {
 		const result = scanProjectNote(
 			{ filename: '🚧 P-範例專案.md', text: '', path: 'x.md' },
-			{ overrides: {}, today: '2026-10-25' },
+			{ overrides: {}, today: '2026-10-25', settings: defaultSettings() },
 		);
 		expect(result?.start).toBeNull();
 		expect(result?.warnings).toContain('缺開始日期');
@@ -314,7 +437,7 @@ describe('scanProjectNote', () => {
 	it('adds task_lines without changing any field that existed before it', () => {
 		const filename = '🚧 P-20260101 ~ 1231 測試.md';
 		const text = '- [ ] 確認拍攝服裝 📅 2026-10-30\n- [x] 寄出提案 📅 2026-05-14 ✅ 2026-05-15';
-		const result = scanProjectNote({ filename, text, path: 'x.md' }, { overrides: {}, today });
+		const result = scanProjectNote({ filename, text, path: 'x.md' }, { overrides: {}, today, settings: defaultSettings() });
 
 		// Every non-task_lines field is recomputed here from the same unchanged
 		// helper functions the other tests in this file exercise directly, so a
@@ -322,9 +445,9 @@ describe('scanProjectNote', () => {
 		// differently rather than just gaining task_lines.
 		const expectedTaskDates = Array.from(new Set(parseTaskDates(text))).sort();
 		const expectedTasks = parseTasks(text);
-		const expectedOccupied = computeOccupiedWeeks(expectedTaskDates);
+		const expectedOccupied = computeOccupiedWeeks(expectedTaskDates, defaultSettings());
 		const expectedNotDone = expectedTasks.filter((t) => !t.done).map((t) => t.date);
-		const expectedOutstanding = new Set(computeOccupiedWeeks(expectedNotDone));
+		const expectedOutstanding = new Set(computeOccupiedWeeks(expectedNotDone, defaultSettings()));
 		const expectedSettled = expectedOccupied.filter((w) => !expectedOutstanding.has(w));
 
 		const { task_lines: taskLines, ...rest } = result!;
@@ -350,7 +473,7 @@ describe('scanProjectNote', () => {
 
 describe('scanProjectFolder', () => {
 	it('sorts by filename in code-point order before scanning', () => {
-		const ctx = { overrides: {}, today: '2026-10-25' };
+		const ctx = { overrides: {}, today: '2026-10-25', settings: defaultSettings() };
 		const files = [
 			{ filename: '🚧 P-B.md', text: '', path: 'b.md' },
 			{ filename: '🚧 P-A.md', text: '', path: 'a.md' },
@@ -360,13 +483,18 @@ describe('scanProjectFolder', () => {
 		expect(result.map((r) => r.name)).toEqual(['P-A', 'P-B', 'P-＠']);
 	});
 
+	// Scenario: Excluded project is omitted（dashboard-obsidian-plugin）。
 	it('omits excluded projects from the scanned folder', () => {
-		const ctx = { overrides: {}, today: '2026-10-25' };
+		const ctx = {
+			overrides: {},
+			today: '2026-10-25',
+			settings: settingsWith({ excludedProjects: ['範例草稿'] }),
+		};
 		const files = [
-			{ filename: '🚧 P-內部測試用專案.md', text: '', path: 'x.md' },
-			{ filename: '🚧 P-A.md', text: '', path: 'a.md' },
+			{ filename: '🚧 P-2026 範例草稿.md', text: '', path: 'x.md' },
+			{ filename: '🚧 P-2026 範例專案 A.md', text: '', path: 'a.md' },
 		];
 		const result = scanProjectFolder(files, ctx);
-		expect(result.map((r) => r.name)).toEqual(['P-A']);
+		expect(result.map((r) => r.name)).toEqual(['P-2026 範例專案 A']);
 	});
 });

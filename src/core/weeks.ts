@@ -137,17 +137,43 @@ export function todayWeekIndex(weeks: WeekInfo[], today: string): number {
 	return weeks.findIndex((w) => d >= w.start && d < w.end);
 }
 
-// 把任務日期套用 occupied 規則後對應到的 ISO 週標籤，回傳 {label, isBumpedSat}
-// 規則：Mon-Fri / Sun → 當週；Sat → 下一週。沒有任何星期被排除。
-export function taskDateToWeekLabel(dateStr: string): { label: string; isBumpedSat: boolean } {
-	const d = new Date(`${dateStr}T00:00:00Z`);
+// 週對應需要的設定。DashboardSettings 也符合這個形狀，可以直接傳整份設定進來。
+export interface WeekRules {
+	saturdayCountsAsNextWeek: boolean;
+}
+
+export interface TaskDateWeek {
+	label: string;
+	isBumpedSat: boolean;
+}
+
+function parseStrictISODate(dateStr: string): Date | null {
+	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+	if (!m) return null;
+	const y = Number(m[1]);
+	const mo = Number(m[2]);
+	const da = Number(m[3]);
+	const d = new Date(Date.UTC(y, mo - 1, da));
+	// Date.UTC 會把 2 月 30 日之類的日期滾到下個月，所以要回頭比對三個欄位，
+	// 真的不存在的日期才算無效。
+	if (d.getUTCFullYear() !== y || d.getUTCMonth() !== mo - 1 || d.getUTCDate() !== da) return null;
+	return d;
+}
+
+// 任務日期套用 occupied 規則後對應到的 ISO 週：Mon–Fri 與 Sun 一律算當週；
+// Sat 只有在 `saturdayCountsAsNextWeek` 開啟時才算下一週（+2 天才會跨週，
+// 因為 ISO 週結束在星期日）。沒有任何星期被排除。日期無效時回傳 null。
+// 掃描、年視圖格子、提示文字、浮窗都共用這一個函式，週六規則才只有一份。
+export function weekOfTaskDate(dateStr: string, rules: WeekRules): TaskDateWeek | null {
+	const d = parseStrictISODate(dateStr);
+	if (!d) return null;
 	const day = d.getUTCDay(); // Sun=0, Mon=1, ..., Fri=5, Sat=6
-	const target = new Date(d);
-	if (day === 6) target.setUTCDate(target.getUTCDate() + 2); // Sat → 下週 Mon
-	// ISO 8601 週數：以 target 所在週的星期四歸屬年
-	const t = new Date(target);
+	const isBumpedSat = day === 6 && rules.saturdayCountsAsNextWeek;
+	const t = new Date(d);
+	if (isBumpedSat) t.setUTCDate(t.getUTCDate() + 2);
+	// ISO 8601 週數：以該週星期四所在的年份歸屬。
 	t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
 	const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
 	const week = Math.ceil(((t.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-	return { label: `${t.getUTCFullYear()}-W${String(week).padStart(2, '0')}`, isBumpedSat: day === 6 };
+	return { label: `${t.getUTCFullYear()}-W${String(week).padStart(2, '0')}`, isBumpedSat };
 }

@@ -1,4 +1,4 @@
-import { addDaysISO, mondayOfWeek, taskDateToWeekLabel } from './weeks';
+import { addDaysISO, mondayOfWeek, weekOfTaskDate, type WeekRules } from './weeks';
 
 export interface TaskLine {
 	line: number;
@@ -120,16 +120,20 @@ export function unscheduledTasks(lines: TaskLine[]): TaskLine[] {
 	return lines.filter((l) => l.checkbox && !l.done && l.dates.length === 0 && !hasDateLikeMarker(l.raw));
 }
 
-function earliestDateForWeek(line: TaskLine, weekLabel: string): string {
-	const matching = line.dates.filter((d) => taskDateToWeekLabel(d).label === weekLabel).sort();
+function mapsToWeek(date: string, weekLabel: string, rules: WeekRules): boolean {
+	return weekOfTaskDate(date, rules)?.label === weekLabel;
+}
+
+function earliestDateForWeek(line: TaskLine, weekLabel: string, rules: WeekRules): string {
+	const matching = line.dates.filter((d) => mapsToWeek(d, weekLabel, rules)).sort();
 	return matching[0]!;
 }
 
-export function taskLinesForWeek(lines: TaskLine[], weekLabel: string): TaskLine[] {
-	const matched = lines.filter((l) => l.dates.some((d) => taskDateToWeekLabel(d).label === weekLabel));
+export function taskLinesForWeek(lines: TaskLine[], weekLabel: string, rules: WeekRules): TaskLine[] {
+	const matched = lines.filter((l) => l.dates.some((d) => mapsToWeek(d, weekLabel, rules)));
 	return [...matched].sort((a, b) => {
-		const ea = earliestDateForWeek(a, weekLabel);
-		const eb = earliestDateForWeek(b, weekLabel);
+		const ea = earliestDateForWeek(a, weekLabel, rules);
+		const eb = earliestDateForWeek(b, weekLabel, rules);
 		if (ea !== eb) return ea < eb ? -1 : 1;
 		return a.line - b.line;
 	});
@@ -200,12 +204,20 @@ export function locateLine(lines: string[], index: number, expected: string): nu
 	return matches.length === 1 ? matches[0]! : -1;
 }
 
-// 排進某週固定寫星期五（星期一 + 4 天）；換週固定 7 天，讓星期不變。
-// 之後開放設定（排進某週寫星期幾、週六算下一週）時，這兩個常數會跟
-// taskDateToWeekLabel 的週六規則一起收斂到同一處設定。
-const SCHEDULE_WEEKDAY_OFFSET_DAYS = 4;
+// 換週固定 7 天，讓星期不變；這個步距不開放設定。
 export const SHIFT_WEEK_DAYS = 7;
 
-export function scheduleDateForWeek(weekLabel: string): string {
-	return addDaysISO(mondayOfWeek(weekLabel), SCHEDULE_WEEKDAY_OFFSET_DAYS);
+// 排程日期需要的設定。DashboardSettings 也符合這個形狀。
+export interface ScheduleRules extends WeekRules {
+	// 1（星期一）到 7（星期日）。
+	scheduleWeekday: number;
+}
+
+// 那週星期一加 scheduleWeekday − 1 天。選星期六且週六規則開啟時，那一天會被
+// 算進下一週，所以改寫「這週星期一的前一個星期六」（星期一 − 2 天），
+// 兩種設定下排進某週的任務都還是顯示在那一週。
+export function scheduleDateForWeek(weekLabel: string, rules: ScheduleRules): string {
+	const monday = mondayOfWeek(weekLabel);
+	if (rules.scheduleWeekday === 6 && rules.saturdayCountsAsNextWeek) return addDaysISO(monday, -2);
+	return addDaysISO(monday, rules.scheduleWeekday - 1);
 }

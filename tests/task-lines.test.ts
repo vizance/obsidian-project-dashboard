@@ -13,6 +13,13 @@ import {
 	unscheduledTasks,
 	type TaskLine,
 } from '../src/core/task-lines';
+import { defaultSettings } from '../src/core/settings';
+import { weekOfTaskDate } from '../src/core/weeks';
+
+// 預設設定：排進某週寫星期五、週六算當週。
+const DEFAULTS = defaultSettings();
+const SAT_OFF = { saturdayCountsAsNextWeek: false };
+const SAT_ON = { saturdayCountsAsNextWeek: true };
 
 const FIVE_LINE_NOTE = [
 	'## 拍攝',
@@ -185,15 +192,21 @@ describe('unscheduledTasks', () => {
 describe('taskLinesForWeek', () => {
 	it('lists a line with two dates in the same week exactly once', () => {
 		const lines = parseTaskLines('- [x] 租借場地 📅 2026-10-27 ✅ 2026-10-26');
-		const result = taskLinesForWeek(lines, '2026-W44');
+		const result = taskLinesForWeek(lines, '2026-W44', DEFAULTS);
 		expect(result).toHaveLength(1);
 		expect(result[0]!.text).toBe('租借場地');
 	});
 
-	it('shows a Saturday task in the following week only', () => {
+	it('shows a Saturday task in the following week only when the setting is on', () => {
 		const lines = parseTaskLines('- [ ] 寄出合約 📅 2026-10-31');
-		expect(taskLinesForWeek(lines, '2026-W45')).toHaveLength(1);
-		expect(taskLinesForWeek(lines, '2026-W44')).toHaveLength(0);
+		expect(taskLinesForWeek(lines, '2026-W45', SAT_ON)).toHaveLength(1);
+		expect(taskLinesForWeek(lines, '2026-W44', SAT_ON)).toHaveLength(0);
+	});
+
+	it('keeps a Saturday task in its own week when the setting is off', () => {
+		const lines = parseTaskLines('- [ ] 寄出合約 📅 2026-10-31');
+		expect(taskLinesForWeek(lines, '2026-W44', SAT_OFF)).toHaveLength(1);
+		expect(taskLinesForWeek(lines, '2026-W45', SAT_OFF)).toHaveLength(0);
 	});
 
 	it('sorts by the earliest date mapping to the week, then by line index', () => {
@@ -202,7 +215,7 @@ describe('taskLinesForWeek', () => {
 			'- [ ] 早一點的 📅 2026-10-27',
 		].join('\n');
 		const lines = parseTaskLines(text);
-		const result = taskLinesForWeek(lines, '2026-W44');
+		const result = taskLinesForWeek(lines, '2026-W44', DEFAULTS);
 		expect(result.map((l) => l.text)).toEqual(['早一點的', '晚一點的']);
 	});
 });
@@ -236,22 +249,33 @@ describe('shiftDueLine', () => {
 });
 
 describe('scheduleLine / scheduleDateForWeek', () => {
+	// Example: schedule dates with the default settings（dashboard-task-editing）。
 	it.each([
-		['2026-W45', '- [ ] 製作學習日曆', '- [ ] 製作學習日曆 📅 2026-11-06'],
-		['2026-W53', '- [ ] 年度回顧', '- [ ] 年度回顧 📅 2027-01-01'],
-		['2027-W01', '- [ ] 新年計畫 ^plan1', '- [ ] 新年計畫 📅 2027-01-08 ^plan1'],
-		['2027-W02', '- [ ] 新年計畫 ^plan1 ', '- [ ] 新年計畫 📅 2027-01-15 ^plan1 '],
-	])('%s: %s -> %s', (week, before, after) => {
-		const date = scheduleDateForWeek(week);
+		['2026-W45', '- [ ] 製作學習日曆', '- [ ] 製作學習日曆 📅 2026-11-06', '2026-11-06'],
+		['2026-W53', '- [ ] 年度回顧', '- [ ] 年度回顧 📅 2027-01-01', '2027-01-01'],
+		['2027-W01', '- [ ] 新年計畫 ^plan1', '- [ ] 新年計畫 📅 2027-01-08 ^plan1', '2027-01-08'],
+		['2027-W02', '- [ ] 新年計畫 ^plan1 ', '- [ ] 新年計畫 📅 2027-01-15 ^plan1 ', '2027-01-15'],
+	])('%s with the default settings: %s -> %s', (week, before, after, expectedDate) => {
+		const date = scheduleDateForWeek(week, DEFAULTS);
+		expect(date).toBe(expectedDate);
 		expect(scheduleLine(before, date)).toBe(after);
+		// 排進某週的任務一定顯示在那一週。
+		expect(weekOfTaskDate(date, DEFAULTS)!.label).toBe(week);
 	});
 
+	// Example: schedule date by setting（dashboard-task-editing）：一列一個測試。
 	it.each([
-		['2026-W45', '2026-11-06'],
-		['2026-W53', '2027-01-01'],
-		['2027-W01', '2027-01-08'],
-	])('scheduleDateForWeek(%s) -> %s', (week, expected) => {
-		expect(scheduleDateForWeek(week)).toBe(expected);
+		['2026-W45', 5, false, '2026-11-06'],
+		['2026-W45', 5, true, '2026-11-06'],
+		['2026-W45', 1, false, '2026-11-02'],
+		['2026-W45', 6, false, '2026-11-07'],
+		['2026-W45', 6, true, '2026-10-31'],
+		['2026-W45', 7, true, '2026-11-08'],
+		['2027-W01', 6, true, '2027-01-02'],
+	])('%s with weekday %i and Saturday rule %s -> %s', (week, scheduleWeekday, saturdayCountsAsNextWeek, expected) => {
+		const rules = { scheduleWeekday, saturdayCountsAsNextWeek };
+		expect(scheduleDateForWeek(week, rules)).toBe(expected);
+		expect(weekOfTaskDate(expected, rules)!.label).toBe(week);
 	});
 });
 

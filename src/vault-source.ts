@@ -1,7 +1,7 @@
 import { TFile, TFolder, type EventRef } from 'obsidian';
-import { PROJECT_FOLDER } from './core/config';
 import { scanProjectFolder, type ProjectRecord, type ScanInput } from './core/scan';
 import { createDebouncer, isRelevantChange } from './core/sync-rules';
+import { TEMPORARY_SETTINGS } from './temporary-settings';
 
 export type ScanResult =
 	| { status: 'ok'; projects: ProjectRecord[] }
@@ -41,7 +41,8 @@ export class VaultSource {
 	constructor(
 		private readonly vault: VaultLike,
 		private readonly getOverrides: () => Record<string, string>,
-		private readonly folder: string = PROJECT_FOLDER,
+		// TEMPORARY until task 2.2: the folder still comes from the build-time rules.
+		private readonly folder: string = TEMPORARY_SETTINGS.projectFolder,
 	) {}
 
 	async scan(today: string): Promise<ScanResult> {
@@ -61,7 +62,12 @@ export class VaultSource {
 			}
 		}
 
-		const projects = scanProjectFolder(inputs, { overrides: this.getOverrides(), today });
+		// TEMPORARY until task 2.2: scan with the build-time rules.
+		const projects = scanProjectFolder(inputs, {
+			overrides: this.getOverrides(),
+			today,
+			settings: TEMPORARY_SETTINGS,
+		});
 		return { status: 'ok', projects };
 	}
 

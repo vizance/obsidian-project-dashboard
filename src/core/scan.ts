@@ -1,5 +1,7 @@
-import { CATEGORIES, CATEGORY_KEYS, EXCLUDED_PROJECTS, KEYWORD_RULES, MANUAL_OVERRIDES } from './config';
+import { CATEGORIES, CATEGORY_KEYS } from './config';
+import type { ClassificationRule, DashboardSettings } from './settings';
 import { cleanTaskText, parseTaskLines, type TaskLine } from './task-lines';
+import { weekOfTaskDate, type WeekRules } from './weeks';
 
 export type ProjectStatus = 'pending' | 'active' | 'done' | 'cancelled';
 
@@ -37,6 +39,8 @@ export interface ScanInput {
 export interface ScanContext {
 	overrides: Record<string, string>;
 	today: string;
+	// 整份設定而不是個別欄位：之後加設定時只改設定頁與 settings.ts。
+	settings: DashboardSettings;
 }
 
 const STATUS_EMOJI: Array<[string, ProjectStatus]> = [
@@ -110,16 +114,20 @@ export function stripStatus(filename: string): string {
 	return name.trim();
 }
 
-export function classify(name: string, overrides?: Record<string, string> | null): string {
+// 分類順序：精確名稱覆寫 → 分類規則由上往下第一個符合 → other。
+export function classify(
+	name: string,
+	overrides: Record<string, string> | null | undefined,
+	rules: readonly ClassificationRule[],
+): string {
 	if (overrides) {
 		const cat = overrides[name];
 		if (cat !== undefined && CATEGORY_KEYS.includes(cat)) return cat;
 	}
-	for (const [key, cat] of Object.entries(MANUAL_OVERRIDES)) {
-		if (name.includes(key)) return cat;
-	}
-	for (const [keyword, cat] of KEYWORD_RULES) {
-		if (name.includes(keyword)) return cat;
+	for (const rule of rules) {
+		// 文字空白的規則會符合每個名稱，所以跳過；它只是設定頁上還沒填的那一列。
+		if (rule.text === '') continue;
+		if (name.includes(rule.text)) return rule.category;
 	}
 	return 'other';
 }
@@ -166,40 +174,13 @@ export function parseFilenameDates(name: string): [string | null, string | null]
 	return [null, null];
 }
 
-function parseISODate(s: string): Date | null {
-	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
-	if (!m) return null;
-	const y = Number(m[1]);
-	const mo = Number(m[2]);
-	const da = Number(m[3]);
-	const d = new Date(Date.UTC(y, mo - 1, da));
-	if (d.getUTCFullYear() !== y || d.getUTCMonth() !== mo - 1 || d.getUTCDate() !== da) return null;
-	return d;
-}
-
-function isoWeekOf(d: Date): { year: number; week: number } {
-	const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-	const dayNum = (date.getUTCDay() + 6) % 7;
-	date.setUTCDate(date.getUTCDate() - dayNum + 3);
-	const firstThursday = date.getTime();
-	const yearStart = new Date(firstThursday);
-	yearStart.setUTCMonth(0, 1);
-	if (yearStart.getUTCDay() !== 4) {
-		yearStart.setUTCMonth(0, 1 + ((4 - yearStart.getUTCDay()) + 7) % 7);
-	}
-	const week = 1 + Math.round((firstThursday - yearStart.getTime()) / (7 * 24 * 3600 * 1000));
-	return { year: new Date(firstThursday).getUTCFullYear(), week };
-}
-
-export function computeOccupiedWeeks(taskDateStrings: string[]): string[] {
+// 週對應（含週六規則）只有 weekOfTaskDate 一份實作，這裡只負責去重與排序。
+export function computeOccupiedWeeks(taskDateStrings: string[], rules: WeekRules): string[] {
 	const labels = new Set<string>();
 	for (const s of taskDateStrings) {
-		const d = parseISODate(s);
-		if (!d) continue;
-		// JS getUTCDay(): Sun=0 .. Sat=6; Saturday rolls to the following week.
-		const target = d.getUTCDay() === 6 ? new Date(d.getTime() + 2 * 24 * 3600 * 1000) : d;
-		const { year, week } = isoWeekOf(target);
-		labels.add(`${year}-W${String(week).padStart(2, '0')}`);
+		const mapped = weekOfTaskDate(s, rules);
+		if (!mapped) continue;
+		labels.add(mapped.label);
 	}
 	return Array.from(labels).sort();
 }
@@ -231,23 +212,24 @@ export function parseTasks(text: string): TaskEntry[] {
 }
 
 export function scanProjectNote(input: ScanInput, ctx: ScanContext): ProjectRecord | null {
+	const settings = ctx.settings;
 	const cleanName = stripStatus(input.filename);
-	if (EXCLUDED_PROJECTS.some((skip) => cleanName.includes(skip))) return null;
+	if (settings.excludedProjects.some((skip) => cleanName.includes(skip))) return null;
 
 	const text = input.text;
 	const fm = parseFrontmatter(text);
 
 	const status = detectStatus(input.filename);
-	const category = classify(cleanName, ctx.overrides);
+	const category = classify(cleanName, ctx.overrides, settings.classificationRules);
 	const color = CATEGORIES[category]!.color;
 
 	const taskDatesRaw = parseTaskDates(text);
 	const taskDates = Array.from(new Set(taskDatesRaw)).sort();
 	const tasks = parseTasks(text);
 	const promisedEnd = taskDates.length > 0 ? taskDates[taskDates.length - 1]! : null;
-	const occupiedWeeks = computeOccupiedWeeks(taskDates);
+	const occupiedWeeks = computeOccupiedWeeks(taskDates, settings);
 	const notDoneDates = tasks.filter((t) => !t.done).map((t) => t.date);
-	const outstandingWeeks = new Set(computeOccupiedWeeks(notDoneDates));
+	const outstandingWeeks = new Set(computeOccupiedWeeks(notDoneDates, settings));
 	const settledWeeks = occupiedWeeks.filter((w) => !outstandingWeeks.has(w));
 
 	let start = parseDateStr(fm['開始日期'] ?? '');

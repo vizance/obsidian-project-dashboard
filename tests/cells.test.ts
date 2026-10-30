@@ -5,6 +5,10 @@ import { buildWeeks, type WeekInfo } from '../src/core/weeks';
 
 const weeks: WeekInfo[] = buildWeeks(2026);
 
+// 這些格子測試都用「週六算下一週」開啟的設定，與維護者目前的值相同；
+// 週六規則本身的開／關差異由 task 2.4 的測試負責。
+const SAT_ON = { saturdayCountsAsNextWeek: true };
+
 function weekIndex(label: string): number {
 	const idx = weeks.findIndex((w) => w.label === label);
 	if (idx === -1) throw new Error(`no such week: ${label}`);
@@ -35,19 +39,19 @@ function project(overrides: Partial<ProjectRecord>): ProjectRecord {
 describe('perWeekCells — per-week cell kinds', () => {
 	it('solid: active, week in [start, end], has an incomplete task that week (W44)', () => {
 		const p = project({ task_dates: ['2026-10-26'], occupied_weeks: ['2026-W44'], settled_weeks: [] });
-		const cells = perWeekCells(p, weeks);
+		const cells = perWeekCells(p, weeks, SAT_ON);
 		expect(cells[weekIndex('2026-W44')]!.kind).toBe('solid');
 	});
 
 	it('settled: active, week in [start, end], all tasks that week complete (W30)', () => {
 		const p = project({ task_dates: ['2026-07-20'], occupied_weeks: ['2026-W30'], settled_weeks: ['2026-W30'] });
-		const cells = perWeekCells(p, weeks);
+		const cells = perWeekCells(p, weeks, SAT_ON);
 		expect(cells[weekIndex('2026-W30')]!.kind).toBe('settled');
 	});
 
 	it('dashed: active, week in [start, end], no task that week (W40)', () => {
 		const p = project({ task_dates: ['2026-09-21'], occupied_weeks: [], settled_weeks: [] });
-		const cells = perWeekCells(p, weeks);
+		const cells = perWeekCells(p, weeks, SAT_ON);
 		expect(cells[weekIndex('2026-W40')]!.kind).toBe('dashed');
 	});
 
@@ -59,20 +63,20 @@ describe('perWeekCells — per-week cell kinds', () => {
 			occupied_weeks: ['2026-W50'],
 			settled_weeks: [],
 		});
-		const cells = perWeekCells(p, weeks);
+		const cells = perWeekCells(p, weeks, SAT_ON);
 		expect(cells[weekIndex('2026-W50')]!.kind).toBe('overflow');
 	});
 
 	it('span-dashed: active, no task dates at all, first week of [start, end]', () => {
 		const p = project({ start: '2026-02-02', end: '2026-02-28', task_dates: [] });
-		const cells = perWeekCells(p, weeks);
+		const cells = perWeekCells(p, weeks, SAT_ON);
 		const startIdx = weeks.findIndex((w) => new Date('2026-02-28T00:00:00Z') >= w.start && new Date('2026-02-02T00:00:00Z') < w.end);
 		expect(cells[startIdx]!.kind).toBe('span-dashed');
 	});
 
 	it('blank: done, week in [start, end], no task that week (W40)', () => {
 		const p = project({ status: 'done', occupied_weeks: [], settled_weeks: [] });
-		const cells = perWeekCells(p, weeks);
+		const cells = perWeekCells(p, weeks, SAT_ON);
 		expect(cells[weekIndex('2026-W40')]!.kind).toBe('blank');
 		expect(cells[weekIndex('2026-W40')]!.closed).toBe(true);
 	});
@@ -85,7 +89,7 @@ describe('perWeekCells — per-week cell kinds', () => {
 			occupied_weeks: ['2026-W50'],
 			settled_weeks: ['2026-W50'],
 		});
-		const cells = perWeekCells(p, weeks);
+		const cells = perWeekCells(p, weeks, SAT_ON);
 		expect(cells[weekIndex('2026-W50')]!.kind).toBe('overflow');
 	});
 
@@ -96,7 +100,7 @@ describe('perWeekCells — per-week cell kinds', () => {
 			settled_weeks: [],
 			tasks: [{ date: '2026-10-31', kind: 'planned', text: '盤點', done: false }],
 		});
-		const cells = perWeekCells(p, weeks);
+		const cells = perWeekCells(p, weeks, SAT_ON);
 		expect(cells[weekIndex('2026-W45')]!.tooltip).toBe(
 			'P-測試專案\n2026-W45\n· 盤點（2026-10-31 預計 (Sat → 本週)）',
 		);

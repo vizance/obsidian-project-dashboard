@@ -1,24 +1,12 @@
 import { Plugin, type WorkspaceLeaf } from 'obsidian';
+import { defaultSettings, normalizePluginData, type PluginData } from './core/settings';
 import { VaultSource } from './vault-source';
 import { ProjectDashboardView, VIEW_TYPE_DASHBOARD } from './view';
 
-export interface PluginData {
-	categoryOverrides: Record<string, string>;
-}
-
-function isPlainStringRecord(value: unknown): value is Record<string, string> {
-	if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
-	return Object.values(value).every((v) => typeof v === 'string');
-}
-
-function normalizePluginData(raw: unknown): PluginData {
-	if (typeof raw !== 'object' || raw === null) return { categoryOverrides: {} };
-	const candidate = (raw as { categoryOverrides?: unknown }).categoryOverrides;
-	return { categoryOverrides: isPlainStringRecord(candidate) ? candidate : {} };
-}
+export type { PluginData };
 
 export default class ProjectDashboardPlugin extends Plugin {
-	data: PluginData = { categoryOverrides: {} };
+	data: PluginData = { categoryOverrides: {}, settings: defaultSettings() };
 	vaultSource!: VaultSource;
 
 	async onload(): Promise<void> {

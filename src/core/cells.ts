@@ -1,5 +1,5 @@
 import type { ProjectRecord } from './scan';
-import { taskDateToWeekLabel, type WeekInfo } from './weeks';
+import { weekOfTaskDate, type WeekInfo, type WeekRules } from './weeks';
 
 export type CellKind = 'solid' | 'settled' | 'overflow' | 'dashed' | 'span-dashed' | 'span-solid' | 'blank';
 
@@ -46,7 +46,7 @@ function blankCell(closed: boolean): Cell {
 	return { kind: 'blank', spanWeeks: 1, tooltip: '', closed };
 }
 
-export function perWeekCells(project: ProjectRecord, weeks: WeekInfo[]): Cell[] {
+export function perWeekCells(project: ProjectRecord, weeks: WeekInfo[], rules: WeekRules): Cell[] {
 	const isClosed = project.status === 'done' || project.status === 'cancelled';
 
 	if (!project.start || !project.end) {
@@ -82,7 +82,8 @@ export function perWeekCells(project: ProjectRecord, weeks: WeekInfo[]): Cell[] 
 	const settledSet = new Set(project.settled_weeks);
 	const datesByWeek = new Map<string, TaskOccurrence[]>();
 	for (const t of project.tasks) {
-		const wl = taskDateToWeekLabel(t.date);
+		const wl = weekOfTaskDate(t.date, rules);
+		if (!wl) continue;
 		const arr = datesByWeek.get(wl.label) ?? [];
 		arr.push({ date: t.date, bumped: wl.isBumpedSat, kind: t.kind, text: t.text });
 		datesByWeek.set(wl.label, arr);

@@ -23,6 +23,9 @@ import {
 import { buildWeeks, groupMonths, groupQuarters, todayLocal, todayWeekIndex, type WeekInfo } from './core/weeks';
 import type ProjectDashboardPlugin from './main';
 import { TaskWriter, type TaskEdit } from './task-writer';
+// TEMPORARY until task 2.2: the view still reads the build-time rules instead of
+// the stored settings.
+import { TEMPORARY_SETTINGS } from './temporary-settings';
 import type { VaultSource } from './vault-source';
 import {
 	CLOSED_POPOVER_STATE,
@@ -278,13 +281,13 @@ export class ProjectDashboardView extends ItemView {
 				path: target.path,
 				line: line.line,
 				raw: line.raw,
-				date: scheduleDateForWeek(target.week),
+				date: scheduleDateForWeek(target.week, TEMPORARY_SETTINGS),
 			})),
 			addTask: (text) => this.runPopoverEdit((target) => ({
 				kind: 'add',
 				path: target.path,
 				text,
-				date: scheduleDateForWeek(target.week),
+				date: scheduleDateForWeek(target.week, TEMPORARY_SETTINGS),
 			})),
 			jump: (line) => {
 				const path = this.popoverTarget?.path;
@@ -687,7 +690,7 @@ export class ProjectDashboardView extends ItemView {
 			projectName: project.name,
 			weekLabel: target.week,
 			overflowEnd: bar.classList.contains('bar-overflow') ? project.end : null,
-			rows: taskLinesForWeek(project.task_lines, target.week),
+			rows: taskLinesForWeek(project.task_lines, target.week, TEMPORARY_SETTINGS),
 			unscheduled: unscheduledTasks(project.task_lines),
 		}, state);
 		this.popoverTarget = target;
@@ -957,7 +960,9 @@ export class ProjectDashboardView extends ItemView {
 			if (key === project.category) option.selected = true;
 		}
 
-		const cells: Cell[] = this.viewMode === 'timeline' ? timelineCells(project, weeks) : perWeekCells(project, weeks);
+		const cells: Cell[] = this.viewMode === 'timeline'
+			? timelineCells(project, weeks)
+			: perWeekCells(project, weeks, TEMPORARY_SETTINGS);
 		weeks.forEach((w, i) => {
 			const cell = cells[i]!;
 			const borderCls = w.isQuarterStart ? 'q-start' : w.isMonthStart ? 'm-start' : '';

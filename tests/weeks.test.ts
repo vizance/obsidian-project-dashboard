@@ -5,12 +5,15 @@ import {
 	mondayOfWeek,
 	monthDayLabel,
 	monthDayWeekdayLabel,
-	taskDateToWeekLabel,
 	todayLocal,
 	todayWeekIndex,
+	weekOfTaskDate,
 	weekRangeLabel,
 	weekdayChar,
 } from '../src/core/weeks';
+
+const SAT_OFF = { saturdayCountsAsNextWeek: false };
+const SAT_ON = { saturdayCountsAsNextWeek: true };
 
 describe('buildWeeks', () => {
 	it('covers W1 through W53 for 2026', () => {
@@ -43,13 +46,31 @@ describe('todayWeekIndex', () => {
 	});
 });
 
-describe('taskDateToWeekLabel', () => {
-	it('keeps a weekday task in its own week', () => {
-		expect(taskDateToWeekLabel('2026-10-30')).toEqual({ label: '2026-W44', isBumpedSat: false });
+describe('weekOfTaskDate', () => {
+	// Example: week of a single date（dashboard-task-derived-promise）：一列一個測試，
+	// 兩種設定都比對。
+	it.each([
+		['2026-10-30', '2026-W44', '2026-W44'],
+		['2026-10-31', '2026-W44', '2026-W45'],
+		['2026-11-01', '2026-W44', '2026-W44'],
+		['2027-01-02', '2026-W53', '2027-W01'],
+	])('%s -> %s (off) / %s (on)', (date, whenOff, whenOn) => {
+		expect(weekOfTaskDate(date, SAT_OFF)!.label).toBe(whenOff);
+		expect(weekOfTaskDate(date, SAT_ON)!.label).toBe(whenOn);
 	});
 
-	it('bumps a Saturday task to the following week', () => {
-		expect(taskDateToWeekLabel('2026-10-31')).toEqual({ label: '2026-W45', isBumpedSat: true });
+	it('flags a Saturday as bumped only when the setting is on', () => {
+		expect(weekOfTaskDate('2026-10-31', SAT_ON)).toEqual({ label: '2026-W45', isBumpedSat: true });
+		expect(weekOfTaskDate('2026-10-31', SAT_OFF)).toEqual({ label: '2026-W44', isBumpedSat: false });
+	});
+
+	it('never flags a weekday as bumped', () => {
+		expect(weekOfTaskDate('2026-10-30', SAT_ON)).toEqual({ label: '2026-W44', isBumpedSat: false });
+	});
+
+	it('returns null for a date that does not exist', () => {
+		expect(weekOfTaskDate('not-a-date', SAT_ON)).toBeNull();
+		expect(weekOfTaskDate('2026-02-30', SAT_ON)).toBeNull();
 	});
 });
 
