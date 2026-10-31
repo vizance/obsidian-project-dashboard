@@ -10,6 +10,8 @@
 	--quarter-bg: #fef3c7;
 	--month-bg: #e2e8f0;
 	--quarter-text: #b45309;
+	/* 超出預計結束日期的警示紅，與 .bar.bar-overflow 同一個色 */
+	--overflow-red: #e3563a;
 
 	padding: 0;
 	background: var(--bg);
@@ -109,6 +111,61 @@
 	pointer-events: none;
 }
 .project-dashboard .empty { padding: 40px 24px; color: var(--text-dim); }
+
+/* 月視圖 ---------------------------------------------------------------- */
+
+.project-dashboard .controls .scale-switch { display: inline-flex; border: 1px solid var(--grid); border-radius: 4px; overflow: hidden; }
+/* Obsidian 的全域按鈕樣式會加固定高度與陰影；控制列的按鈕都是文字型，統一拿掉 */
+.project-dashboard .controls button { height: auto; box-shadow: none; font: inherit; cursor: pointer; }
+.project-dashboard .controls .scale-option { border: none; border-radius: 0; background: var(--bg); color: var(--text-dim); padding: 1px 10px; }
+.project-dashboard .controls .scale-option + .scale-option { border-left: 1px solid var(--grid); }
+.project-dashboard .controls .scale-option:hover { color: var(--text); }
+.project-dashboard .controls .scale-option.active { background: var(--month-bg); color: var(--text); font-weight: 600; }
+
+.project-dashboard .controls .month-nav { display: inline-flex; align-items: center; gap: 6px; }
+.project-dashboard .controls .month-nav[hidden] { display: none; }
+.project-dashboard .controls .month-nav-btn { background: none; border: 1px solid transparent; border-radius: 3px; color: var(--text-dim); padding: 1px 6px; }
+.project-dashboard .controls .month-nav-btn:hover { background: var(--panel); border-color: var(--grid-soft); color: var(--text); }
+.project-dashboard .controls .month-title { color: var(--text); font-weight: 600; }
+
+/*
+ * 週欄平分剩下的寬度：table-layout: fixed 會把沒有指定寬度的欄平均分配，所以
+ * 月視圖不需要橫向捲動。年視圖 32px 的固定週寬只掛在 .week / .week-cell 上，
+ * 不會套到這裡來。
+ */
+.project-dashboard table.month-grid { width: 100%; table-layout: fixed; }
+/*
+ * 下面的選擇器都帶上 table.month-grid：`table.gantt th/td { padding: 0 }` 的
+ * 權重比單獨的 th.month-week／td.month-cell 高，不加就會被它蓋掉。
+ */
+.project-dashboard table.month-grid th.month-week { padding: 4px 6px; text-align: left; font-size: 10px; font-weight: 500; color: var(--text-dim); background: var(--panel); border-left: 1px solid var(--grid-soft); }
+.project-dashboard table.month-grid th.month-week .mw-week { font-size: 11px; font-weight: 600; color: var(--text); }
+.project-dashboard table.month-grid th.month-week .mw-range { white-space: nowrap; }
+.project-dashboard table.month-grid th.month-unscheduled,
+.project-dashboard table.month-grid td.month-unscheduled { width: 56px; text-align: center; font-size: 11px; color: var(--text-dim); border-left: 1px solid var(--grid); }
+.project-dashboard table.month-grid th.month-unscheduled { padding: 4px 2px; background: var(--panel); }
+/* 「還沒排」欄只顯示數量與提示，點了沒有反應 */
+.project-dashboard table.month-grid td.month-unscheduled { padding: 4px 2px; cursor: default; }
+
+.project-dashboard table.month-grid td.month-cell { position: relative; vertical-align: top; padding: 4px 6px; border-left: 3px solid transparent; font-size: 12px; line-height: 1.45; }
+/* 底色用疊上去的一層色塊，類別色才能用同一個 CSS 變數調透明度 */
+.project-dashboard table.month-grid td.month-cell::before { content: ""; position: absolute; inset: 0; pointer-events: none; }
+.project-dashboard table.month-grid td.month-cell.mk-solid::before { background: var(--pd-cat-color); opacity: 0.12; }
+.project-dashboard table.month-grid td.month-cell.mk-settled::before { background: var(--pd-cat-color); opacity: 0.06; }
+.project-dashboard table.month-grid td.month-cell.mk-overflow::before { background: var(--overflow-red); opacity: 0.14; }
+.project-dashboard table.month-grid td.month-cell.mk-solid { border-left-color: var(--pd-cat-color); }
+.project-dashboard table.month-grid td.month-cell.mk-settled { border-left-color: var(--pd-cat-color); }
+.project-dashboard table.month-grid td.month-cell.mk-dashed { border-left-style: dashed; border-left-color: var(--pd-cat-color); }
+.project-dashboard table.month-grid td.month-cell.mk-overflow { border-left-color: var(--overflow-red); }
+.project-dashboard table.month-grid td.month-cell.done,
+.project-dashboard table.month-grid td.month-cell.cancelled { filter: grayscale(100%); opacity: 0.55; }
+/* 空白格沒有 data-path，所以也沒有手指游標：它打不開浮窗 */
+.project-dashboard table.month-grid td.month-cell[data-path] { cursor: pointer; }
+/* position: relative 讓任務文字畫在底色那一層之上；長文字自動換行，格子隨之長高 */
+.project-dashboard .mc-line { position: relative; overflow-wrap: anywhere; }
+.project-dashboard .mc-done { color: var(--text-dim); }
+.project-dashboard .mc-overdue { color: var(--text-error, #b4231a); }
+.project-dashboard .mc-open { color: var(--text); }
 
 .project-dashboard #help-panel {
 	position: fixed;
@@ -288,8 +345,12 @@
 	text-align: center;
 }
 .project-dashboard #help-panel .shortcuts ul,
-.project-dashboard #help-panel .legend-visual ul { list-style: none; padding: 0; margin: 0; }
-.project-dashboard #help-panel .shortcuts li { margin-bottom: 4px; }
+.project-dashboard #help-panel .legend-visual ul,
+.project-dashboard #help-panel .month-view-help ul { list-style: none; padding: 0; margin: 0; }
+.project-dashboard #help-panel .shortcuts li,
+.project-dashboard #help-panel .month-view-help li { margin-bottom: 4px; }
+/* 三種文字樣式的示範字寬度對齊，說明文字才排成一欄 */
+.project-dashboard #help-panel .mv-sample { display: inline-block; min-width: 54px; }
 .project-dashboard #help-panel .legend-visual li {
 	display: flex;
 	align-items: flex-start;

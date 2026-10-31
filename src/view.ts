@@ -2,12 +2,14 @@ import { ItemView, MarkdownView, Scope, TFile, type WorkspaceLeaf } from 'obsidi
 import { CATEGORIES, CATEGORY_KEYS } from './core/config';
 import type { Cell } from './core/cells';
 import { perWeekCells, sortProjects, spanWeekOffset, timelineCells, visibleProjects } from './core/cells';
+import { monthOfDate, monthTitle, shiftMonth, weeksOfMonth, type MonthRef } from './core/months';
 import {
 	applyCategoryOverride,
 	clampProjColWidth,
 	parseCategoryOrder,
 	parsePinnedCategory,
 	parseProjColWidth,
+	parseScale,
 	parseViewMode,
 	resolveInitialHelpPanel,
 } from './core/prefs';
@@ -23,6 +25,8 @@ import {
 import type { DashboardSettings } from './core/settings';
 import { buildWeeks, groupMonths, groupQuarters, todayLocal, todayWeekIndex, type WeekInfo } from './core/weeks';
 import type ProjectDashboardPlugin from './main';
+import { MonthView } from './month-view';
+import { projectStateClass, renderProjectColHeader, renderProjectHeadCell } from './project-column';
 import { TaskWriter, type TaskEdit } from './task-writer';
 import type { VaultSource } from './vault-source';
 import {
@@ -72,6 +76,10 @@ interface PopoverTarget {
 export class ProjectDashboardView extends ItemView {
 	private today = '';
 	private viewMode: 'per-week' | 'timeline' = 'per-week';
+	private scale: 'year' | 'month' = 'year';
+	// 顯示中的月份只放在記憶體：每次進月視圖都回到今天這週所屬的月份
+	// （dashboard-month-view：the shown month SHALL NOT be stored）。
+	private shownMonth: MonthRef = { year: 1970, month: 1 };
 	private categoryOrder: string[] = [];
 	private pinnedCategory: string | null = null;
 	private projColWidth = 280;
@@ -89,13 +97,20 @@ export class ProjectDashboardView extends ItemView {
 
 	private projects: ProjectRecord[] = [];
 	private weeks: WeekInfo[] = [];
+	// 月視圖那個月的週。年視圖的 this.weeks 只有今年，所以兩份分開放。
+	private monthWeeks: WeekInfo[] = [];
 	private missingFolderMessage: string | null = null;
 	private popover!: WeekPopover;
+	private monthView!: MonthView;
 	private taskWriter!: TaskWriter;
 
 	private metaEl!: HTMLElement;
 	private legendEl!: HTMLElement;
 	private chartEl!: HTMLElement;
+	private scaleYearBtn!: HTMLButtonElement;
+	private scaleMonthBtn!: HTMLButtonElement;
+	private monthNavEl!: HTMLElement;
+	private monthTitleEl!: HTMLElement;
 	private helpPanelEl!: HTMLElement;
 	private helpFabEl!: HTMLElement;
 	private popoverEl!: HTMLElement;
@@ -208,6 +223,9 @@ export class ProjectDashboardView extends ItemView {
 
 	private loadPreferences(): void {
 		this.viewMode = parseViewMode(this.readLocalStorage('dashboard.viewMode'));
+		this.scale = parseScale(this.readLocalStorage('dashboard.scale'));
+		// 分頁以月視圖開啟時也從本月開始，不是從上次看的月份。
+		this.shownMonth = monthOfDate(this.today);
 		this.categoryOrder = parseCategoryOrder(this.readLocalStorage('dashboard.categoryOrder'), CATEGORY_KEYS);
 		this.pinnedCategory = parsePinnedCategory(this.readLocalStorage('dashboard.pinnedCategory'), CATEGORY_KEYS);
 		this.projColWidth = parseProjColWidth(this.readLocalStorage('dashboard.projColWidth'));
@@ -248,6 +266,8 @@ export class ProjectDashboardView extends ItemView {
 		this.registerDomEvent(editCategoriesInput, 'change', () => {
 			this.contentEl.toggleClass('editing-categories', editCategoriesInput.checked);
 		});
+
+		this.buildScaleControls(controls);
 
 		this.chartEl = this.contentEl.createDiv({ attr: { id: 'chart' } });
 
@@ -324,7 +344,87 @@ export class ProjectDashboardView extends ItemView {
 		this.toastEl = this.contentEl.createDiv({ attr: { id: 'toast', role: 'status', 'aria-live': 'polite' } });
 		this.toastEl.hidden = true;
 
+		// 月視圖透過 host 介面拿資料：篩選、排序、設定、今天的日期都還是 view 說了算。
+		this.monthView = new MonthView({
+			projects: () => this.visibleSortedProjects(),
+			weeks: () => this.monthWeeks,
+			settings: () => this.settings,
+			today: () => this.today,
+			categoryOrder: () => this.categoryOrder,
+		});
+
 		this.setHelpPanelVisible(this.helpPanelOpen);
+	}
+
+	// 控制列的「年／月」切換與月份導覽。元素只建一次，之後只改文字與顯示與否，
+	// 重繪圖表不會動到控制列（design.md：重繪時保留畫面狀態）。
+	private buildScaleControls(controls: HTMLElement): void {
+		const scaleSwitch = controls.createDiv({ cls: 'scale-switch', attr: { role: 'group', 'aria-label': '年或月視圖' } });
+		this.scaleYearBtn = scaleSwitch.createEl('button', {
+			cls: 'scale-option',
+			text: '年',
+			attr: { type: 'button', title: '年視圖' },
+		});
+		this.scaleMonthBtn = scaleSwitch.createEl('button', {
+			cls: 'scale-option',
+			text: '月',
+			attr: { type: 'button', title: '月視圖' },
+		});
+		this.registerDomEvent(this.scaleYearBtn, 'click', () => this.setScale('year'));
+		this.registerDomEvent(this.scaleMonthBtn, 'click', () => this.setScale('month'));
+
+		this.monthNavEl = controls.createDiv({ cls: 'month-nav' });
+		const prev = this.monthNavEl.createEl('button', {
+			cls: 'month-nav-btn',
+			text: '◀',
+			attr: { type: 'button', title: '上一個月' },
+		});
+		this.monthTitleEl = this.monthNavEl.createSpan({ cls: 'month-title' });
+		const next = this.monthNavEl.createEl('button', {
+			cls: 'month-nav-btn',
+			text: '▶',
+			attr: { type: 'button', title: '下一個月' },
+		});
+		const current = this.monthNavEl.createEl('button', {
+			cls: 'month-nav-btn',
+			text: '本月',
+			attr: { type: 'button', title: '回到今天這週所屬的月份' },
+		});
+		this.registerDomEvent(prev, 'click', () => this.showMonth(shiftMonth(this.shownMonth, -1)));
+		this.registerDomEvent(next, 'click', () => this.showMonth(shiftMonth(this.shownMonth, 1)));
+		this.registerDomEvent(current, 'click', () => this.showMonth(monthOfDate(this.today)));
+
+		this.updateScaleControls();
+	}
+
+	private setScale(next: 'year' | 'month'): void {
+		if (this.scale === next) return;
+		this.scale = next;
+		// 每次進月視圖都回到今天這週所屬的月份。
+		if (next === 'month') this.shownMonth = monthOfDate(this.today);
+		this.writeLocalStorage('dashboard.scale', next);
+		this.updateScaleControls();
+		// renderChart 會關掉浮窗，切換年／月之後沒有任何路徑會再把它打開。
+		this.renderChart();
+	}
+
+	private showMonth(ref: MonthRef): void {
+		this.shownMonth = ref;
+		this.updateScaleControls();
+		this.renderChart();
+	}
+
+	private updateScaleControls(): void {
+		const isMonth = this.scale === 'month';
+		this.scaleYearBtn.toggleClass('active', !isMonth);
+		this.scaleMonthBtn.toggleClass('active', isMonth);
+		this.scaleYearBtn.setAttribute('aria-pressed', String(!isMonth));
+		this.scaleMonthBtn.setAttribute('aria-pressed', String(isMonth));
+		this.monthNavEl.hidden = !isMonth;
+		if (isMonth) {
+			const { year, month } = this.shownMonth;
+			this.monthTitleEl.setText(monthTitle(year, month, weeksOfMonth(year, month)));
+		}
 	}
 
 	private buildHelpPanel(): void {
@@ -343,7 +443,10 @@ export class ProjectDashboardView extends ItemView {
 		const shortcutsUl = shortcuts.createEl('ul');
 		const tLi = shortcutsUl.createEl('li');
 		tLi.createEl('kbd', { text: 'T' });
-		tLi.appendText(' 切換週視圖 / Timeline');
+		tLi.appendText(' 切換週視圖 / Timeline，只作用在年視圖');
+		const mLi = shortcutsUl.createEl('li');
+		mLi.createEl('kbd', { text: 'M' });
+		mLi.appendText(' 切換年 / 月');
 		const helpLi = shortcutsUl.createEl('li');
 		helpLi.createEl('kbd', { text: '?' });
 		helpLi.appendText(' 顯示 / 隱藏這個面板');
@@ -367,6 +470,22 @@ export class ProjectDashboardView extends ItemView {
 			div.createEl('code', { text: '預計結束日期' });
 		});
 		addLegendRow('blank', (div) => div.appendText('不在專案區間 / 已結案專案的無任務週'));
+
+		// 月視圖的格子直接列任務文字，三種樣式各代表什麼要寫在這裡，面板才是一份
+		// 完整的靜態說明（dashboard-keyboard-shortcuts：Help panel content）。
+		const monthSection = this.helpPanelEl.createEl('section', { cls: 'month-view-help' });
+		monthSection.createEl('h3', { text: '月視圖的任務文字' });
+		const monthUl = monthSection.createEl('ul');
+
+		const addMonthRow = (sampleCls: string, sample: string, explanation: string): void => {
+			const li = monthUl.createEl('li');
+			li.createSpan({ cls: `mv-sample mc-${sampleCls}`, text: sample });
+			li.appendText(` ${explanation}`);
+		};
+
+		addMonthRow('done', '✓ 任務', '已完成的任務');
+		addMonthRow('overdue', '任務', '週已過還沒完成的任務');
+		addMonthRow('open', '任務', '還沒完成、週還沒過的任務');
 	}
 
 	private registerInteractions(): void {
@@ -387,9 +506,17 @@ export class ProjectDashboardView extends ItemView {
 		// every handled key immediately leak into Obsidian's own keymap too.
 		const toggleViewMode = (evt: KeyboardEvent): boolean => {
 			if (this.shouldIgnoreShortcut(evt)) return true;
+			// 視圖模式只作用在年視圖：月視圖按 T 什麼都不做，也不寫 dashboard.viewMode
+			// （dashboard-keyboard-shortcuts：T does nothing in the month view）。
+			if (this.scale === 'month') return true;
 			this.viewMode = this.viewMode === 'timeline' ? 'per-week' : 'timeline';
 			this.writeLocalStorage('dashboard.viewMode', this.viewMode);
 			this.renderChart();
+			return false;
+		};
+		const toggleScale = (evt: KeyboardEvent): boolean => {
+			if (this.shouldIgnoreShortcut(evt)) return true;
+			this.setScale(this.scale === 'month' ? 'year' : 'month');
 			return false;
 		};
 		const toggleHelp = (evt: KeyboardEvent): boolean => {
@@ -411,6 +538,9 @@ export class ProjectDashboardView extends ItemView {
 		scope.register([], 't', toggleViewMode);
 		scope.register([], 'T', toggleViewMode); // caps lock: capital T without the Shift flag
 		scope.register(['Shift'], 'T', toggleViewMode);
+		scope.register([], 'm', toggleScale);
+		scope.register([], 'M', toggleScale); // caps lock: capital M without the Shift flag
+		scope.register(['Shift'], 'M', toggleScale);
 		scope.register([], '/', toggleHelp);
 		scope.register(['Shift'], '?', toggleHelp);
 		scope.register([], 'Escape', closeOnEscape);
@@ -894,24 +1024,40 @@ export class ProjectDashboardView extends ItemView {
 			return;
 		}
 
+		if (this.scale === 'month') this.renderMonthChart();
+		else this.renderYearChart();
+	}
+
+	private renderMonthChart(): void {
+		const { year, month } = this.shownMonth;
+		// 月視圖自己算那個月的週，所以可以顯示今年以外的月份（例如 2027 年 1 月）。
+		this.monthWeeks = weeksOfMonth(year, month);
+		this.monthView.render(this.chartEl);
+	}
+
+	// 與年視圖共用的列：篩選、排序、分組都走這一條，月視圖才會有相同的列與順序。
+	private visibleSortedProjects(): ProjectRecord[] {
+		return sortProjects(
+			visibleProjects(this.projects, this.showClosed),
+			this.categoryOrder,
+			this.pinnedCategory,
+		);
+	}
+
+	private renderYearChart(): void {
 		const year = Number(this.today.slice(0, 4));
 		const weeks = buildWeeks(year);
 		this.weeks = weeks;
 		const quarterGroups = groupQuarters(weeks);
 		const monthGroups = groupMonths(weeks);
 		const todayIdx = todayWeekIndex(weeks, this.today);
-		const visible = sortProjects(
-			visibleProjects(this.projects, this.showClosed),
-			this.categoryOrder,
-			this.pinnedCategory,
-		);
+		const visible = this.visibleSortedProjects();
 
 		const table = this.chartEl.createEl('table', { cls: 'gantt' });
 		const thead = table.createEl('thead');
 
 		const quarterRow = thead.createEl('tr');
-		const projTh = quarterRow.createEl('th', { cls: 'proj-col', attr: { rowspan: 3 }, text: '專案' });
-		projTh.createSpan({ cls: 'resize-handle', attr: { title: '拖拉調整欄寬' } });
+		renderProjectColHeader(quarterRow, 3);
 		for (const qg of quarterGroups) {
 			quarterRow.createEl('th', { cls: 'quarter', attr: { colspan: qg.count }, text: `Q${qg.q}` });
 		}
@@ -948,33 +1094,10 @@ export class ProjectDashboardView extends ItemView {
 		weeks: WeekInfo[],
 		todayIdx: number,
 	): void {
-		const stateCls = project.status === 'done' ? 'done' : project.status === 'cancelled' ? 'cancelled' : '';
-		const statusCls = project.status === 'done' ? 'status-done' : project.status === 'cancelled' ? 'status-cancelled' : '';
+		const stateCls = projectStateClass(project);
 
 		const tr = tbody.createEl('tr');
-		const projCell = tr.createEl('td', { cls: ['proj-cell', statusCls].filter(Boolean).join(' ') });
-		projCell.setCssProps({ '--pd-cat-color': project.color });
-		projCell.createSpan({ cls: 'cat-dot' });
-		projCell.createSpan({
-			cls: 'name',
-			text: project.name,
-			attr: { title: '在右側開啟筆記', 'data-path': project.path },
-		});
-		if (project.warnings.length > 0) {
-			projCell.createSpan({ cls: 'warn', text: '⚠', attr: { title: project.warnings.join(', ') } });
-		}
-
-		const select = projCell.createEl('select', {
-			cls: 'cat-select',
-			attr: { 'data-project': project.name, title: '變更此專案的分類（自動＝清除手動覆寫）' },
-		});
-		select.createEl('option', { attr: { value: '__auto__' }, text: '自動（清除覆寫）' });
-		for (const key of this.categoryOrder) {
-			const category = CATEGORIES[key];
-			if (!category) continue;
-			const option = select.createEl('option', { attr: { value: key }, text: category.label });
-			if (key === project.category) option.selected = true;
-		}
+		renderProjectHeadCell(tr, project, this.categoryOrder);
 
 		const cells: Cell[] = this.viewMode === 'timeline'
 			? timelineCells(project, weeks)
