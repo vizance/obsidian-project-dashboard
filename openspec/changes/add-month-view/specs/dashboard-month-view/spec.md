@@ -95,13 +95,19 @@ Each week cell of the month view SHALL list the project's task lines for that we
 - an open line whose week ends before today's week starts (an overdue line) SHALL show its text in the warning red;
 - any other open line SHALL show its text normally.
 
-Each cell's kind SHALL be the result of applying the per-week cell model to the project and the shown month's weeks, for any month and any year the month view can show (it does not depend on which year the year view renders). The kinds are `solid`, `settled`, `overflow`, `dashed`, and `blank`; a run that the per-week model returns as one `span-dashed` bar SHALL appear as individual `dashed` cells. The cell's background and border SHALL follow its kind. A cell SHALL show no text when no task line maps to its week, and a `blank` cell SHALL show no text even when task lines map to its week, because it cannot be opened (for example a task dated before the project's start).
+Each cell's kind SHALL be the kind the per-week cell model gives that week when the model runs over one continuous run of weeks that covers both the project's whole range (from its start through its overflow end) and the shown month, for any month and any year the month view can show (it does not depend on which year the year view renders). A week therefore has the same kind in the month view as in a year view that shows it, even when the shown month lies entirely after the project's expected end date. The kinds are `solid`, `settled`, `overflow`, `dashed`, and `blank`; a run that the per-week model returns as one `span-dashed` bar SHALL appear as individual `dashed` cells. The cell's background and border SHALL follow its kind. A cell SHALL show no text when no task line maps to its week, and a `blank` cell SHALL show no text even when task lines map to its week, because it cannot be opened (for example a task dated before the project's start).
 
 #### Scenario: A blank week shows no text
 
 - **GIVEN** a project that starts on `2026-11-02` and whose note contains `- [ ] 前置作業 📅 2026-10-28`
 - **WHEN** the month view shows `2026-10`
 - **THEN** that project's `W44` cell MUST be `blank` and MUST show no text
+
+#### Scenario: Overflow weeks after the expected end
+
+- **GIVEN** an open project that runs from `2026-08-03` to `2026-08-30` and whose note contains `- [ ] 補交成果報告 📅 2026-09-09`
+- **WHEN** the month view shows `2026-09`
+- **THEN** that project's `W37` cell MUST be `overflow` and MUST list `補交成果報告`
 
 #### Scenario: Line states in one cell
 

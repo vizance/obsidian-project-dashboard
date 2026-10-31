@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { monthViewCells, perWeekCells, sortProjects, spanWeekOffset, timelineCells } from '../src/core/cells';
-import { weeksOfMonth } from '../src/core/months';
-import type { ProjectRecord } from '../src/core/scan';
+import { type Cell, monthViewCells, perWeekCells, sortProjects, spanWeekOffset, timelineCells } from '../src/core/cells';
+import { monthCellTaskLines, weeksOfMonth } from '../src/core/months';
+import { scanProjectNote, type ProjectRecord } from '../src/core/scan';
+import { defaultSettings } from '../src/core/settings';
 import { buildWeeks, type WeekInfo } from '../src/core/weeks';
 
 const weeks: WeekInfo[] = buildWeeks(2026);
@@ -36,6 +37,31 @@ function project(overrides: Partial<ProjectRecord>): ProjectRecord {
 		task_lines: [],
 		...overrides,
 	};
+}
+
+// 走真正的掃描器，overflow_end、occupied_weeks、task_lines 才是算出來的，不是手寫的。
+function scanned(filename: string, lines: string[], frontmatter: Record<string, string>): ProjectRecord {
+	const fm = Object.entries(frontmatter).map(([k, v]) => `${k}: ${v}`);
+	const text = ['---', ...fm, '---', '', ...lines].join('\n');
+	const record = scanProjectNote(
+		{ filename, text, path: `/tmp/${filename}` },
+		{ overrides: {}, today: '2026-10-30', settings: { ...defaultSettings(), saturdayCountsAsNextWeek: true } },
+	);
+	if (!record) throw new Error(`note was skipped: ${filename}`);
+	return record;
+}
+
+// 月視圖把年視圖的一條 span-dashed 攤成一格一格的 dashed，比對兩邊時年視圖也要攤開。
+function expandSpanDashed(cells: Cell[]): Cell[] {
+	const out = cells.slice();
+	for (let i = 0; i < out.length; i++) {
+		const cell = out[i]!;
+		if (cell.kind !== 'span-dashed') continue;
+		const last = Math.min(out.length - 1, i + cell.spanWeeks - 1);
+		for (let j = i; j <= last; j++) out[j] = { ...cell, kind: 'dashed', spanWeeks: 1 };
+		i = last;
+	}
+	return out;
 }
 
 describe('perWeekCells — per-week cell kinds', () => {
@@ -182,6 +208,67 @@ describe('monthViewCells', () => {
 		const cells = monthViewCells(p, monthWeeks, SAT_ON);
 		expect(monthWeeks.map((w) => w.label)).toEqual(['2027-W01', '2027-W02', '2027-W03', '2027-W04']);
 		expect(cells.map((c) => c.kind)).toEqual(['solid', 'dashed', 'dashed', 'dashed']);
+	});
+
+	// Scenario: Overflow weeks after the expected end（dashboard-month-view）。
+	// 整個專案都在九月之前，但超出預計結束日期的那一週在年視圖是 overflow，月視圖也要是。
+	it('keeps an overflow week after the expected end when the whole project is before the month', () => {
+		const p = scanned('🚧 P-範例專案 A.md', ['- [ ] 補交成果報告 📅 2026-09-09'], {
+			開始日期: '2026-08-03',
+			預計結束日期: '2026-08-30',
+		});
+		expect(p.overflow_end).toBe('2026-09-09');
+
+		const monthWeeks = weeksOfMonth(2026, 9);
+		const cells = monthViewCells(p, monthWeeks, SAT_ON);
+		const w37 = monthWeeks.findIndex((w) => w.label === '2026-W37');
+		expect(w37).not.toBe(-1);
+		expect(cells[w37]!.kind).toBe('overflow');
+		expect(monthCellTaskLines(p, '2026-W37', cells[w37]!.kind, SAT_ON, '2026-10-30').map((l) => l.text)).toEqual([
+			'補交成果報告',
+		]);
+	});
+
+	// 每一格的 kind 都必須等於年視圖同一週的 kind，不管顯示的是哪個月。
+	it('matches the year view’s kind for every week of every 2026 month', () => {
+		const cases: Array<[string, ProjectRecord]> = [
+			['no task dates', scanned('🚧 P-範例專案 B.md', [], { 開始日期: '2026-03-02', 預計結束日期: '2026-04-10' })],
+			[
+				'task before start',
+				scanned('🚧 P-範例專案 C.md', ['- [ ] 前置作業 📅 2026-10-28', '- [ ] 開工 📅 2026-11-04'], {
+					開始日期: '2026-11-02',
+					預計結束日期: '2026-11-29',
+				}),
+			],
+			[
+				'overflow into the next month',
+				scanned('🚧 P-範例專案 D.md', ['- [ ] 拍攝 📅 2026-08-12', '- [ ] 補交成果報告 📅 2026-09-09'], {
+					開始日期: '2026-08-03',
+					預計結束日期: '2026-08-30',
+				}),
+			],
+			[
+				'closed project',
+				scanned('✅ P-範例專案 E.md', ['- [x] 結案 📅 2026-06-16 ✅ 2026-06-15'], {
+					開始日期: '2026-05-04',
+					預計結束日期: '2026-06-28',
+				}),
+			],
+		];
+
+		for (const [label, p] of cases) {
+			const yearCells = expandSpanDashed(perWeekCells(p, weeks, SAT_ON));
+			for (let month = 1; month <= 12; month++) {
+				const monthWeeks = weeksOfMonth(2026, month);
+				const cells = monthViewCells(p, monthWeeks, SAT_ON);
+				expect(cells).toHaveLength(monthWeeks.length);
+				for (const [i, w] of monthWeeks.entries()) {
+					expect(`${label} ${w.label} ${cells[i]!.kind}`).toBe(
+						`${label} ${w.label} ${yearCells[weekIndex(w.label)]!.kind}`,
+					);
+				}
+			}
+		}
 	});
 });
 

@@ -1,5 +1,13 @@
 import type { ProjectRecord } from './scan';
-import { weekOfTaskDate, type WeekInfo, type WeekRules } from './weeks';
+import {
+	addDaysISO,
+	isoWeekLabelOfDate,
+	mondayOfWeek,
+	weekInfoFor,
+	weekOfTaskDate,
+	type WeekInfo,
+	type WeekRules,
+} from './weeks';
 
 export type CellKind = 'solid' | 'settled' | 'overflow' | 'dashed' | 'span-dashed' | 'span-solid' | 'blank';
 
@@ -137,12 +145,9 @@ export function perWeekCells(project: ProjectRecord, weeks: WeekInfo[], rules: W
 	});
 }
 
-// 月視圖的格子：和年視圖同一套 perWeekCells，只是年視圖畫成一條 span-dashed 的那
-// 一段，月視圖要每週一格，所以把它攤成一個個 dashed（原本被 span 蓋住的格子是
-// blank，一併換掉）。回傳的每一格都 spanWeeks === 1，和月視圖一格一週對齊。
-// weeks 可以是任何年份的任何一段週，月視圖因此能顯示今年以外的月份。
-export function monthViewCells(project: ProjectRecord, weeks: WeekInfo[], rules: WeekRules): Cell[] {
-	const cells = perWeekCells(project, weeks, rules);
+// 年視圖畫成一條 span-dashed 的那一段，月視圖要每週一格，所以把它攤成一個個 dashed
+// （原本被 span 蓋住的格子是 blank，一併換掉）。回傳的每一格都 spanWeeks === 1。
+function expandSpanDashed(cells: Cell[]): Cell[] {
 	for (let i = 0; i < cells.length; i++) {
 		const cell = cells[i]!;
 		if (cell.kind !== 'span-dashed') continue;
@@ -153,6 +158,55 @@ export function monthViewCells(project: ProjectRecord, weeks: WeekInfo[], rules:
 		i = last;
 	}
 	return cells;
+}
+
+function mondayOfDate(iso: string): string {
+	return mondayOfWeek(isoWeekLabelOfDate(new Date(`${iso}T00:00:00Z`)));
+}
+
+// 一段連續的週，同時蓋住專案的整個範圍（開始日到 overflow 結束日，沒有 overflow 就到
+// 預計結束日）與要顯示的那個月。month / isMonthStart / isQuarterStart 只有表頭會用，
+// perWeekCells 只讀 label、start、end，所以這裡只把月份填對、兩個旗標一律 false。
+function weeksCoveringProjectAndMonth(project: ProjectRecord, first: WeekInfo, last: WeekInfo): WeekInfo[] {
+	const end = project.end!;
+	// overflow_end 理論上只會晚於 end，但取大的那個才保證這段週一定蓋住整個範圍。
+	const rightEnd = project.overflow_end && project.overflow_end > end ? project.overflow_end : end;
+	const projectStart = mondayOfDate(project.start!);
+	const projectEnd = mondayOfDate(rightEnd);
+	const monthStart = mondayOfWeek(first.label);
+	const monthEnd = mondayOfWeek(last.label);
+	// ISO 日期字串的字典順序就是時間順序。
+	const from = projectStart < monthStart ? projectStart : monthStart;
+	const to = projectEnd > monthEnd ? projectEnd : monthEnd;
+
+	const run: WeekInfo[] = [];
+	for (let monday = from; monday <= to; monday = addDaysISO(monday, 7)) {
+		const d = new Date(`${monday}T00:00:00Z`);
+		run.push(weekInfoFor(isoWeekLabelOfDate(d), d.getUTCMonth(), false, false));
+	}
+	return run;
+}
+
+// 月視圖的格子：和年視圖同一套 perWeekCells，一週一格。
+// weeks 可以是任何年份的任何一段週，月視圖因此能顯示今年以外的月份。
+//
+// perWeekCells 的 startIdx / endIdx / overflowEndIdx 都是「傳進去的那段週」裡的索引，
+// 所以只傳當月那四五週的話，整個專案都落在當月之前時 endIdx 會是 -1，超出預計結束
+// 日期的那幾格就全變成 blank（年視圖同樣的週卻是 overflow）。因此先補出一段同時蓋住
+// 專案整個範圍與當月的連續週，在那段上算格子，最後只挑出當月的那幾格。
+export function monthViewCells(project: ProjectRecord, weeks: WeekInfo[], rules: WeekRules): Cell[] {
+	const first = weeks[0];
+	const last = weeks[weeks.length - 1];
+	// 沒有起訖日的專案每一格都是 blank，不需要補週。
+	if (!project.start || !project.end || !first || !last) {
+		return expandSpanDashed(perWeekCells(project, weeks, rules));
+	}
+
+	const run = weeksCoveringProjectAndMonth(project, first, last);
+	const cells = expandSpanDashed(perWeekCells(project, run, rules));
+	const byLabel = new Map(run.map((w, i) => [w.label, cells[i]!]));
+	const isClosed = project.status === 'done' || project.status === 'cancelled';
+	return weeks.map((w) => byLabel.get(w.label) ?? blankCell(isClosed));
 }
 
 export function timelineCells(project: ProjectRecord, weeks: WeekInfo[]): Cell[] {
