@@ -44,7 +44,7 @@ Category labels and colors (`CATEGORIES` in `src/core/config.ts`) are the one th
 
 The controls row has a `年` / `月` switch, and `M` toggles between the two as well. The year view is the whole-year chart described above. The month view shows one month at a time and writes the tasks into the cells, which is what weekly planning usually needs.
 
-In the month view the controls row also shows `◀`, the month title, `▶`, and `本月`. The title reads `2026 年 10 月（W41–W44）`: the year, the month, and the weeks that month holds. `◀` and `▶` step one month back or forward, across year boundaries; `本月` returns to the month of today's week. The month view always opens on the month of today's week — when you switch into it, and when you reopen the dashboard after restarting Obsidian. Only the year-versus-month choice is remembered, never the month you were last looking at. Changing the month, or switching between the two views, closes an open week popover.
+In the month view the controls row also shows `◀`, the month title, `▶`, and `本月`. The title reads `2026 年 10 月（W41–W44）`: the year, the month, and the weeks that month holds. `◀` and `▶` step one month back or forward, across year boundaries; `本月` returns to the month of today's week. The month view always opens on the month of today's week — when you switch into it, and when you reopen the dashboard after restarting Obsidian. Only the year-versus-month choice is remembered, never the month you were last looking at. Changing the month, or switching between the two views, closes an open popover.
 
 A week belongs to the month its **Monday** falls in. October 2026 is therefore W41–W44 and November 2026 is W45–W49 — the same way you fill in a weekly table, by the week's Monday. The one exception is week 1, which always counts as January, even when its Monday is still in December. The year view's month and quarter headers follow the same rule, so both views say the same thing about any week.
 
@@ -58,11 +58,11 @@ The cell's background and border follow the same cell kind as the year view: fil
 
 Click a cell to open the same week popover the year view opens, anchored on that cell, with every editing action available; clicking the same cell again closes it. This works even when the year view was left in timeline mode, because timeline mode applies to the year view only — and so does `T`: pressing `T` in the month view changes nothing.
 
-The last column, `還沒排`, shows how many of the project's tasks have no date yet, and stays empty when there are none. Hover it to see those tasks, one per line. It is not clickable.
+The last column, `還沒排`, shows how many of the project's tasks have no date yet, and stays empty when there are none. Click the count to open a popover — the same single popover the week cells use — which lists those undated tasks in note order. Each row has `↗` and one button per week of the shown month (`W41`, `W42`, `W43`, `W44`). A week button schedules that task into that week, writing exactly the date the week popover would write: the weekday from `Which day to write`, with the `Saturday tasks count for next week` exception. Weeks outside the project's range are greyed out and cannot be picked; `↗` jumps to the task's line in the note. After a task is scheduled the popover stays open with one row fewer, and it closes once the last one is gone. An empty cell does nothing.
 
 ## Edit tasks from the week popover
 
-Click a project's week cell to open that week's popover: the year view's cells in the per-week view mode — filled cells, empty dashed weeks, and the long dashed bar of a project that has no task dates yet — and the month view's cells. From there you can:
+Click a project's week cell to open that week's popover: the year view's cells in the per-week view mode — filled cells, empty dashed weeks, and the long dashed bar of a project that has no task dates yet — and the month view's cells. (The month view's `還沒排` column opens the same popover showing the undated-task list described above, not a week.) From there you can:
 
 - tick a task done, or untick it
 - move a task to the previous or next week with `◀` / `▶` (the date moves by 7 days, so the weekday stays the same)
@@ -135,7 +135,7 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 
 控制列有一組 `年` / `月` 切換，按 `M` 也能切換。年視圖就是上面說的那張整年的圖；月視圖一次顯示一個月，格子裡直接寫出任務，這是每週規劃時通常需要的樣子。
 
-月視圖時，控制列還會出現 `◀`、月份標題、`▶`、`本月`。標題寫成 `2026 年 10 月（W41–W44）`：年、月，以及這個月有哪幾週。`◀` `▶` 往前或往後一個月，可以跨年；`本月` 回到今天這週所屬的月份。月視圖永遠從今天這週所屬的月份開始——切進月視圖時是這樣，重開 Obsidian 再打開儀表板時也是這樣。只有「年或月」這個選擇會被記住，上次看的是哪個月不會。切換月份，或在兩個視圖之間切換，都會關掉開著的週浮窗。
+月視圖時，控制列還會出現 `◀`、月份標題、`▶`、`本月`。標題寫成 `2026 年 10 月（W41–W44）`：年、月，以及這個月有哪幾週。`◀` `▶` 往前或往後一個月，可以跨年；`本月` 回到今天這週所屬的月份。月視圖永遠從今天這週所屬的月份開始——切進月視圖時是這樣，重開 Obsidian 再打開儀表板時也是這樣。只有「年或月」這個選擇會被記住，上次看的是哪個月不會。切換月份，或在兩個視圖之間切換，都會關掉開著的浮窗。
 
 一週屬於它**星期一**落在的那個月。所以 2026 年 10 月是 W41–W44，11 月是 W45–W49，和你照著週一填週表格的方式一樣。唯一的例外是第 1 週，它永遠算一月，即使它的星期一還在去年 12 月。年視圖的月份與季度表頭用同一條規則，所以兩個視圖對任何一週的說法都相同。
 
@@ -149,11 +149,11 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 
 點格子會打開年視圖打開的那個週浮窗，錨點就在那一格，所有編輯動作都能用；再點同一格就關掉。年視圖存在 timeline 模式時也一樣可以點，因為 timeline 模式只作用在年視圖——`T` 也是：在月視圖按 `T` 什麼都不會改。
 
-最後一欄 `還沒排` 顯示這個專案還有幾個任務沒有日期，沒有時留白。滑過去可以看到那些任務，一行一個。這一欄點了不會有反應。
+最後一欄 `還沒排` 顯示這個專案還有幾個任務沒有日期，沒有時留白。點那個數字會打開一個浮窗——和週格子用的是同一個浮窗——按筆記裡的順序列出這些還沒排日期的任務。每一列有 `↗`，以及顯示中那個月每一週一顆按鈕（`W41`、`W42`、`W43`、`W44`）。按週按鈕就把那個任務排進那一週，寫進筆記的日期和週浮窗寫的完全一樣：`Which day to write` 設定的那一天，以及 `Saturday tasks count for next week` 的例外。不在專案期間的那幾週按鈕是灰的，按不下去；`↗` 跳到筆記裡那一行。排好一個之後浮窗會留著，少一列，排完最後一個就關掉。留白的格子點了沒有反應。
 
 ### 在週浮窗裡編輯任務
 
-點專案的週格子，就會打開那一週的浮窗：逐週模式下年視圖的格子（實心的格子、空的虛線週，還有還沒有任何任務日期的整條虛線），以及月視圖的格子。打開後可以：
+點專案的週格子，就會打開那一週的浮窗：逐週模式下年視圖的格子（實心的格子、空的虛線週，還有還沒有任何任務日期的整條虛線），以及月視圖的格子。（月視圖的 `還沒排` 欄打開的是同一個浮窗，裡面是上面說的那份還沒排日期的任務清單，不是某一週。）打開後可以：
 
 - 勾選任務完成，或取消勾選
 - 用 `◀` `▶` 把任務移到前一週或下一週（日期加減 7 天，星期幾不變）
