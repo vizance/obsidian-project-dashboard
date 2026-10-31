@@ -144,8 +144,9 @@
 .project-dashboard table.month-grid th.month-unscheduled,
 .project-dashboard table.month-grid td.month-unscheduled { width: 56px; text-align: center; font-size: 11px; color: var(--text-dim); border-left: 1px solid var(--grid); }
 .project-dashboard table.month-grid th.month-unscheduled { padding: 4px 2px; background: var(--panel); }
-/* 「還沒排」欄只顯示數量與提示，點了沒有反應 */
+/* 數量 0 的格子沒有 data-path，所以沒有手指游標：它打不開浮窗 */
 .project-dashboard table.month-grid td.month-unscheduled { padding: 4px 2px; cursor: default; }
+.project-dashboard table.month-grid td.month-unscheduled[data-path] { cursor: pointer; }
 
 .project-dashboard table.month-grid td.month-cell { position: relative; vertical-align: top; padding: 4px 6px; border-left: 3px solid transparent; font-size: 12px; line-height: 1.45; }
 /* 底色用疊上去的一層色塊，類別色才能用同一個 CSS 變數調透明度 */
@@ -268,6 +269,14 @@
 	padding: 2px 4px;
 }
 .pd-week-popover .wp-btn:hover:not(:disabled) { background: #f1f5f9; border-color: var(--grid-soft); color: var(--text); }
+
+/*
+ * 還沒排浮窗的一列：任務文字在左，週按鈕與 `↗` 在右。按鈕數量隨月份有四到五顆，
+ * 浮窗窄的時候換行而不是把文字壓掉，所以文字從上緣開始對齊。
+ */
+.pd-week-popover .wp-us-row { align-items: flex-start; padding: 2px 0; }
+.pd-week-popover .wp-us-row .wp-weeks { flex-wrap: wrap; justify-content: flex-end; max-width: 60%; }
+.pd-week-popover .wp-week-btn { border-color: var(--grid-soft); min-width: 26px; text-align: center; }
 
 .pd-week-popover .wp-footer { border-top: 1px solid var(--grid-soft); padding-top: 4px; }
 .pd-week-popover .wp-entry {

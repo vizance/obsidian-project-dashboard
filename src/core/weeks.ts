@@ -75,6 +75,13 @@ export function weekRangeLabel(weekLabel: string): string {
 	return `W${week}\u3000${fmt(monday)}（一）– ${fmt(sunday)}（日）`;
 }
 
+// 月視圖週表頭第二行與還沒排浮窗週按鈕的提示共用的 Monday–Sunday 區間，
+// 例如 `10/26–11/1`（en dash，和規格一致）。兩邊只有一份格式，才不會寫成兩種。
+export function weekRangeShort(weekLabel: string): string {
+	const monday = mondayOfWeek(weekLabel);
+	return `${monthDayLabel(monday)}–${monthDayLabel(addDaysISO(monday, 6))}`;
+}
+
 export function quarterOf(month: number): number {
 	return Math.floor(month / 3) + 1;
 }

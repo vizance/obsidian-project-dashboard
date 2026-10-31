@@ -2,18 +2,11 @@ import type { Cell } from './core/cells';
 import { monthViewCells } from './core/cells';
 import { monthCellTaskLines, unscheduledSummary } from './core/months';
 import type { ProjectRecord } from './core/scan';
-import {
-	addDaysISO,
-	mondayOfWeek,
-	monthDayLabel,
-	todayWeekIndex,
-	type WeekInfo,
-	type WeekRules,
-} from './core/weeks';
+import { todayWeekIndex, weekRangeShort, type WeekInfo, type WeekRules } from './core/weeks';
 import { projectStateClass, renderProjectColHeader, renderProjectHeadCell } from './project-column';
 
-// 週表頭第二行的 Monday–Sunday 區間，例如 `10/26–11/1`（en dash，和規格一致）。
-const RANGE_DASH = '–';
+// 「還沒排」格子的提示：任務本身在點開的浮窗裡列出來，所以這裡只說明點了會發生什麼。
+const UNSCHEDULED_TOOLTIP = '點一下，把任務排進這個月的某一週';
 
 // view.ts 提供的資料。每次畫都重新問，設定或今天的日期在分頁開著的時候被改掉時，
 // 下一次重繪就跟著對（和週浮窗的 weekRules() 同一個做法）。
@@ -71,12 +64,16 @@ export class MonthView {
 			});
 
 			const summary = unscheduledSummary(project);
-			tr.createEl('td', {
+			const unscheduled = tr.createEl('td', {
 				cls: 'month-unscheduled',
 				text: summary.count > 0 ? String(summary.count) : '',
-				// 數量為 0 時不給提示，滑過去才不會出現空白的提示框。
-				attr: summary.count > 0 ? { title: summary.tooltip } : {},
 			});
+			// 數量為 0 的格子既沒有提示也沒有 data-path，所以滑過去沒有提示框、
+			// 點了也打不開浮窗（和 blank 的週格同一個做法）。
+			if (summary.count > 0) {
+				unscheduled.dataset.path = project.path;
+				unscheduled.setAttribute('title', UNSCHEDULED_TOOLTIP);
+			}
 		}
 	}
 
@@ -112,9 +109,4 @@ export class MonthView {
 			});
 		}
 	}
-}
-
-function weekRangeShort(weekLabel: string): string {
-	const monday = mondayOfWeek(weekLabel);
-	return `${monthDayLabel(monday)}${RANGE_DASH}${monthDayLabel(addDaysISO(monday, 6))}`;
 }

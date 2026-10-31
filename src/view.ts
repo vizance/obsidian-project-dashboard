@@ -2,7 +2,14 @@ import { ItemView, MarkdownView, Scope, TFile, type WorkspaceLeaf } from 'obsidi
 import { CATEGORIES, CATEGORY_KEYS } from './core/config';
 import type { Cell } from './core/cells';
 import { perWeekCells, sortProjects, spanWeekOffset, timelineCells, visibleProjects } from './core/cells';
-import { monthOfDate, monthTitle, shiftMonth, weeksOfMonth, type MonthRef } from './core/months';
+import {
+	monthOfDate,
+	monthTitle,
+	shiftMonth,
+	unscheduledWeekOptions,
+	weeksOfMonth,
+	type MonthRef,
+} from './core/months';
 import {
 	applyCategoryOverride,
 	clampProjColWidth,
@@ -67,10 +74,27 @@ function isTextEntryTarget(target: EventTarget | null): boolean {
 	return !NON_TEXT_INPUT_TYPES.includes(type);
 }
 
-// 浮窗用「筆記路徑 + ISO 週」辨識，不用元素本身 — 每次重繪都會換掉整張表。
-interface PopoverTarget {
+// 浮窗用目標的辨識資料，不用元素本身 — 每次重繪都會換掉整張表。兩種浮窗共用同一個
+// 元素，所以目標也只有一個欄位，用 kind 分：週浮窗是「筆記路徑 + ISO 週」，月視圖
+// 「還沒排」欄打開的浮窗是「筆記路徑」（它不屬於任何一週）。
+interface WeekTarget {
+	kind: 'week';
 	path: string;
 	week: string;
+}
+
+interface UnscheduledTarget {
+	kind: 'unscheduled';
+	path: string;
+}
+
+type PopoverTarget = WeekTarget | UnscheduledTarget;
+
+// 同一個目標嗎（同一格再點一次要關閉、非同步打開筆記後要確認浮窗還是原來那個）。
+function sameTarget(a: PopoverTarget | null, b: PopoverTarget): boolean {
+	if (!a || a.kind !== b.kind) return false;
+	if (a.kind === 'week' && b.kind === 'week') return a.path === b.path && a.week === b.week;
+	return a.path === b.path;
 }
 
 export class ProjectDashboardView extends ItemView {
@@ -193,7 +217,7 @@ export class ProjectDashboardView extends ItemView {
 		this.contentEl.scrollTop = scrollTop;
 		if (previous) {
 			this.suppressScrollCloseUntil = Date.now() + SCROLL_RESTORE_GRACE_MS;
-			this.reopenWeekPopover(previous);
+			this.reopenPopover(previous);
 		}
 	}
 
@@ -315,6 +339,15 @@ export class ProjectDashboardView extends ItemView {
 				line: line.line,
 				raw: line.raw,
 				date: scheduleDateForWeek(target.week, this.settings),
+			})),
+			// 還沒排浮窗的週按鈕：日期一樣走 scheduleDateForWeek，只是週數來自按鈕，
+			// 所以 stale 處理與錯誤訊息和週浮窗挑任務完全相同。
+			scheduleInto: (line, weekLabel) => this.runUnscheduledEdit((target) => ({
+				kind: 'schedule',
+				path: target.path,
+				line: line.line,
+				raw: line.raw,
+				date: scheduleDateForWeek(weekLabel, this.settings),
 			})),
 			addTask: (text) => this.runPopoverEdit((target) => ({
 				kind: 'add',
@@ -756,6 +789,10 @@ export class ProjectDashboardView extends ItemView {
 			if (this.scale === 'month') {
 				const cell = target.closest ? target.closest<HTMLElement>('td.month-cell') : null;
 				if (cell && this.handleMonthCellClick(cell)) return;
+				// 只有帶 data-path 的「還沒排」格子（數量大於 0）能打開浮窗，表頭與
+				// 空格子因此落到下面的關閉分支。
+				const unscheduled = target.closest ? target.closest<HTMLElement>('td.month-unscheduled[data-path]') : null;
+				if (unscheduled && this.handleUnscheduledCellClick(unscheduled)) return;
 				this.closeWeekPopover();
 				return;
 			}
@@ -788,12 +825,27 @@ export class ProjectDashboardView extends ItemView {
 		const path = cell.dataset.path;
 		const week = cell.dataset.week;
 		if (!path || !week) return false;
+		const target: WeekTarget = { kind: 'week', path, week };
 		// 同一格再點一次關閉。
-		if (this.popoverTarget?.path === path && this.popoverTarget.week === week && !this.popoverEl.hidden) {
+		if (sameTarget(this.popoverTarget, target) && !this.popoverEl.hidden) {
 			this.closeWeekPopover();
 			return true;
 		}
-		this.openWeekPopover({ path, week }, cell, CLOSED_POPOVER_STATE);
+		this.openWeekPopover(target, cell, CLOSED_POPOVER_STATE);
+		return true;
+	}
+
+	// 月視圖「還沒排」欄：數量大於 0 的格子打開還沒排浮窗，錨點就是那一格。
+	// Returns true when the click was consumed by the popover logic.
+	private handleUnscheduledCellClick(cell: HTMLElement): boolean {
+		const path = cell.dataset.path;
+		if (!path) return false;
+		// 同一格再點一次關閉，和週浮窗相同。
+		if (sameTarget(this.popoverTarget, { kind: 'unscheduled', path }) && !this.popoverEl.hidden) {
+			this.closeWeekPopover();
+			return true;
+		}
+		this.openUnscheduledPopover(path, cell);
 		return true;
 	}
 
@@ -817,12 +869,13 @@ export class ProjectDashboardView extends ItemView {
 		const path = bar.dataset.path;
 		const week = this.weekOfBarClick(bar, e.clientX);
 		if (!path || !week) return false;
+		const target: WeekTarget = { kind: 'week', path, week };
 		// 同一格（整條虛線則是同一週）再點一次關閉。
-		if (this.popoverTarget?.path === path && this.popoverTarget.week === week && !this.popoverEl.hidden) {
+		if (sameTarget(this.popoverTarget, target) && !this.popoverEl.hidden) {
 			this.closeWeekPopover();
 			return true;
 		}
-		this.openWeekPopover({ path, week }, bar, CLOSED_POPOVER_STATE);
+		this.openWeekPopover(target, bar, CLOSED_POPOVER_STATE);
 		return true;
 	}
 
@@ -862,7 +915,7 @@ export class ProjectDashboardView extends ItemView {
 		return el.classList.contains('bar-overflow') || el.dataset.kind === 'overflow';
 	}
 
-	private openWeekPopover(target: PopoverTarget, anchor: HTMLElement, state: PopoverViewState): void {
+	private openWeekPopover(target: WeekTarget, anchor: HTMLElement, state: PopoverViewState): void {
 		const project = this.projects.find((p) => p.path === target.path);
 		if (!project) {
 			this.closeWeekPopover();
@@ -880,8 +933,46 @@ export class ProjectDashboardView extends ItemView {
 		this.positionWeekPopover(this.popoverAnchor);
 	}
 
-	private reopenWeekPopover(previous: PopoverTarget & { state: PopoverViewState }): void {
-		// 重繪不會動到年／月與顯示的月份，所以重開浮窗一律在目前顯示的視圖裡找格子。
+	// 重繪後依浮窗的種類分開重開（重繪不會動到年／月與顯示的月份）。
+	private reopenPopover(previous: PopoverTarget & { state: PopoverViewState }): void {
+		if (previous.kind === 'unscheduled') {
+			this.reopenUnscheduledPopover(previous.path);
+			return;
+		}
+		this.reopenWeekPopover(previous);
+	}
+
+	// 還沒排浮窗：月視圖還在、專案列還在、而且還有沒排日期的任務時，在那個專案新的
+	// 「還沒排」格子重開；否則關掉。這三個條件剛好等於「找得到帶 data-path 的格子」—
+	// 年視圖沒有這一欄，被篩掉的專案沒有這一列，數量 0 的格子沒有 data-path。
+	private reopenUnscheduledPopover(path: string): void {
+		const cell = this.findUnscheduledCell(path);
+		if (!cell) {
+			this.closeWeekPopover();
+			return;
+		}
+		this.openUnscheduledPopover(path, cell);
+	}
+
+	private openUnscheduledPopover(path: string, anchor: HTMLElement): void {
+		const project = this.projects.find((p) => p.path === path);
+		const rows = project ? unscheduledTasks(project.task_lines) : [];
+		// 一個任務都沒有就沒有東西可排（例如剛排完最後一個），浮窗直接關掉。
+		if (!project || rows.length === 0) {
+			this.closeWeekPopover();
+			return;
+		}
+		this.popover.renderUnscheduled({
+			projectName: project.name,
+			rows,
+			weeks: unscheduledWeekOptions(project, this.monthWeeks, this.settings),
+		});
+		this.popoverTarget = { kind: 'unscheduled', path };
+		this.popoverAnchor = anchor;
+		this.positionWeekPopover(anchor);
+	}
+
+	private reopenWeekPopover(previous: WeekTarget & { state: PopoverViewState }): void {
 		if (this.scale === 'month') {
 			const cell = this.findMonthCell(previous.path, previous.week);
 			// 那一格已經不在畫面上（換了月份、專案被篩掉）或變成空白格時關掉。
@@ -889,7 +980,7 @@ export class ProjectDashboardView extends ItemView {
 				this.closeWeekPopover();
 				return;
 			}
-			this.openWeekPopover({ path: previous.path, week: previous.week }, cell, previous.state);
+			this.openWeekPopover({ kind: 'week', path: previous.path, week: previous.week }, cell, previous.state);
 			return;
 		}
 		if (this.viewMode !== 'per-week') {
@@ -901,7 +992,7 @@ export class ProjectDashboardView extends ItemView {
 			this.closeWeekPopover();
 			return;
 		}
-		this.openWeekPopover({ path: previous.path, week: previous.week }, bar, previous.state);
+		this.openWeekPopover({ kind: 'week', path: previous.path, week: previous.week }, bar, previous.state);
 	}
 
 	// 找月視圖裡該專案該週的格子。用格子自己帶的 data-path／data-week 比對，不碰
@@ -909,6 +1000,14 @@ export class ProjectDashboardView extends ItemView {
 	private findMonthCell(path: string, week: string): HTMLElement | null {
 		for (const cell of Array.from(this.chartEl.querySelectorAll<HTMLElement>('td.month-cell'))) {
 			if (cell.dataset.path === path && cell.dataset.week === week) return cell;
+		}
+		return null;
+	}
+
+	// 找月視圖裡該專案的「還沒排」格子。數量 0 的格子沒有 data-path，所以找不到。
+	private findUnscheduledCell(path: string): HTMLElement | null {
+		for (const cell of Array.from(this.chartEl.querySelectorAll<HTMLElement>('td.month-unscheduled[data-path]'))) {
+			if (cell.dataset.path === path) return cell;
 		}
 		return null;
 	}
@@ -934,9 +1033,17 @@ export class ProjectDashboardView extends ItemView {
 		this.popoverTarget = null;
 	}
 
-	private async runPopoverEdit(build: (target: PopoverTarget) => TaskEdit): Promise<WeekPopoverActionResult> {
+	private async runPopoverEdit(build: (target: WeekTarget) => TaskEdit): Promise<WeekPopoverActionResult> {
 		const target = this.popoverTarget;
-		if (!target) return 'restore';
+		if (target?.kind !== 'week') return 'restore';
+		return this.applyEdit(build(target));
+	}
+
+	private async runUnscheduledEdit(
+		build: (target: UnscheduledTarget) => TaskEdit,
+	): Promise<WeekPopoverActionResult> {
+		const target = this.popoverTarget;
+		if (target?.kind !== 'unscheduled') return 'restore';
 		return this.applyEdit(build(target));
 	}
 
@@ -996,8 +1103,7 @@ export class ProjectDashboardView extends ItemView {
 			return;
 		}
 		// 開筆記是非同步的，這段時間浮窗可能已經被關掉或換成別的專案／週。
-		const current = this.popoverTarget;
-		if (!current || current.path !== target.path || current.week !== target.week) return;
+		if (!sameTarget(this.popoverTarget, target)) return;
 		const anchor = this.popoverAnchor;
 		if (this.popoverEl.hidden || !anchor) return;
 		if (!this.isAnchorVisible(anchor)) {

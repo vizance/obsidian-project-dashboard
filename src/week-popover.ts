@@ -1,3 +1,4 @@
+import type { UnscheduledWeekOption } from './core/months';
 import { SHIFT_WEEK_DAYS, type TaskLine } from './core/task-lines';
 import { monthDayLabel, monthDayWeekdayLabel, weekOfTaskDate, weekRangeLabel, type WeekRules } from './core/weeks';
 
@@ -28,11 +29,22 @@ export interface WeekPopoverModel {
 	unscheduled: TaskLine[];
 }
 
+// 月視圖「還沒排」欄打開的那一種畫法：同一個浮窗元素，所以同一時間還是只有一個浮窗。
+export interface UnscheduledPopoverModel {
+	projectName: string;
+	// 還沒排日期的任務，筆記裡的行序。
+	rows: TaskLine[];
+	// 顯示中那個月的每一週一顆按鈕。
+	weeks: UnscheduledWeekOption[];
+}
+
 // view.ts 提供的動作：浮窗只負責畫與停用，寫入、toast、重繪都留在 view。
 export interface WeekPopoverHost {
 	toggle(line: TaskLine): Promise<WeekPopoverActionResult>;
 	shift(line: TaskLine, days: number): Promise<WeekPopoverActionResult>;
 	schedule(line: TaskLine): Promise<WeekPopoverActionResult>;
+	// 還沒排浮窗按週按鈕：和 schedule 同一個寫入，只是週數來自按鈕而不是浮窗本身。
+	scheduleInto(line: TaskLine, weekLabel: string): Promise<WeekPopoverActionResult>;
 	addTask(text: string): Promise<WeekPopoverActionResult>;
 	jump(line: TaskLine): void;
 	// 標題的專案名稱：在右側分割打開這則筆記，浮窗留著。
@@ -80,6 +92,59 @@ export class WeekPopover {
 		this.pendingInput = null;
 		this.el.empty();
 		this.el.createDiv({ cls: 'wp-plain', text });
+	}
+
+	// 月視圖「還沒排」欄的清單。沒有底部區塊也沒有輸入框，所以不吃 PopoverViewState：
+	// 重繪時 view 只需要知道是哪個專案，清單內容每次重新畫。
+	renderUnscheduled(model: UnscheduledPopoverModel): void {
+		this.model = null;
+		this.expanded = null;
+		this.inputEl = null;
+		this.pendingInput = null;
+		this.el.empty();
+
+		const header = this.el.createDiv({ cls: 'wp-header' });
+		// 與週浮窗標題同一個元素與行為：點了在右側打開筆記，浮窗留著。
+		const project = header.createEl('button', {
+			cls: 'wp-project',
+			text: model.projectName,
+			attr: { type: 'button', title: '在右側開啟筆記' },
+		});
+		project.addEventListener('click', () => this.host.openNote());
+		header.createDiv({ cls: 'wp-week', text: `還沒排日期的任務（${model.rows.length}）` });
+
+		const list = this.el.createDiv({ cls: 'wp-list' });
+		for (const line of model.rows) this.drawUnscheduledRow(list, line, model.weeks);
+	}
+
+	private drawUnscheduledRow(list: HTMLElement, line: TaskLine, weeks: UnscheduledWeekOption[]): void {
+		const row = list.createDiv({ cls: 'wp-row wp-us-row' });
+		row.createSpan({ cls: 'wp-text', text: line.text });
+
+		const actions = row.createDiv({ cls: 'wp-actions wp-weeks' });
+		for (const option of weeks) {
+			const btn = actions.createEl('button', {
+				cls: 'wp-btn wp-week-btn',
+				text: `W${option.week}`,
+				attr: { type: 'button', title: option.enabled ? option.range : '不在專案期間' },
+			});
+			if (!option.enabled) {
+				btn.disabled = true;
+				continue;
+			}
+			btn.addEventListener('click', () => {
+				// 和週浮窗的任務列一樣：寫入中整列停用，等重繪帶回結果；沒有重繪會來
+				// 的時候（restore）把按鈕放回去，期間外的按鈕維持停用。
+				void this.runRowAction(row, line, () => this.host.scheduleInto(line, option.label));
+			});
+		}
+
+		const jump = actions.createEl('button', {
+			cls: 'wp-btn',
+			text: '↗',
+			attr: { type: 'button', title: '在筆記裡顯示這一行' },
+		});
+		jump.addEventListener('click', () => this.host.jump(line));
 	}
 
 	render(model: WeekPopoverModel, state: PopoverViewState): void {

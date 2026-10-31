@@ -8,6 +8,7 @@ import {
 	monthTitle,
 	shiftMonth,
 	unscheduledSummary,
+	unscheduledWeekOptions,
 	weeksOfMonth,
 } from '../src/core/months';
 import type { ProjectRecord } from '../src/core/scan';
@@ -174,14 +175,36 @@ describe('monthCellTaskLines', () => {
 });
 
 describe('unscheduledSummary', () => {
-	// Scenario: Count and tooltip。
-	it('counts the unscheduled tasks and lists them one per line', () => {
+	// Scenario: Count。
+	it('counts the unscheduled tasks', () => {
 		const p = project(['- [ ] 製作學習日曆', '- [ ] 整理名單'].join('\n'));
-		expect(unscheduledSummary(p)).toEqual({ count: 2, tooltip: '製作學習日曆\n整理名單' });
+		expect(unscheduledSummary(p)).toEqual({ count: 2 });
 	});
 
-	it('reports 0 with an empty tooltip when every task has a date', () => {
+	it('reports 0 when every task has a date', () => {
 		const p = project('- [ ] 確認拍攝服裝 📅 2026-10-30');
-		expect(unscheduledSummary(p)).toEqual({ count: 0, tooltip: '' });
+		expect(unscheduledSummary(p)).toEqual({ count: 0 });
+	});
+});
+
+describe('unscheduledWeekOptions', () => {
+	// Scenario: Weeks outside the project are disabled。
+	const outsideProject = project('- [ ] 製作學習日曆', {
+		start: '2026-10-12',
+		end: '2026-12-31',
+	});
+	const options = unscheduledWeekOptions(outsideProject, weeksOfMonth(2026, 10), SAT_ON);
+
+	it('gives one option per week of the month, in order', () => {
+		expect(options.map((o) => o.label)).toEqual(['2026-W41', '2026-W42', '2026-W43', '2026-W44']);
+		expect(options.map((o) => o.week)).toEqual([41, 42, 43, 44]);
+	});
+
+	it('disables the week before the project starts and enables the rest', () => {
+		expect(options.map((o) => o.enabled)).toEqual([false, true, true, true]);
+	});
+
+	it("gives each week's Monday–Sunday range", () => {
+		expect(options.map((o) => o.range)).toEqual(['10/5–10/11', '10/12–10/18', '10/19–10/25', '10/26–11/1']);
 	});
 });

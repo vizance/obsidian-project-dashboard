@@ -1,4 +1,4 @@
-import type { CellKind } from './cells';
+import { monthViewCells, type CellKind } from './cells';
 import type { ProjectRecord } from './scan';
 import { taskLinesForWeek, unscheduledTasks } from './task-lines';
 import {
@@ -7,6 +7,7 @@ import {
 	mondayOfWeek,
 	monthOfWeekStart,
 	weekInfoFor,
+	weekRangeShort,
 	type WeekInfo,
 	type WeekRules,
 } from './weeks';
@@ -123,9 +124,33 @@ export function monthCellTaskLines(
 	return monthCellLines(project, weekLabel, settings, today);
 }
 
-// 「還沒排」欄：數量與滑過去的提示。提示一行一個任務，順序就是筆記裡的行序，
-// 文字與浮窗挑任務時顯示的相同（TaskLine.text）。
-export function unscheduledSummary(project: ProjectRecord): { count: number; tooltip: string } {
-	const lines = unscheduledTasks(project.task_lines);
-	return { count: lines.length, tooltip: lines.map((l) => l.text).join('\n') };
+// 「還沒排」欄只顯示數量：任務本身在點開的還沒排浮窗裡列出來，所以格子的提示
+// 是一句固定的說明，不再把任務抄一遍。
+export function unscheduledSummary(project: ProjectRecord): { count: number } {
+	return { count: unscheduledTasks(project.task_lines).length };
+}
+
+export interface UnscheduledWeekOption {
+	label: string;
+	// 不補零的週數（`41`），按鈕上寫成 `W41`，和年視圖的週表頭一致。
+	week: number;
+	range: string;
+	enabled: boolean;
+}
+
+// 還沒排浮窗的週按鈕：顯示中那個月的每一週一個。能不能按跟那一格能不能打開週浮窗
+// 同一條規則 — 格子不是 `blank` 就能按，所以兩邊都問 monthViewCells，不另訂「在不在
+// 專案期間」的算法。
+export function unscheduledWeekOptions(
+	project: ProjectRecord,
+	weeks: WeekInfo[],
+	settings: WeekRules,
+): UnscheduledWeekOption[] {
+	const cells = monthViewCells(project, weeks, settings);
+	return weeks.map((w, i) => ({
+		label: w.label,
+		week: w.week,
+		range: weekRangeShort(w.label),
+		enabled: cells[i]!.kind !== 'blank',
+	}));
 }
