@@ -164,7 +164,8 @@
 /* position: relative 讓任務文字畫在底色那一層之上；長文字自動換行，格子隨之長高 */
 .project-dashboard .mc-line { position: relative; overflow-wrap: anywhere; }
 .project-dashboard .mc-done { color: var(--text-dim); }
-.project-dashboard .mc-overdue { color: var(--text-error, #b4231a); }
+/* 逾期的紅字用與年視圖 overflow 同一個警告紅，兩個視圖只有一種紅 */
+.project-dashboard .mc-overdue { color: var(--overflow-red); }
 .project-dashboard .mc-open { color: var(--text); }
 
 .project-dashboard #help-panel {

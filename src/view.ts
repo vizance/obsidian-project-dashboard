@@ -751,6 +751,14 @@ export class ProjectDashboardView extends ItemView {
 			// so expanding a footer section never closes the popover itself.
 			if (!this.popoverEl.hidden && e.composedPath().includes(this.popoverEl)) return;
 			const target = e.target as HTMLElement;
+			// 點到哪裡依目前顯示的視圖判斷：年視圖找畫出來的色條，月視圖找格子本身
+			// （整格可點，包含格子裡的任務文字）。
+			if (this.scale === 'month') {
+				const cell = target.closest ? target.closest<HTMLElement>('td.month-cell') : null;
+				if (cell && this.handleMonthCellClick(cell)) return;
+				this.closeWeekPopover();
+				return;
+			}
 			const bar = target.closest ? target.closest<HTMLElement>('.bar') : null;
 			if (bar && this.handleBarClick(bar, e)) return;
 			this.closeWeekPopover();
@@ -771,6 +779,25 @@ export class ProjectDashboardView extends ItemView {
 		}, true);
 	}
 
+	// 月視圖的格子：非空白的格子整格都能開浮窗，錨點就是那一格。不看
+	// `dashboard.viewMode` — timeline 只作用在年視圖（dashboard-gantt-rendering：
+	// The month view SHALL NOT use the timeline rendering）。
+	// Returns true when the click was consumed by the popover logic.
+	private handleMonthCellClick(cell: HTMLElement): boolean {
+		// 空白格沒有這兩個屬性，所以永遠打不開浮窗。
+		const path = cell.dataset.path;
+		const week = cell.dataset.week;
+		if (!path || !week) return false;
+		// 同一格再點一次關閉。
+		if (this.popoverTarget?.path === path && this.popoverTarget.week === week && !this.popoverEl.hidden) {
+			this.closeWeekPopover();
+			return true;
+		}
+		this.openWeekPopover({ path, week }, cell, CLOSED_POPOVER_STATE);
+		return true;
+	}
+
+	// 年視圖的色條（月視圖走 handleMonthCellClick）。
 	// Returns true when the click was consumed by the popover logic.
 	private handleBarClick(bar: HTMLElement, e: MouseEvent): boolean {
 		if (this.viewMode === 'timeline') {
@@ -799,8 +826,9 @@ export class ProjectDashboardView extends ItemView {
 		return true;
 	}
 
-	// 整條虛線要用它蓋住的表格格子來換算週，不能用畫出來的色條：色條左右各內縮
-	// 幾個 pixel，用它量會讓剛過格線的點擊落到前一週去。
+	// 年視圖專用：整條虛線要用它蓋住的表格格子來換算週，不能用畫出來的色條：色條
+	// 左右各內縮幾個 pixel，用它量會讓剛過格線的點擊落到前一週去。月視圖一週一格，
+	// 週直接寫在格子的 data-week 上，不需要換算。
 	private weekOfBarClick(bar: HTMLElement, clientX: number): string | null {
 		const spanStart = bar.dataset.spanStart;
 		const spanWeeks = bar.dataset.spanWeeks;
@@ -818,15 +846,23 @@ export class ProjectDashboardView extends ItemView {
 		return this.weeks[start + offset]?.label ?? null;
 	}
 
-	// 整條虛線只畫在起始格，所以錨點要換成算出來那一週的表格格子。
-	private anchorForWeek(bar: HTMLElement, week: string): HTMLElement {
-		const row = bar.closest('tr');
+	// 年視圖的整條虛線只畫在起始格，所以錨點要換成算出來那一週的表格格子；月視圖
+	// 點到的格子本身就是那一週，直接當錨點。
+	private anchorForWeek(el: HTMLElement, week: string): HTMLElement {
+		if (this.scale === 'month') return el;
+		const row = el.closest('tr');
 		const index = this.weeks.findIndex((w) => w.label === week);
-		if (!row || index === -1) return bar;
-		return row.querySelectorAll<HTMLElement>('td.week-cell')[index] ?? bar;
+		if (!row || index === -1) return el;
+		return row.querySelectorAll<HTMLElement>('td.week-cell')[index] ?? el;
 	}
 
-	private openWeekPopover(target: PopoverTarget, bar: HTMLElement, state: PopoverViewState): void {
+	// 錨點可能是年視圖的色條，也可能是月視圖的格子，所以超出預計結束日期要兩種都
+	// 判斷得出來：年視圖用 `bar-overflow` 這個類別，月視圖用格子的 `data-kind`。
+	private isOverflowAnchor(el: HTMLElement): boolean {
+		return el.classList.contains('bar-overflow') || el.dataset.kind === 'overflow';
+	}
+
+	private openWeekPopover(target: PopoverTarget, anchor: HTMLElement, state: PopoverViewState): void {
 		const project = this.projects.find((p) => p.path === target.path);
 		if (!project) {
 			this.closeWeekPopover();
@@ -835,16 +871,27 @@ export class ProjectDashboardView extends ItemView {
 		this.popover.render({
 			projectName: project.name,
 			weekLabel: target.week,
-			overflowEnd: bar.classList.contains('bar-overflow') ? project.end : null,
+			overflowEnd: this.isOverflowAnchor(anchor) ? project.end : null,
 			rows: taskLinesForWeek(project.task_lines, target.week, this.settings),
 			unscheduled: unscheduledTasks(project.task_lines),
 		}, state);
 		this.popoverTarget = target;
-		this.popoverAnchor = this.anchorForWeek(bar, target.week);
+		this.popoverAnchor = this.anchorForWeek(anchor, target.week);
 		this.positionWeekPopover(this.popoverAnchor);
 	}
 
 	private reopenWeekPopover(previous: PopoverTarget & { state: PopoverViewState }): void {
+		// 重繪不會動到年／月與顯示的月份，所以重開浮窗一律在目前顯示的視圖裡找格子。
+		if (this.scale === 'month') {
+			const cell = this.findMonthCell(previous.path, previous.week);
+			// 那一格已經不在畫面上（換了月份、專案被篩掉）或變成空白格時關掉。
+			if (!cell) {
+				this.closeWeekPopover();
+				return;
+			}
+			this.openWeekPopover({ path: previous.path, week: previous.week }, cell, previous.state);
+			return;
+		}
 		if (this.viewMode !== 'per-week') {
 			this.closeWeekPopover();
 			return;
@@ -857,7 +904,16 @@ export class ProjectDashboardView extends ItemView {
 		this.openWeekPopover({ path: previous.path, week: previous.week }, bar, previous.state);
 	}
 
-	// 找該專案該週畫出來的色條：同一週的格子，或蓋住那一週的整條虛線。
+	// 找月視圖裡該專案該週的格子。用格子自己帶的 data-path／data-week 比對，不碰
+	// this.weeks（那是年視圖今年的週列表）；空白格沒有這兩個屬性，所以找不到。
+	private findMonthCell(path: string, week: string): HTMLElement | null {
+		for (const cell of Array.from(this.chartEl.querySelectorAll<HTMLElement>('td.month-cell'))) {
+			if (cell.dataset.path === path && cell.dataset.week === week) return cell;
+		}
+		return null;
+	}
+
+	// 找年視圖裡該專案該週畫出來的色條：同一週的格子，或蓋住那一週的整條虛線。
 	private findWeekBar(path: string, week: string): HTMLElement | null {
 		const weekIndex = this.weeks.findIndex((w) => w.label === week);
 		for (const bar of Array.from(this.chartEl.querySelectorAll<HTMLElement>('.bar'))) {
