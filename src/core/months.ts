@@ -5,6 +5,7 @@ import {
 	isoWeekLabelOfDate,
 	isoWeekOfDate,
 	mondayOfWeek,
+	monthOfWeekStart,
 	weekInfoFor,
 	type WeekInfo,
 	type WeekRules,
@@ -21,12 +22,18 @@ export interface MonthRef {
 const WEEK_LABEL_RE = /^(\d{4})-W(\d{2})$/;
 
 // 週一規則：一週屬於它星期一落在的那個月，只有 W01 永遠算它那個 ISO 年的一月。
+// 月份一律交給 weeks.ts 的 monthOfWeekStart，W01 例外因此只有一處實作。
+// 年份也要跟著例外走：W01 的星期一可能落在前一年的 12 月（2026-W01 起於
+// 2025-12-29），既然算成一月，年份就取標籤上的 ISO 年而不是星期一的日曆年。
 export function monthOfWeek(weekLabel: string): MonthRef {
 	const m = WEEK_LABEL_RE.exec(weekLabel);
 	if (!m) throw new Error(`invalid week label: ${weekLabel}`);
-	if (Number(m[2]) === 1) return { year: Number(m[1]), month: 1 };
+	const week = Number(m[2]);
 	const monday = new Date(`${mondayOfWeek(weekLabel)}T00:00:00Z`);
-	return { year: monday.getUTCFullYear(), month: monday.getUTCMonth() + 1 };
+	return {
+		year: week === 1 ? Number(m[1]) : monday.getUTCFullYear(),
+		month: monthOfWeekStart(week, monday) + 1,
+	};
 }
 
 export function weeksOfMonth(year: number, month: number): WeekInfo[] {
