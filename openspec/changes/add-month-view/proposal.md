@@ -11,6 +11,7 @@
 - 月視圖的列和年視圖相同（同樣的分類分組、排序、`顯示已結案`、`編輯分類`），欄是專案名稱、4～5 個週欄，以及每個專案一欄「還沒排」的數量。
 - 每個週格子列出那週的任務文字，週的歸屬用既有規則與目前設定：完成的任務打勾、變灰；週已經過了還沒完成的任務標紅；格子的底色沿用年視圖同一週的狀態。
 - 點月視圖的格子打開現在的週浮窗，所有編輯功能照舊；改完之後月視圖原地重繪，浮窗留在同一週。
+- 點「還沒排」的數量打開浮窗，列出這個專案還沒排日期的任務，每個任務可以直接排進這個月的某一週，或跳到筆記那一行（朱騏手動驗收時加的需求）。
 - `T` 在月視圖不作用；說明面板補上 `M` 與月視圖的圖示說明。
 - 版本升為 0.4.0，README、CHANGELOG、名詞表同步更新。
 
@@ -19,20 +20,20 @@
 - 行事曆列（General 列，下一個改動）。
 - 番茄鐘加總、常態列、`>` 延後痕跡、拖曳換週。
 - 在格子裡直接打字或勾選（一律透過週浮窗）。
-- 「還沒排」那一欄可以點開或直接排程（先只顯示數量與提示文字）。
+- 在還沒排浮窗裡勾完成、移週或新增任務。
 - 年視圖的 timeline 模式套用到月視圖。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `dashboard-month-view`: 週的月份歸屬規則、年／月切換、月視圖的版面、格子裡的任務文字與狀態、從格子打開週浮窗、「還沒排」數量欄。
+- `dashboard-month-view`: 週的月份歸屬規則、年／月切換、月視圖的版面、格子裡的任務文字與狀態、從格子打開週浮窗、「還沒排」欄與還沒排浮窗。
 
 ### Modified Capabilities
 
 - `dashboard-keyboard-shortcuts`: `T` 在月視圖不作用；說明面板列出 `M` 與月視圖的圖示說明。
 - `dashboard-obsidian-plugin`: 介面偏好多一個記住年／月的鍵；`M` 加進只在儀表板分頁作用的快捷鍵；月視圖列入儀表板依循的規格。
-- `dashboard-note-sync`: 重繪時保留目前是年視圖或月視圖、月視圖顯示的月份，以及月視圖中開著的週浮窗。
+- `dashboard-note-sync`: 重繪時保留目前是年視圖或月視圖、月視圖顯示的月份，以及月視圖中開著的週浮窗與還沒排浮窗。
 - `dashboard-sort-modes`: 控制列除了兩個勾選框，也放「年／月」切換與月份導覽，仍然沒有任何排序控制項。
 - `dashboard-layout-spacing`: 32px 固定週寬只限年視圖。
 - `dashboard-resizable-proj-col`: 拖拉左欄時年視圖週寬不變，月視圖的週欄平分剩下的寬度。
@@ -44,4 +45,4 @@
 - Affected specs: dashboard-month-view（新增）、dashboard-keyboard-shortcuts、dashboard-obsidian-plugin、dashboard-note-sync、dashboard-sort-modes、dashboard-layout-spacing、dashboard-resizable-proj-col、dashboard-week-popover、dashboard-gantt-rendering
 - Affected code:
   - New: src/month-view.ts, src/core/months.ts, tests/months.test.ts
-  - Modified: src/view.ts, src/core/weeks.ts, src/core/cells.ts, src/core/prefs.ts, styles.css, tests/weeks.test.ts, tests/cells.test.ts, tests/prefs.test.ts, README.md, CHANGELOG.md, openspec/LANGUAGE.md, manifest.json, package.json, package-lock.json
+  - Modified: src/view.ts, src/week-popover.ts, src/core/weeks.ts, src/core/cells.ts, src/core/prefs.ts, styles.css, tests/weeks.test.ts, tests/cells.test.ts, tests/prefs.test.ts, README.md, CHANGELOG.md, openspec/LANGUAGE.md, manifest.json, package.json, package-lock.json

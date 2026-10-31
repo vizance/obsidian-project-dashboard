@@ -139,13 +139,41 @@ A month-view cell SHALL open the week popover for its project and week under the
 - **AND** the popover for `範例專案 A` and `2026-W44` MUST still be open
 
 ---
-### Requirement: Unscheduled task count per project
+### Requirement: Unscheduled tasks column
 
-The `還沒排` column SHALL show, for each project row, the number of the project's unscheduled tasks (as defined by the week popover's unscheduled list), and SHALL be empty when the number is 0. Hovering a non-empty cell SHALL show a tooltip listing those tasks' texts, one per line, in line order. The column SHALL NOT open the popover or change the note.
+The month view's last column, `還沒排`, SHALL show for each project row the number of the project's unscheduled tasks (as defined by the week popover's unscheduled list), and SHALL be empty when the number is 0. A non-empty cell SHALL carry the hover tooltip `點一下，把任務排進這個月的某一週` and SHALL open the unscheduled popover when clicked; an empty cell SHALL NOT open anything.
 
-#### Scenario: Count and tooltip
+The unscheduled popover SHALL be the same single floating popover as the week popover, so opening it closes any open week popover and vice versa. It SHALL be anchored at the clicked `還沒排` cell. Its header SHALL show the project name, which opens the project note exactly as the week popover header does, and the line `還沒排日期的任務（<count>）`. Below the header it SHALL list the project's unscheduled tasks in line order, one row per task, each showing the task text, one button per week of the shown month labelled with the week number without a leading zero (for example `W41`, `W42`, `W43`, `W44`), and `↗`. It SHALL NOT show checkboxes, `◀` / `▶`, or the week popover's footer entries.
+
+A week button SHALL be enabled when the project's month view cell for that week is not `blank`, with the week's Monday–Sunday range as its tooltip (for example `10/26–11/1`); otherwise it SHALL be disabled with the tooltip `不在專案期間`. Clicking an enabled week button SHALL schedule that task into that week exactly as picking it from the week popover's unscheduled list does: the same schedule date (from `Which day to write` and the `Saturday tasks count for next week` setting), the same writer with its line check, and the same error messages. While that write is pending, the row's buttons SHALL be disabled. `↗` SHALL behave exactly as in the week popover.
+
+After the re-render that follows a write, the dashboard SHALL re-open the unscheduled popover for the same project, anchored at that project's new `還沒排` cell, when the month view is still shown, the project's row is still shown, and the project still has at least one unscheduled task; otherwise the popover SHALL be closed. The dismissal rules of the week popover SHALL apply unchanged: clicking the same `還沒排` cell again, `Escape`, a click outside the popover, `↗`, or a scroll that moves its anchor closes it, and changing the shown month or switching between the year view and the month view closes it.
+
+#### Scenario: Count
 
 - **GIVEN** a project's note contains the unchecked lines `- [ ] 製作學習日曆` and `- [ ] 整理名單` without any date
 - **WHEN** the month view renders that project's row
 - **THEN** its `還沒排` cell MUST show `2`
-- **AND** its tooltip MUST list `製作學習日曆` and `整理名單` on separate lines
+
+#### Scenario: Scheduling from the unscheduled column
+
+- **GIVEN** today is `2026-10-30`, the month view shows `2026-10`, `Which day to write` is `Friday`, `Saturday tasks count for next week` is off, and the project `範例專案 A` runs from `2026-10-01` to `2026-12-31` with the unchecked lines `- [ ] 製作學習日曆` and `- [ ] 整理名單` without any date
+- **WHEN** the user clicks that project's `還沒排` cell
+- **THEN** a popover MUST list `製作學習日曆` and `整理名單` in that order, each with the buttons `W41`, `W42`, `W43`, `W44` and `↗`
+- **WHEN** the user clicks `W44` on the `製作學習日曆` row
+- **THEN** that note line MUST become `- [ ] 製作學習日曆 📅 2026-10-30`
+- **AND** after the re-render the project's `W44` cell MUST list `製作學習日曆`, its `還沒排` cell MUST show `1`, and the popover MUST still be open listing only `整理名單`
+
+#### Scenario: Scheduling the last unscheduled task closes the popover
+
+- **GIVEN** the unscheduled popover of a project lists exactly one task
+- **WHEN** the user schedules it into a week of the shown month
+- **THEN** after the re-render no popover MUST be visible
+- **AND** that project's `還沒排` cell MUST be empty
+
+#### Scenario: Weeks outside the project are disabled
+
+- **GIVEN** the month view shows `2026-10` and a project runs from `2026-10-12` to `2026-12-31` with one unscheduled task
+- **WHEN** the user opens that project's unscheduled popover
+- **THEN** the `W41` button MUST be disabled with the tooltip `不在專案期間`
+- **AND** the `W42`, `W43`, and `W44` buttons MUST be enabled, `W44` with the tooltip `10/26–11/1`
