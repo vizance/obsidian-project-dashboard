@@ -76,7 +76,7 @@ The left column width SHALL be clamped to the range [120, 600] pixels (inclusive
 ---
 ### Requirement: 甘特圖區域不受影響
 
-The chart area (week columns, bars, dividers) MUST remain visually and dimensionally unchanged by left-column resize: each week column SHALL stay at 32px width, the 53-column total SHALL stay at 1696px, bar geometry (start/end/promised_end), solid/dashed segments, closed grayscale fade, monthly/quarterly/weekly dividers, today red highlight, and Pin / sort controls SHALL all behave identically to before this change.
+In the year view, the chart area (week columns, bars, dividers) MUST remain visually and dimensionally unchanged by left-column resize: each week column SHALL stay at 32px width, the 53-column total SHALL stay at 1696px, bar geometry (start/end/promised_end), solid/dashed segments, closed grayscale fade, monthly/quarterly/weekly dividers, today red highlight, and Pin / sort controls SHALL all behave identically to before this change. In the month view, resizing the left column SHALL change only the width that the month's week columns share.
 
 #### Scenario: 拖拉左欄不改變週欄寬度
 
@@ -91,6 +91,6 @@ The chart area (week columns, bars, dividers) MUST remain visually and dimension
 - **THEN** 跨多週進行中專案色條 MUST 仍呈現 solid + dashed 分段
 - **AND** 今日週欄位 MUST 仍顯示 `rgba(239, 68, 68, 0.12)` 紅色淡底
 - **AND** 「顯示已結案」勾選 MUST 仍正確顯示/隱藏 done/cancelled
-- **AND** 「依類別排序」按鈕 MUST 仍正確切換排序模式
+- **AND** Legend 釘選與類別順序 MUST 仍正確運作
 - **AND** done/cancelled 色條 MUST 仍套用 grayscale + opacity 0.35
 - **AND** 三層分隔線 MUST 仍呈現

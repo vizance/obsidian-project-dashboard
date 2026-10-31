@@ -199,13 +199,13 @@ The per-week rendering SHALL NOT alter: category color palette, "Pin by category
 ---
 ### Requirement: Render bar continuously in timeline view mode
 
-When the dashboard's active view mode is `timeline`, each visible project's bar SHALL render as a single continuous solid-color block spanning from the week containing `start` to the week containing `max(end, overflow_end)`. The block SHALL use the project's category color. The block MUST NOT be split into per-week cells, MUST NOT render dashed segments for idle weeks, and MUST NOT render warning-red overflow segments. The block MUST sit in the same row as the project's name and span the appropriate week cells using the existing absolute-positioned bar technique (one `<div>` per project row with width = N cells * 100% - small padding).
+When the year view is shown and the dashboard's active view mode is `timeline`, each visible project's bar SHALL render as a single continuous solid-color block spanning from the week containing `start` to the week containing `max(end, overflow_end)`. The block SHALL use the project's category color. The block MUST NOT be split into per-week cells, MUST NOT render dashed segments for idle weeks, and MUST NOT render warning-red overflow segments. The block MUST sit in the same row as the project's name and span the appropriate week cells using the existing absolute-positioned bar technique (one `<div>` per project row with width = N cells * 100% - small padding).
 
 For projects where `overflow_end` is null, the right edge SHALL be the week containing `end`. For projects with non-null `overflow_end`, the right edge SHALL be the week containing `overflow_end` (the later of the two).
 
 For projects whose `status` is `done` or `cancelled`, the continuous block SHALL still render but with the existing `.bar.done` / `.bar.cancelled` grayscale + opacity 0.35 styling applied.
 
-For projects whose `start` or `end` is null, no bar SHALL render in timeline view (mirroring the per-week view's filter behavior).
+For projects whose `start` or `end` is null, no bar SHALL render in timeline view (mirroring the per-week view's filter behavior). The month view SHALL NOT use the timeline rendering.
 
 #### Scenario: Timeline mode renders single continuous bar
 
