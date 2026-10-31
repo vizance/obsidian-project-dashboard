@@ -88,17 +88,27 @@ export function todayLocal(now: Date = new Date()): string {
 	return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
+// 一週屬於「它星期一落在的那個月」，只有 W01 例外：它的星期一可能在前一年的
+// 12 月，但永遠算那個 ISO 年的一月（否則 2026 年的表頭會以一週的 12 月、Q4 開頭）。
+// 年的最後一週的星期一一定在 12/22–12/28，所以只有 W01 的星期一會跨年。
+// 月視圖（src/core/months.ts）用同一條規則，兩邊對同一週的說法才一致。
+export function monthOfWeekStart(week: number, monday: Date): number {
+	return week === 1 ? 0 : monday.getUTCMonth();
+}
+
 export function buildWeeks(year: number): WeekInfo[] {
 	const raw: Array<{ week: number; start: Date; end: Date; month: number }> = [];
 	for (let w = 1; w <= 53; w++) {
 		const start = isoWeekStart(year, w);
+		// 週數仍照 ISO 8601 以星期四所在的年份歸屬，年視圖的欄位因此完全不變；
+		// 只有月份與季的分組改用星期一規則。
 		const thursday = new Date(start);
 		thursday.setUTCDate(start.getUTCDate() + 3);
 		if (thursday.getUTCFullYear() > year) break;
 		if (thursday.getUTCFullYear() < year) continue;
 		const end = new Date(start);
 		end.setUTCDate(start.getUTCDate() + 7);
-		raw.push({ week: w, start, end, month: thursday.getUTCMonth() });
+		raw.push({ week: w, start, end, month: monthOfWeekStart(w, start) });
 	}
 	return raw.map((w, i) => ({
 		week: w.week,
@@ -160,6 +170,40 @@ function parseStrictISODate(dateStr: string): Date | null {
 	return d;
 }
 
+// 某日期所在的 ISO 週標籤，不套用任何任務規則。週六規則、月份規則、月視圖的
+// 「今天這週」都建立在這個函式上，ISO 週數的算法才只有一份。
+export function isoWeekLabelOfDate(date: Date): string {
+	const t = new Date(date);
+	// ISO 8601 週數：以該週星期四所在的年份歸屬。
+	t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+	const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+	const week = Math.ceil(((t.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+	return `${t.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
+// 日期無效時回傳 null。
+export function isoWeekOfDate(dateStr: string): string | null {
+	const d = parseStrictISODate(dateStr);
+	return d ? isoWeekLabelOfDate(d) : null;
+}
+
+// 從某週的標籤造出 WeekInfo。buildWeeks 只需要今年的週，月視圖的 weeksOfMonth
+// 需要任何年份的週（例如 2026 年 1 月的 W01，星期一在 2025 年），兩邊的欄位
+// 算法因此共用這一份。
+export function weekInfoFor(
+	weekLabel: string,
+	month: number,
+	isMonthStart: boolean,
+	isQuarterStart: boolean,
+): WeekInfo {
+	const m = /^(\d{4})-W(\d{2})$/.exec(weekLabel);
+	if (!m) throw new Error(`invalid week label: ${weekLabel}`);
+	const start = new Date(`${mondayOfWeek(weekLabel)}T00:00:00Z`);
+	const end = new Date(start);
+	end.setUTCDate(start.getUTCDate() + 7);
+	return { week: Number(m[2]), label: weekLabel, start, end, month, isMonthStart, isQuarterStart };
+}
+
 // 任務日期套用 occupied 規則後對應到的 ISO 週：Mon–Fri 與 Sun 一律算當週；
 // Sat 只有在 `saturdayCountsAsNextWeek` 開啟時才算下一週（+2 天才會跨週，
 // 因為 ISO 週結束在星期日）。沒有任何星期被排除。日期無效時回傳 null。
@@ -171,9 +215,5 @@ export function weekOfTaskDate(dateStr: string, rules: WeekRules): TaskDateWeek 
 	const isBumpedSat = day === 6 && rules.saturdayCountsAsNextWeek;
 	const t = new Date(d);
 	if (isBumpedSat) t.setUTCDate(t.getUTCDate() + 2);
-	// ISO 8601 週數：以該週星期四所在的年份歸屬。
-	t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
-	const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
-	const week = Math.ceil(((t.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-	return { label: `${t.getUTCFullYear()}-W${String(week).padStart(2, '0')}`, isBumpedSat };
+	return { label: isoWeekLabelOfDate(t), isBumpedSat };
 }

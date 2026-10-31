@@ -1,0 +1,82 @@
+## MODIFIED Requirements
+
+### Requirement: Toggle view mode with T key
+
+The dashboard SHALL register a global keydown handler that toggles the active view mode between `per-week` and `timeline` when the user presses the `T` key (case-insensitive). The handler SHALL ignore the keypress when ANY of the following conditions hold:
+
+- The focused element's tag is `INPUT` or `TEXTAREA`.
+- Any modifier key is held (`event.ctrlKey`, `event.metaKey`, or `event.altKey` is true).
+
+When the toggle fires, the dashboard SHALL re-render the gantt chart using the new view mode without re-fetching `/data.json`, and SHALL persist the new view mode to `localStorage` under key `dashboard.viewMode` (value: literal string `'per-week'` or `'timeline'`). The view mode applies to the year view only: while the month view is shown, pressing `T` SHALL change nothing and SHALL NOT write `dashboard.viewMode`.
+
+#### Scenario: T toggles between per-week and timeline
+
+- **GIVEN** the dashboard is loaded with `viewMode = 'per-week'`
+- **WHEN** the user presses the `T` key with no modifiers and no input focused
+- **THEN** the gantt MUST re-render in timeline mode
+- **AND** `localStorage.getItem('dashboard.viewMode')` MUST equal `'timeline'`
+- **AND** no `/data.json` network request MUST be made
+
+#### Scenario: Modifier keys do not trigger toggle
+
+- **GIVEN** the dashboard is loaded
+- **WHEN** the user presses `Ctrl+T` (or `Cmd+T` on macOS)
+- **THEN** the view mode MUST NOT change
+- **AND** the browser's native "open new tab" behavior MUST proceed (event MUST NOT be `preventDefault()`-ed for modifier combos)
+
+#### Scenario: Input focus suppresses toggle
+
+- **GIVEN** the focus is on the "顯示已結案" checkbox (or any `<input>` / `<textarea>` element)
+- **WHEN** the user presses `T`
+- **THEN** the view mode MUST NOT change
+
+#### Scenario: Case-insensitive
+
+- **GIVEN** the dashboard is loaded
+- **WHEN** the user presses `t` (lowercase) OR `T` (uppercase, e.g. with caps lock)
+- **THEN** the view mode MUST toggle in both cases
+
+#### Scenario: T does nothing in the month view
+
+- **GIVEN** the month view is shown and `dashboard.viewMode` is `'per-week'`
+- **WHEN** the user presses `T` with no modifiers and no input focused
+- **THEN** the month view MUST stay unchanged
+- **AND** `dashboard.viewMode` MUST still equal `'per-week'`
+
+---
+### Requirement: Help panel content
+
+The help panel SHALL display three sections with the following content:
+
+- **Shortcuts section**: lists at minimum `T` (切換週視圖 / Timeline，只作用在年視圖), `M` (切換年 / 月), and `?` (顯示 / 隱藏面板).
+- **Visual legend section**: explains the five visual states found in the gantt chart:
+  - Solid filled block in category color → 該週有任務排定（尚未完成）
+  - Dimmed category-color block with a checkmark (✓) → 該週任務已全部完成（settled）
+  - Dashed border block in category color → 該週無任務（仍在專案區間）
+  - Solid filled block in warning red → 超出原訂結束日（scope creep）— 該回去更新 frontmatter `預計結束日期`
+  - Blank cell → 不在專案區間 / 已結案專案的無任務週
+- **Month view section**: explains the task text styles of the month view:
+  - `✓` before greyed text → 已完成的任務
+  - Text in warning red → 週已過還沒完成的任務
+  - Normal text → 還沒完成、週還沒過的任務
+
+The help panel MUST be a static DOM structure (not dynamically generated from data) so its content is always available regardless of which projects are loaded.
+
+#### Scenario: Panel contains both sections
+
+- **WHEN** the help panel is visible
+- **THEN** the DOM MUST contain at least one element matching the shortcuts section (e.g., a `<section class="shortcuts">` or equivalent identifier)
+- **AND** the DOM MUST contain at least one element matching the visual legend section
+- **AND** the shortcuts section MUST include literal text matching `T` and `?` (or `/`)
+- **AND** the visual legend section MUST include the substring `超出原訂結束日` (or equivalent explanation of the red color)
+
+#### Scenario: Legend includes the settled state
+
+- **WHEN** the help panel is visible
+- **THEN** the visual legend section MUST include an entry explaining the settled state (a dimmed category-color block with a checkmark) with text matching `已全部完成` (or equivalent)
+
+#### Scenario: Panel explains the month view
+
+- **WHEN** the help panel is visible
+- **THEN** the shortcuts section MUST include literal text matching `M`
+- **AND** the panel MUST include the substring `週已過還沒完成`

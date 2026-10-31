@@ -5,6 +5,7 @@ import {
 	mondayOfWeek,
 	monthDayLabel,
 	monthDayWeekdayLabel,
+	quarterOf,
 	todayLocal,
 	todayWeekIndex,
 	weekOfTaskDate,
@@ -28,6 +29,33 @@ describe('buildWeeks', () => {
 		expect(weeks.map((w) => w.label)[0]).toBe('2027-W01');
 		expect(weeks.map((w) => w.label).at(-1)).toBe('2027-W52');
 		expect(weeks).toHaveLength(52);
+	});
+
+	// Example: 2026 year header（dashboard-month-view）：一列一個測試。月份與季都照
+	// 週一規則（W01 永遠算一月）。
+	it.each([
+		[1, '2025-12-29', 1, 1],
+		[14, '2026-03-30', 3, 1],
+		[27, '2026-06-29', 6, 2],
+		[36, '2026-08-31', 8, 3],
+		[40, '2026-09-28', 9, 3],
+		[41, '2026-10-05', 10, 4],
+		[49, '2026-11-30', 11, 4],
+		[53, '2026-12-28', 12, 4],
+	])('W%d (Monday %s) sits under month %d and Q%d', (week, monday, month, quarter) => {
+		const w = buildWeeks(2026).find((x) => x.week === week)!;
+		expect(mondayOfWeek(w.label)).toBe(monday);
+		expect(w.month + 1).toBe(month);
+		expect(quarterOf(w.month)).toBe(quarter);
+	});
+
+	it('starts a new month and quarter at W41, the first week whose Monday is in October', () => {
+		const weeks = buildWeeks(2026);
+		const w41 = weeks.find((w) => w.week === 41)!;
+		const w40 = weeks.find((w) => w.week === 40)!;
+		expect(w41.isMonthStart).toBe(true);
+		expect(w41.isQuarterStart).toBe(true);
+		expect(w40.isMonthStart).toBe(false);
 	});
 });
 

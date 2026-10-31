@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { perWeekCells, sortProjects, spanWeekOffset, timelineCells } from '../src/core/cells';
+import { monthViewCells, perWeekCells, sortProjects, spanWeekOffset, timelineCells } from '../src/core/cells';
+import { weeksOfMonth } from '../src/core/months';
 import type { ProjectRecord } from '../src/core/scan';
 import { buildWeeks, type WeekInfo } from '../src/core/weeks';
 
@@ -135,6 +136,52 @@ describe('perWeekCells — per-week cell kinds', () => {
 		expect(tooltip).toBe('P-測試專案\n2026-W08\n· 盤點（2026-02-21 預計）');
 		expect(tooltip).not.toContain('Sat');
 		expect(cells[weekIndex('2026-W09')]!.kind).toBe('dashed');
+	});
+});
+
+describe('monthViewCells', () => {
+	it('splits the year view’s span-dashed bar into one dashed cell per week', () => {
+		const p = project({ start: '2026-10-05', end: '2026-11-01', task_dates: [] });
+		const yearCells = perWeekCells(p, weeks, SAT_ON);
+		expect(yearCells[weekIndex('2026-W41')]!.kind).toBe('span-dashed');
+		expect(yearCells[weekIndex('2026-W41')]!.spanWeeks).toBe(4);
+
+		const monthWeeks = weeksOfMonth(2026, 10);
+		const cells = monthViewCells(p, monthWeeks, SAT_ON);
+		expect(monthWeeks.map((w) => w.label)).toEqual(['2026-W41', '2026-W42', '2026-W43', '2026-W44']);
+		expect(cells.map((c) => c.kind)).toEqual(['dashed', 'dashed', 'dashed', 'dashed']);
+		expect(cells.map((c) => c.spanWeeks)).toEqual([1, 1, 1, 1]);
+	});
+
+	it('gives a week with tasks the same kind as the year view’s same week', () => {
+		const p = project({
+			task_dates: ['2026-10-26'],
+			occupied_weeks: ['2026-W44'],
+			settled_weeks: [],
+		});
+		const monthWeeks = weeksOfMonth(2026, 10);
+		const cells = monthViewCells(p, monthWeeks, SAT_ON);
+		const yearCells = perWeekCells(p, weeks, SAT_ON);
+		for (const [i, w] of monthWeeks.entries()) {
+			expect(cells[i]!.kind).toBe(yearCells[weekIndex(w.label)]!.kind);
+		}
+		expect(cells[3]!.kind).toBe('solid');
+		expect(cells[2]!.kind).toBe('dashed');
+	});
+
+	// 月視圖可以顯示今年以外的月份，格子不能依賴年視圖的 this.weeks。
+	it('works for a month outside the rendered year (2027-01)', () => {
+		const p = project({
+			start: '2027-01-04',
+			end: '2027-01-31',
+			task_dates: ['2027-01-05'],
+			occupied_weeks: ['2027-W01'],
+			settled_weeks: [],
+		});
+		const monthWeeks = weeksOfMonth(2027, 1);
+		const cells = monthViewCells(p, monthWeeks, SAT_ON);
+		expect(monthWeeks.map((w) => w.label)).toEqual(['2027-W01', '2027-W02', '2027-W03', '2027-W04']);
+		expect(cells.map((c) => c.kind)).toEqual(['solid', 'dashed', 'dashed', 'dashed']);
 	});
 });
 

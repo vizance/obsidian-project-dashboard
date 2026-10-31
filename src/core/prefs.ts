@@ -8,6 +8,11 @@ export function parseViewMode(raw: string | null): 'per-week' | 'timeline' {
 	return raw === 'timeline' || raw === 'per-week' ? raw : 'per-week';
 }
 
+// 年視圖或月視圖。缺值或不認得的值一律回年視圖，讀寫偏好失敗時畫面照樣能畫。
+export function parseScale(raw: string | null): 'year' | 'month' {
+	return raw === 'month' || raw === 'year' ? raw : 'year';
+}
+
 export function parseCategoryOrder(raw: string | null, categoryKeys: string[]): string[] {
 	let stored: string[] | null = null;
 	try {

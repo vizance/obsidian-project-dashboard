@@ -5,6 +5,7 @@ import {
 	parseCategoryOrder,
 	parsePinnedCategory,
 	parseProjColWidth,
+	parseScale,
 	parseViewMode,
 	resolveInitialHelpPanel,
 } from '../src/core/prefs';
@@ -38,6 +39,22 @@ describe('stored value handling', () => {
 
 	it('dashboard.viewMode absent defaults to per-week', () => {
 		expect(parseViewMode(null)).toBe('per-week');
+	});
+
+	it('dashboard.scale absent defaults to year', () => {
+		expect(parseScale(null)).toBe('year');
+	});
+
+	it("dashboard.scale = 'week' falls back to year", () => {
+		expect(parseScale('week')).toBe('year');
+	});
+
+	it("dashboard.scale = 'month' applies month", () => {
+		expect(parseScale('month')).toBe('month');
+	});
+
+	it("dashboard.scale = 'year' applies year", () => {
+		expect(parseScale('year')).toBe('year');
 	});
 });
 

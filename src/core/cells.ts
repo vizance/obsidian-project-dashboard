@@ -137,6 +137,24 @@ export function perWeekCells(project: ProjectRecord, weeks: WeekInfo[], rules: W
 	});
 }
 
+// 月視圖的格子：和年視圖同一套 perWeekCells，只是年視圖畫成一條 span-dashed 的那
+// 一段，月視圖要每週一格，所以把它攤成一個個 dashed（原本被 span 蓋住的格子是
+// blank，一併換掉）。回傳的每一格都 spanWeeks === 1，和月視圖一格一週對齊。
+// weeks 可以是任何年份的任何一段週，月視圖因此能顯示今年以外的月份。
+export function monthViewCells(project: ProjectRecord, weeks: WeekInfo[], rules: WeekRules): Cell[] {
+	const cells = perWeekCells(project, weeks, rules);
+	for (let i = 0; i < cells.length; i++) {
+		const cell = cells[i]!;
+		if (cell.kind !== 'span-dashed') continue;
+		const last = Math.min(cells.length - 1, i + cell.spanWeeks - 1);
+		for (let j = i; j <= last; j++) {
+			cells[j] = { kind: 'dashed', spanWeeks: 1, tooltip: cell.tooltip, closed: cell.closed };
+		}
+		i = last;
+	}
+	return cells;
+}
+
 export function timelineCells(project: ProjectRecord, weeks: WeekInfo[]): Cell[] {
 	const isClosed = project.status === 'done' || project.status === 'cancelled';
 
