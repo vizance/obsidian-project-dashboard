@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { classify } from '../src/core/scan';
 import {
+	addCalendar,
 	addClassificationRule,
 	DEFAULT_CLASSIFICATION_RULES,
 	defaultSettings,
 	moveClassificationRule,
 	normalizePluginData,
 	normalizeSettings,
+	removeCalendar,
 	removeClassificationRule,
+	replaceCalendar,
 	replaceClassificationRule,
 	weekdayFromOption,
+	type CalendarSetting,
 	type ClassificationRule,
 } from '../src/core/settings';
 
@@ -43,6 +47,7 @@ describe('normalizePluginData', () => {
 			excludedProjects: [],
 			scheduleWeekday: 5,
 			saturdayCountsAsNextWeek: false,
+			calendars: [],
 		});
 		expect(data.categoryOverrides).toEqual({ 'P-2026 範例專案 A': 'life' });
 	});
@@ -137,7 +142,29 @@ describe('normalizeSettings — field normalization', () => {
 			excludedProjects: ['範例草稿'],
 			scheduleWeekday: 5,
 			saturdayCountsAsNextWeek: true,
+			calendars: [],
 		});
+	});
+
+	it('trims calendar names and secret IDs, keeps empty rows, and drops non-objects', () => {
+		const raw = {
+			calendars: [
+				{ name: ' 工作 ', secretId: ' work-calendar ' },
+				{ name: '', secretId: '' },
+				{ name: 3 },
+				'工作',
+				null,
+			],
+		};
+		expect(normalizeSettings(raw).calendars).toEqual([
+			{ name: '工作', secretId: 'work-calendar' },
+			{ name: '', secretId: '' },
+			{ name: '', secretId: '' },
+		]);
+	});
+
+	it('falls back to an empty calendar list when the value is not an array', () => {
+		expect(normalizeSettings({ calendars: '工作' }).calendars).toEqual([]);
 	});
 });
 
@@ -213,6 +240,52 @@ describe('classification rule list helpers', () => {
 		moveClassificationRule(original, 0, 1);
 		replaceClassificationRule(original, 0, { text: '改掉了' });
 		expect(original).toEqual([{ text: '課程', category: 'online_course' }]);
+	});
+});
+
+// 設定頁 Calendars 區塊用的純函式（task 2.4）：行事曆清單的新增、刪除與改一列。
+describe('calendar list helpers', () => {
+	const CALENDARS: CalendarSetting[] = [
+		{ name: '工作', secretId: 'work-calendar' },
+		{ name: '家庭', secretId: 'home-calendar' },
+	];
+
+	it('appends an empty calendar row', () => {
+		expect(addCalendar(CALENDARS)).toEqual([...CALENDARS, { name: '', secretId: '' }]);
+	});
+
+	it('removes the calendar at the given index', () => {
+		expect(removeCalendar(CALENDARS, 0)).toEqual([CALENDARS[1]]);
+	});
+
+	it('ignores a removal outside the list', () => {
+		expect(removeCalendar(CALENDARS, 2)).toEqual(CALENDARS);
+		expect(removeCalendar(CALENDARS, -1)).toEqual(CALENDARS);
+	});
+
+	it('replaces only the edited field of one calendar', () => {
+		expect(replaceCalendar(CALENDARS, 1, { secretId: 'family-calendar' })).toEqual([
+			CALENDARS[0],
+			{ name: '家庭', secretId: 'family-calendar' },
+		]);
+	});
+
+	it('ignores a replacement outside the list', () => {
+		expect(replaceCalendar(CALENDARS, 2, { name: '別的' })).toEqual(CALENDARS);
+	});
+
+	it('never changes the list it was given', () => {
+		const original: CalendarSetting[] = [{ name: '工作', secretId: 'work-calendar' }];
+		addCalendar(original);
+		removeCalendar(original, 0);
+		replaceCalendar(original, 0, { name: '改掉了' });
+		expect(original).toEqual([{ name: '工作', secretId: 'work-calendar' }]);
+	});
+
+	it('keeps a newly added empty row through a save', () => {
+		const added = addCalendar([]);
+		const reloaded = normalizePluginData({ settings: { calendars: added } }).settings.calendars;
+		expect(reloaded).toEqual([{ name: '', secretId: '' }]);
 	});
 });
 

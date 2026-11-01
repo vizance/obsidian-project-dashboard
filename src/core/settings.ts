@@ -6,6 +6,13 @@ export interface ClassificationRule {
 	category: string;
 }
 
+// 一個行事曆：顯示名稱，加上密鑰儲存區裡那把鑰匙的 ID。連結本身只存在鑰匙裡，
+// 不進外掛資料，外掛資料才不會把等同讀取密碼的私密網址以明文同步出去。
+export interface CalendarSetting {
+	name: string;
+	secretId: string;
+}
+
 export interface DashboardSettings {
 	projectFolder: string;
 	classificationRules: ClassificationRule[];
@@ -13,6 +20,7 @@ export interface DashboardSettings {
 	// 1（星期一）到 7（星期日）的整數。
 	scheduleWeekday: number;
 	saturdayCountsAsNextWeek: boolean;
+	calendars: CalendarSetting[];
 }
 
 export interface PluginData {
@@ -47,6 +55,7 @@ export function defaultSettings(): DashboardSettings {
 		excludedProjects: [],
 		scheduleWeekday: DEFAULT_SCHEDULE_WEEKDAY,
 		saturdayCountsAsNextWeek: false,
+		calendars: [],
 	};
 }
 
@@ -85,6 +94,23 @@ function normalizeExcludedProjects(raw: unknown): string[] {
 	return result;
 }
 
+function normalizeCalendars(raw: unknown): CalendarSetting[] {
+	if (!Array.isArray(raw)) return [];
+	const calendars: CalendarSetting[] = [];
+	for (const entry of raw) {
+		// 只有物件算一列；字串、數字、`null` 之類的項目沒有名稱與鑰匙可用，丟掉。
+		if (typeof entry !== 'object' || entry === null) continue;
+		const { name, secretId } = entry as { name?: unknown; secretId?: unknown };
+		// 名稱或鑰匙空白的一列照樣留著：剛按「Add a calendar」還沒填完的那一列，
+		// 存檔後不能消失，否則設定頁的列與存起來的清單會對不上。讀取時再跳過它。
+		calendars.push({
+			name: typeof name === 'string' ? name.trim() : '',
+			secretId: typeof secretId === 'string' ? secretId.trim() : '',
+		});
+	}
+	return calendars;
+}
+
 function normalizeScheduleWeekday(raw: unknown): number {
 	if (typeof raw !== 'number' || !Number.isInteger(raw) || raw < 1 || raw > 7) return DEFAULT_SCHEDULE_WEEKDAY;
 	return raw;
@@ -101,6 +127,7 @@ export function normalizeSettings(raw: unknown): DashboardSettings {
 		saturdayCountsAsNextWeek: typeof source.saturdayCountsAsNextWeek === 'boolean'
 			? source.saturdayCountsAsNextWeek
 			: false,
+		calendars: normalizeCalendars(source.calendars),
 	};
 }
 
@@ -140,6 +167,28 @@ export function moveClassificationRule(
 	const [moved] = next.splice(index, 1);
 	next.splice(target, 0, moved!);
 	return next;
+}
+
+// 設定頁的行事曆清單操作：和分類規則的輔助函式同一套做法，都回傳新陣列與新物件。
+
+export function addCalendar(calendars: readonly CalendarSetting[]): CalendarSetting[] {
+	// 新增的那一列名稱與鑰匙都空白；normalize 會留著它，讀取時跳過。
+	return [...calendars.map((c) => ({ ...c })), { name: '', secretId: '' }];
+}
+
+export function removeCalendar(calendars: readonly CalendarSetting[], index: number): CalendarSetting[] {
+	const next = calendars.map((c) => ({ ...c }));
+	if (index < 0 || index >= next.length) return next;
+	next.splice(index, 1);
+	return next;
+}
+
+export function replaceCalendar(
+	calendars: readonly CalendarSetting[],
+	index: number,
+	patch: Partial<CalendarSetting>,
+): CalendarSetting[] {
+	return calendars.map((calendar, i) => (i === index ? { ...calendar, ...patch } : { ...calendar }));
 }
 
 // 星期幾下拉選單的選項值是 `"1"` 到 `"7"`，存進設定前轉成整數：文字 `"6"` 會被

@@ -67,7 +67,7 @@ All open dashboard tabs SHALL share one fetch and one set of results. A fetch re
 ---
 ### Requirement: Events are expanded and assigned to weeks
 
-From each fetched calendar the plugin SHALL read every event (`VEVENT`) and SHALL ignore events whose status is `CANCELLED`. Date-times with a time zone (`TZID`, using the time zone definitions in the calendar) or in UTC SHALL be converted to the device's local time; date-times without a time zone, and date-times whose `TZID` has no definition in the same calendar, SHALL be read as local time; all-day dates (`VALUE=DATE`) SHALL be used as written. An event's end is its `DTEND`, which is exclusive; without `DTEND` it is `DTSTART` plus `DURATION`; without either, a timed event ends at its start and an all-day event lasts one day.
+From each fetched calendar the plugin SHALL read every event (`VEVENT`) and SHALL ignore events whose status is `CANCELLED`. Date-times with a time zone (`TZID`, using the time zone definitions in the calendar) or in UTC SHALL be converted to the device's local time; date-times without a time zone, and date-times whose `TZID` is defined by none of the calendars read in this plugin session, SHALL be read as local time (a `TZID` defined by another calendar, typically the same standard zone name, SHALL use that definition); all-day dates (`VALUE=DATE`) SHALL be used as written. An event's end is its `DTEND`, which is exclusive; without `DTEND` it is `DTSTART` plus `DURATION`; without either, a timed event ends at its start and an all-day event lasts one day.
 
 Recurring events (`RRULE`, `RDATE`) SHALL be expanded into occurrences. Dates in `EXDATE` SHALL be removed. An event with a `RECURRENCE-ID` SHALL replace the occurrence it names; when that replacement has status `CANCELLED`, the occurrence SHALL be removed. A replaced occurrence SHALL be placed by its replacement's start and end, wherever its original date was, so an override moved into or out of the shown weeks appears or disappears accordingly. Expansion SHALL only produce occurrences whose final start and end overlap the weeks being shown, and SHALL stop examining one event after 100,000 occurrences counted from its first one, so a malformed rule cannot freeze the dashboard while a daily event that started decades ago still reaches the shown month.
 
@@ -94,7 +94,7 @@ Within one week the occurrences SHALL be ordered by start date; on the same star
 | `DTSTART;TZID=Asia/Taipei:20261106T090000`, `STATUS:CANCELLED`, `晨會` | none |
 | `DTSTART;VALUE=DATE:20261107`, `DTEND;VALUE=DATE:20261109`, `週末營` | 2026-W45 |
 | `DTSTART;TZID=Asia/Taipei:20261108T220000`, `DTEND;TZID=Asia/Taipei:20261109T000000`, `夜讀` | 2026-W45 |
-| `DTSTART;TZID=America/New_York:20261106T220000` with no `VTIMEZONE` for `America/New_York` in the calendar, `視訊會議` | 2026-W45, shown as `11/6（五）22:00 視訊會議` |
+| `DTSTART;TZID=America/New_York:20261106T220000` with no `VTIMEZONE` for `America/New_York` in any calendar read, `視訊會議` | 2026-W45, shown as `11/6（五）22:00 視訊會議` |
 | weekly `語言課` every Wednesday 19:00 from `2026-10-07`, with an override for `RECURRENCE-ID` `2026-10-28 19:00` moving it to `2026-11-02 19:00` | the override in 2026-W45 (month `2026-11`), and nothing for it in 2026-W44 |
 
 ##### Example: order within a week (`2026-W45`)
