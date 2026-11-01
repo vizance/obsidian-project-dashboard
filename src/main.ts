@@ -1,4 +1,5 @@
-import { Notice, Plugin, type WorkspaceLeaf } from 'obsidian';
+import { Notice, Plugin, requestUrl, type WorkspaceLeaf } from 'obsidian';
+import { CalendarStore } from './calendar-store';
 import { PluginDataStore } from './core/plugin-data-store';
 import type { PluginData } from './core/settings';
 import { DashboardSettingTab } from './settings-tab';
@@ -19,7 +20,22 @@ export default class ProjectDashboardPlugin extends Plugin {
 		},
 	});
 
+	// 行事曆讀取的唯一入口，所有儀表板分頁共用一次讀取與一份結果。連結只在發請求
+	// 的那一刻從密鑰儲存區拿出來，不寫進外掛資料，也不進任何紀錄。
+	readonly calendars = new CalendarStore({
+		request: async (url) => {
+			// throw: false 才拿得到 4xx／5xx 的狀態碼，由 CalendarStore 對應成讀取失敗的原因。
+			const response = await requestUrl({ url, method: 'GET', throw: false });
+			return { status: response.status, text: response.text };
+		},
+		getSecret: (id) => this.app.secretStorage.getSecret(id),
+		now: () => new Date(),
+		calendars: () => this.store.data.settings.calendars,
+	});
+
 	vaultSource!: VaultSource;
+
+	private unsubscribeStore: (() => void) | null = null;
 
 	async onload(): Promise<void> {
 		await this.store.init();
@@ -46,9 +62,30 @@ export default class ProjectDashboardPlugin extends Plugin {
 				void this.activateView();
 			},
 		});
+
+		this.addCommand({
+			id: 'refresh-calendars',
+			name: 'Refresh calendars',
+			callback: () => {
+				void this.calendars.refresh();
+			},
+		});
+
+		// 記憶體裡的 calendars 跟上次讀取用的不一樣時才重新讀取：存檔後、從外部重新
+		// 載入後、存檔失敗還原後各問一次（design.md：讀取時機只有四種）。設定頁打字
+		// 的過程中不會讀取，因為存檔本身已經延後合併。
+		this.unsubscribeStore = this.store.subscribe((reason) => {
+			if (reason !== 'settings-saved' && reason !== 'reloaded' && reason !== 'settings-reverted') return;
+			void this.calendars.refreshIfCalendarsChanged();
+		});
 	}
 
-	onunload(): void {}
+	onunload(): void {
+		this.unsubscribeStore?.();
+		this.unsubscribeStore = null;
+		// 讀到的行程只在記憶體裡，卸載就丟掉；還在路上的回應也不再通知任何分頁。
+		this.calendars.dispose();
+	}
 
 	// Obsidian 回報外掛資料被外部改掉（Obsidian Sync 帶來另一台裝置的修改）。
 	async onExternalSettingsChange(): Promise<void> {

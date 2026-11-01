@@ -174,6 +174,8 @@ export class ProjectDashboardView extends ItemView {
 		this.buildLayout();
 		this.registerInteractions();
 		await this.rescanAndRender();
+		// 分頁打開是四種讀取時機之一；沒有行事曆設鑰匙時這一次完全不連網。
+		void this.plugin.calendars.refresh();
 		this.unsubscribeVaultSource = this.vaultSource.onChange(() => {
 			void this.handleExternalChange();
 		});

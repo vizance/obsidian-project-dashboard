@@ -443,3 +443,9 @@
 .pd-rule-row .setting-item-info { display: none; }
 .pd-rule-row .setting-item-control { justify-content: flex-start; }
 .pd-rule-row .setting-item-control input[type="text"] { flex: 1; }
+
+/* 行事曆列也沒有名稱，和分類規則列同一套排版。名稱欄用直接子選擇器放寬，
+   密鑰選擇器裡面的輸入框才不會跟著被拉寬。 */
+.pd-calendar-row .setting-item-info { display: none; }
+.pd-calendar-row .setting-item-control { justify-content: flex-start; }
+.pd-calendar-row .setting-item-control > input[type="text"] { flex: 1; }

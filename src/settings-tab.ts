@@ -1,9 +1,12 @@
-import { PluginSettingTab, Setting, TFolder, type App } from 'obsidian';
+import { PluginSettingTab, SecretComponent, Setting, TFolder, type App } from 'obsidian';
 import { CATEGORIES, CATEGORY_KEYS } from './core/config';
 import {
+	addCalendar,
 	addClassificationRule,
 	moveClassificationRule,
+	removeCalendar,
 	removeClassificationRule,
+	replaceCalendar,
 	replaceClassificationRule,
 	weekdayFromOption,
 	type DashboardSettings,
@@ -38,6 +41,7 @@ export class DashboardSettingTab extends PluginSettingTab {
 		this.buildProjectNotesSection();
 		this.buildClassificationSection();
 		this.buildDateRulesSection();
+		this.buildCalendarSection();
 	}
 
 	hide(): void {
@@ -50,11 +54,19 @@ export class DashboardSettingTab extends PluginSettingTab {
 		this.plugin.store.updateSettings({ ...this.settings, ...partial });
 	}
 
-	// 改動規則清單的長度或順序以後整頁重畫，設定頁的每一列才會重新對上存起來的
-	// 那一條規則（首列上移與末列下移的停用狀態也跟著更新）。
-	private patchRules(rules: DashboardSettings['classificationRules']): void {
-		this.patch({ classificationRules: rules });
+	// 改動清單的長度或順序以後整頁重畫，設定頁的每一列才會重新對上存起來的那一條規則
+	// 或那一個行事曆（首列上移與末列下移的停用狀態也跟著更新）。
+	private patchAndRedraw(partial: Partial<DashboardSettings>): void {
+		this.patch(partial);
 		this.display();
+	}
+
+	private patchRules(rules: DashboardSettings['classificationRules']): void {
+		this.patchAndRedraw({ classificationRules: rules });
+	}
+
+	private patchCalendars(calendars: DashboardSettings['calendars']): void {
+		this.patchAndRedraw({ calendars });
 	}
 
 	private buildProjectNotesSection(): void {
@@ -171,5 +183,46 @@ export class DashboardSettingTab extends PluginSettingTab {
 					this.patch({ saturdayCountsAsNextWeek: value });
 				});
 			});
+	}
+
+	private buildCalendarSection(): void {
+		const heading = new Setting(this.containerEl)
+			.setName('Calendars')
+			.setDesc(`Show events from your calendars at the top of the month view. The plugin reads your calendars over the internet. It never changes them. Each calendar's link is kept in a safe place inside Obsidian, not in this plugin's files.`)
+			.setHeading();
+		// 取得方式另起一行：使用者要照著這一步去 Google 複製連結，和上面的說明分開才好找。
+		heading.descEl.createDiv({ text: 'In Google Calendar, open the settings of a calendar and copy "Secret address in iCal format".' });
+
+		this.settings.calendars.forEach((calendar, index) => {
+			const row = new Setting(this.containerEl);
+			row.settingEl.addClass('pd-calendar-row');
+			row.addText((text) => {
+				text.setPlaceholder('Calendar name')
+					.setValue(calendar.name)
+					.onChange((value) => {
+						this.patch({ calendars: replaceCalendar(this.settings.calendars, index, { name: value }) });
+					});
+			});
+			// 密鑰選擇器給的是鑰匙的 ID，連結本身留在 Obsidian 的密鑰儲存區；設定頁只存這個
+			// ID，從不去讀鑰匙的內容。
+			row.addComponent((el) => new SecretComponent(this.app, el)
+				.setValue(calendar.secretId)
+				.onChange((value) => {
+					this.patch({ calendars: replaceCalendar(this.settings.calendars, index, { secretId: value }) });
+				}));
+			row.addExtraButton((button) => {
+				button.setIcon('trash')
+					.setTooltip('Delete')
+					.onClick(() => {
+						this.patchCalendars(removeCalendar(this.settings.calendars, index));
+					});
+			});
+		});
+
+		new Setting(this.containerEl).addButton((button) => {
+			button.setButtonText('Add a calendar').onClick(() => {
+				this.patchCalendars(addCalendar(this.settings.calendars));
+			});
+		});
 	}
 }
