@@ -1,6 +1,8 @@
 import { ItemView, MarkdownView, Scope, TFile, type WorkspaceLeaf } from 'obsidian';
 import { CATEGORIES, CATEGORY_KEYS } from './core/config';
 import type { Cell } from './core/cells';
+import { calendarStatusLine, monthEventRange } from './core/calendar-row';
+import { eventLineText, occurrencesForWeek, occurrencesInRange, type EventOccurrence } from './core/calendar';
 import { perWeekCells, sortProjects, spanWeekOffset, timelineCells, visibleProjects } from './core/cells';
 import {
 	monthOfDate,
@@ -32,7 +34,7 @@ import {
 import type { DashboardSettings } from './core/settings';
 import { buildWeeks, groupMonths, groupQuarters, todayLocal, todayWeekIndex, type WeekInfo } from './core/weeks';
 import type ProjectDashboardPlugin from './main';
-import { MonthView } from './month-view';
+import { MonthView, type CalendarRowData } from './month-view';
 import { projectStateClass, renderProjectColHeader, renderProjectHeadCell } from './project-column';
 import { TaskWriter, type TaskEdit } from './task-writer';
 import type { VaultSource } from './vault-source';
@@ -90,6 +92,14 @@ interface UnscheduledTarget {
 
 type PopoverTarget = WeekTarget | UnscheduledTarget;
 
+// 重繪前記下來、重繪後放回去的畫面狀態（dashboard-note-sync：Re-render preserves
+// the user's view state）。年／月、顯示的月份、各種開關都在欄位裡，重繪不會動到。
+interface PreservedViewState {
+	scrollLeft: number;
+	scrollTop: number;
+	popover: (PopoverTarget & { state: PopoverViewState }) | null;
+}
+
 // 同一個目標嗎（同一格再點一次要關閉、非同步打開筆記後要確認浮窗還是原來那個）。
 function sameTarget(a: PopoverTarget | null, b: PopoverTarget): boolean {
 	if (!a || a.kind !== b.kind) return false;
@@ -118,6 +128,13 @@ export class ProjectDashboardView extends ItemView {
 	private noteLeaf: WorkspaceLeaf | null = null;
 	private unsubscribeVaultSource: (() => void) | null = null;
 	private unsubscribeStore: (() => void) | null = null;
+	private unsubscribeCalendars: (() => void) | null = null;
+	// 每次 CalendarStore 通知（讀取開始或結束）就加一，用來讓展開結果的快取失效。
+	// 不能用 state 物件的識別：每次讀 state 都是新的快照。
+	private calendarVersion = 0;
+	// 展開一個月的行程對大型行事曆來說不便宜，所以只在讀取有新結果或顯示的月份換掉
+	// 時才重算；筆記變動造成的重繪沿用這一份（design.md：切換月份不重新解析）。
+	private calendarCache: { version: number; from: string; to: string; occurrences: EventOccurrence[] } | null = null;
 
 	private projects: ProjectRecord[] = [];
 	private weeks: WeekInfo[] = [];
@@ -174,6 +191,13 @@ export class ProjectDashboardView extends ItemView {
 		this.buildLayout();
 		this.registerInteractions();
 		await this.rescanAndRender();
+		// 讀取開始（狀態列要顯示「讀取中…」）與結束都重繪，但不重新掃描筆記
+		// （design.md：行事曆更新走保留狀態的重繪）。先訂閱再讀取，第一次讀取的
+		// 開始通知才不會漏掉。
+		this.unsubscribeCalendars = this.plugin.calendars.subscribe(() => {
+			this.calendarVersion += 1;
+			this.renderPreservingPopover();
+		});
 		// 分頁打開是四種讀取時機之一；沒有行事曆設鑰匙時這一次完全不連網。
 		void this.plugin.calendars.refresh();
 		this.unsubscribeVaultSource = this.vaultSource.onChange(() => {
@@ -192,6 +216,8 @@ export class ProjectDashboardView extends ItemView {
 		this.unsubscribeVaultSource = null;
 		this.unsubscribeStore?.();
 		this.unsubscribeStore = null;
+		this.unsubscribeCalendars?.();
+		this.unsubscribeCalendars = null;
 		// 浮窗不在 contentEl 裡，empty() 清不掉它，要自己移除。
 		this.popoverEl?.remove();
 		this.contentEl.empty();
@@ -211,16 +237,33 @@ export class ProjectDashboardView extends ItemView {
 	// immediate re-scan"). renderChart() closes the popover because every anchor
 	// is replaced, so the target is captured before and re-opened after.
 	private async refreshPreservingPopover(): Promise<void> {
-		const scrollLeft = this.chartEl.scrollLeft;
-		const scrollTop = this.contentEl.scrollTop;
-		const previous = this.popoverTarget ? { ...this.popoverTarget, state: this.popover.captureState() } : null;
+		const preserved = this.capturePreservedState();
 		await this.rescanAndRender();
-		this.chartEl.scrollLeft = scrollLeft;
-		this.contentEl.scrollTop = scrollTop;
-		if (previous) {
-			this.suppressScrollCloseUntil = Date.now() + SCROLL_RESTORE_GRACE_MS;
-			this.reopenPopover(previous);
-		}
+		this.restorePreservedState(preserved);
+	}
+
+	// 行事曆讀取開始與結束走這一條：畫面狀態與浮窗的處理和筆記變動完全相同，只是
+	// 不重新掃描筆記（dashboard-note-sync：A calendar fetch keeps the popover open）。
+	private renderPreservingPopover(): void {
+		const preserved = this.capturePreservedState();
+		this.render();
+		this.restorePreservedState(preserved);
+	}
+
+	private capturePreservedState(): PreservedViewState {
+		return {
+			scrollLeft: this.chartEl.scrollLeft,
+			scrollTop: this.contentEl.scrollTop,
+			popover: this.popoverTarget ? { ...this.popoverTarget, state: this.popover.captureState() } : null,
+		};
+	}
+
+	private restorePreservedState(preserved: PreservedViewState): void {
+		this.chartEl.scrollLeft = preserved.scrollLeft;
+		this.contentEl.scrollTop = preserved.scrollTop;
+		if (!preserved.popover) return;
+		this.suppressScrollCloseUntil = Date.now() + SCROLL_RESTORE_GRACE_MS;
+		this.reopenPopover(preserved.popover);
 	}
 
 	// Later tasks call this after a background re-scan; rebuilds the stats,
@@ -386,6 +429,7 @@ export class ProjectDashboardView extends ItemView {
 			settings: () => this.settings,
 			today: () => this.today,
 			categoryOrder: () => this.categoryOrder,
+			calendarRow: () => this.calendarRowData(),
 		});
 
 		this.setHelpPanelVisible(this.helpPanelOpen);
@@ -521,6 +565,12 @@ export class ProjectDashboardView extends ItemView {
 		addMonthRow('done', '✓ 任務', '已完成的任務');
 		addMonthRow('overdue', '任務', '週已過還沒完成的任務');
 		addMonthRow('open', '任務', '還沒完成、週還沒過的任務');
+
+		// General 列不是任務文字的一種樣式，所以示範字就是列名，說明照規格的字串
+		// （dashboard-keyboard-shortcuts：Help panel content）。
+		const generalLi = monthUl.createEl('li');
+		generalLi.createSpan({ cls: 'mv-sample mv-general', text: 'General 列' });
+		generalLi.appendText('：行事曆的行程，只能看；按 ↻ 重新讀取');
 	}
 
 	private registerInteractions(): void {
@@ -789,6 +839,9 @@ export class ProjectDashboardView extends ItemView {
 			// 點到哪裡依目前顯示的視圖判斷：年視圖找畫出來的色條，月視圖找格子本身
 			// （整格可點，包含格子裡的任務文字）。
 			if (this.scale === 'month') {
+				// General 列的 `↻` 只重新讀取行事曆：它不是格子，也不能關掉開著的浮窗
+				// （dashboard-note-sync：A calendar fetch keeps the popover open）。
+				if (target.closest && target.closest('.general-refresh')) return;
 				const cell = target.closest ? target.closest<HTMLElement>('td.month-cell') : null;
 				if (cell && this.handleMonthCellClick(cell)) return;
 				// 只有帶 data-path 的「還沒排」格子（數量大於 0）能打開浮窗，表頭與
@@ -1197,6 +1250,38 @@ export class ProjectDashboardView extends ItemView {
 		// 月視圖自己算那個月的週，所以可以顯示今年以外的月份（例如 2027 年 1 月）。
 		this.monthWeeks = weeksOfMonth(year, month);
 		this.monthView.render(this.chartEl);
+	}
+
+	// General 列的資料。「有沒有這一列」看目前的設定而不是讀取結果：剛設好行事曆、
+	// 還沒讀完時也看得到這一列與它的狀態（dashboard-calendar-row：General row）。
+	private calendarRowData(): CalendarRowData | null {
+		if (!this.settings.calendars.some((calendar) => calendar.secretId !== '')) return null;
+		const range = monthEventRange(this.monthWeeks.map((w) => w.label));
+		if (!range) return null;
+		const occurrences = this.calendarOccurrences(range.from, range.to);
+		return {
+			status: calendarStatusLine(this.plugin.calendars.state),
+			lines: (weekLabel) => occurrencesForWeek(occurrences, weekLabel).map((occurrence) => ({
+				text: eventLineText(occurrence),
+				// 提示只放行事曆的顯示名稱，連結不會出現在任何畫面文字裡。
+				calendarName: occurrence.calendarName,
+			})),
+			refresh: () => {
+				void this.plugin.calendars.refresh();
+			},
+		};
+	}
+
+	// 展開顯示中那個月的行程，並記住上一次的結果：只有讀取帶來新資料（版本加一）或
+	// 月份換掉時才重算，筆記變動造成的重繪不會重算。
+	private calendarOccurrences(from: string, to: string): EventOccurrence[] {
+		const cached = this.calendarCache;
+		if (cached && cached.version === this.calendarVersion && cached.from === from && cached.to === to) {
+			return cached.occurrences;
+		}
+		const occurrences = occurrencesInRange(this.plugin.calendars.state.sources, from, to);
+		this.calendarCache = { version: this.calendarVersion, from, to, occurrences };
+		return occurrences;
 	}
 
 	// 與年視圖共用的列：篩選、排序、分組都走這一條，月視圖才會有相同的列與順序。

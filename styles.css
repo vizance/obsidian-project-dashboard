@@ -169,6 +169,23 @@
 .project-dashboard .mc-overdue { color: var(--overflow-red); }
 .project-dashboard .mc-open { color: var(--text); }
 
+/*
+ * General 列（行事曆的行程）。淡一層底色把它和下面的專案列分開；今天那一欄的
+ * .today-col 帶 !important，所以仍然蓋得過這層底色。
+ */
+.project-dashboard table.month-grid tr.general-row td { background: var(--panel); }
+.project-dashboard table.month-grid td.general-head { vertical-align: top; }
+.project-dashboard td.proj-cell.general-head .general-title { display: flex; align-items: center; gap: 6px; }
+.project-dashboard td.proj-cell.general-head .general-name { font-weight: 600; color: var(--text); }
+/* 讀不到行事曆時後面接上警告，字一樣小一號，不跟專案名稱搶注意力 */
+.project-dashboard td.proj-cell.general-head .general-status { font-size: 11px; color: var(--text-dim); }
+.project-dashboard td.proj-cell.general-head .general-status:empty { display: none; }
+.project-dashboard .general-refresh { background: none; border: 1px solid transparent; border-radius: 3px; color: var(--text-dim); padding: 0 4px; font-size: 12px; line-height: 1.4; cursor: pointer; }
+.project-dashboard .general-refresh:hover { background: var(--bg); border-color: var(--grid-soft); color: var(--text); }
+/* 行程文字和任務文字一樣會換行，格子隨之長高 */
+.project-dashboard table.month-grid td.general-cell { vertical-align: top; padding: 4px 6px; font-size: 12px; line-height: 1.45; border-left: 1px solid var(--grid-soft); }
+.project-dashboard .gc-line { color: var(--text); overflow-wrap: anywhere; }
+
 .project-dashboard #help-panel {
 	position: fixed;
 	top: 16px;
@@ -361,6 +378,8 @@
 .project-dashboard #help-panel .month-view-help li { margin-bottom: 4px; }
 /* 三種文字樣式的示範字寬度對齊，說明文字才排成一欄 */
 .project-dashboard #help-panel .mv-sample { display: inline-block; min-width: 54px; }
+/* General 列那一行的示範字是列名，不套任務文字的顏色 */
+.project-dashboard #help-panel .mv-general { font-weight: 600; }
 .project-dashboard #help-panel .legend-visual li {
 	display: flex;
 	align-items: flex-start;

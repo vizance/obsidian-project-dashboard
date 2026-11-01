@@ -1,4 +1,5 @@
 import type { Cell } from './core/cells';
+import type { CalendarStatusLine } from './core/calendar-row';
 import { monthViewCells } from './core/cells';
 import { monthCellTaskLines, unscheduledSummary } from './core/months';
 import type { ProjectRecord } from './core/scan';
@@ -7,6 +8,23 @@ import { projectStateClass, renderProjectColHeader, renderProjectHeadCell } from
 
 // 「還沒排」格子的提示：任務本身在點開的浮窗裡列出來，所以這裡只說明點了會發生什麼。
 const UNSCHEDULED_TOOLTIP = '點一下，把任務排進這個月的某一週';
+
+const REFRESH_TOOLTIP = '重新讀取行事曆';
+
+// General 列的一行行程。提示是行事曆的顯示名稱，絕不會是連結
+// （dashboard-calendar-row：Calendar links are kept in Obsidian's secret storage）。
+export interface CalendarEventLine {
+	text: string;
+	calendarName: string;
+}
+
+export interface CalendarRowData {
+	status: CalendarStatusLine;
+	// 指定那一週要列出的行程，由 view 用 occurrencesForWeek 算好並照規格排序。
+	lines(weekLabel: string): CalendarEventLine[];
+	// 按 `↻` 時呼叫；view 接到 CalendarStore 的 refresh()，月視圖自己不碰讀取。
+	refresh(): void;
+}
 
 // view.ts 提供的資料。每次畫都重新問，設定或今天的日期在分頁開著的時候被改掉時，
 // 下一次重繪就跟著對（和週浮窗的 weekRules() 同一個做法）。
@@ -18,6 +36,9 @@ export interface MonthViewHost {
 	settings(): WeekRules;
 	today(): string;
 	categoryOrder(): string[];
+	// General 列要畫的資料；沒有任何行事曆設鑰匙時回傳 null，這一列就不存在
+	// （dashboard-calendar-row：General row in the month view）。
+	calendarRow(): CalendarRowData | null;
 }
 
 // 月視圖和週浮窗一樣是獨立元件：只負責把表格畫進容器，從不改筆記，也不自己
@@ -46,6 +67,10 @@ export class MonthView {
 		headRow.createEl('th', { cls: 'month-unscheduled', text: '還沒排' });
 
 		const tbody = table.createEl('tbody');
+		// General 列是 tbody 的第一列：排在每個專案列之前，沒有專案時也排在
+		// 「（沒有符合條件的專案）」之前。
+		const calendarRow = this.host.calendarRow();
+		if (calendarRow) this.renderGeneralRow(tbody, calendarRow, weeks, todayIdx);
 		if (projects.length === 0) {
 			const tr = tbody.createEl('tr');
 			tr.createEl('td', { cls: 'proj-cell', text: '（沒有符合條件的專案）' });
@@ -75,6 +100,42 @@ export class MonthView {
 				unscheduled.setAttribute('title', UNSCHEDULED_TOOLTIP);
 			}
 		}
+	}
+
+	// 行事曆的行程只能看：格子用自己的 `general-cell` 類別，也不帶 data-path／
+	// data-week，所以 view.ts 的委派事件永遠不會從這一列打開浮窗。
+	private renderGeneralRow(
+		tbody: HTMLTableSectionElement,
+		row: CalendarRowData,
+		weeks: WeekInfo[],
+		todayIdx: number,
+	): void {
+		const tr = tbody.createEl('tr', { cls: 'general-row' });
+		const head = tr.createEl('td', { cls: 'proj-cell general-head' });
+		const title = head.createDiv({ cls: 'general-title' });
+		title.createSpan({ cls: 'general-name', text: 'General' });
+		const refresh = title.createEl('button', {
+			cls: 'general-refresh',
+			text: '↻',
+			attr: { type: 'button', title: REFRESH_TOOLTIP, 'aria-label': REFRESH_TOOLTIP },
+		});
+		// 按鈕是這一列自己的元素，重繪時連同監聽器一起被換掉；讀取本身交給 host。
+		refresh.addEventListener('click', () => row.refresh());
+		const status = head.createDiv({ cls: 'general-status', text: row.status.text });
+		// 沒有讀不到的行事曆時不設 title，滑過去才不會跳出空提示框。
+		if (row.status.tooltip !== '') status.setAttribute('title', row.status.tooltip);
+
+		weeks.forEach((w, i) => {
+			const classes = ['general-cell'];
+			// 今天那一週沿用年視圖與專案列相同的標示。
+			if (i === todayIdx) classes.push('today-col');
+			const td = tr.createEl('td', { cls: classes.join(' ') });
+			for (const line of row.lines(w.label)) {
+				td.createDiv({ cls: 'gc-line', text: line.text, attr: { title: line.calendarName } });
+			}
+		});
+		// 行程不屬於任何專案，所以「還沒排」格子永遠是空的，也打不開浮窗。
+		tr.createEl('td', { cls: 'month-unscheduled' });
 	}
 
 	private renderCell(
