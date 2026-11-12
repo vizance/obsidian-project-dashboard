@@ -10,6 +10,8 @@ With this release the plugin uses the network, which it never did before, and on
 
 Reading iCalendar files and expanding repeating rules is done by [ical.js](https://github.com/kewisch/ical.js), which is now bundled unmodified in `main.js` under the MPL-2.0; the comment at the top of `main.js` names the library, its license, and its source address. `main.js` therefore grows from about 62 KB to about 150 KB.
 
+Fixed: clicking a year-view week cell, a month-view cell, or a `還沒排` cell now opens its popover after you move the dashboard tab into a pop-out window. Click and scroll handling previously stayed in the main window; it now follows the window containing the tab, so scrolling there closes the popover as before. Category legend dragging and project column resizing follow that window too.
+
 月視圖最上面新增一列 General，一週一格列出你行事曆的行程。月視圖從 0.4.0 開始就會畫出專案，但週表格最上面那一列通常是「不是專案的事情」——上課、出遊、休假——在這之前得每週從 Google 或 Apple 行事曆手抄。現在儀表板會去讀你指定的行事曆，把行程寫進和任務相同的那幾週：`11/6（五）13:30 讀書會`、`11/11（三）休假`、`11/7（六）–11/9（一）研習營`。重複的行程會展開成一次一次的行程，行事曆自己的例外與被移動的那幾次都照算，已取消的行程不顯示，跨好幾天的行程會列在它碰到的每一週。這一列只能看——點格子不會打開浮窗——年視圖完全沒變，也不顯示任何行程。讀取只發生在四個時機：儀表板分頁打開時、按這一列的 `↻` 時、執行新指令 `Refresh calendars` 時，以及在設定裡改動行事曆清單時。在月份之間移動永遠不會去讀。`General` 下面的狀態列在讀取中寫 `讀取中…`，讀完寫 `更新於 15:20`；有行事曆讀不到時會接上 `・⚠ 1 個行事曆讀不到`，並在提示裡寫出是哪個行事曆、什麼原因，其他行事曆——以及每一列專案——都照常。
 
 設定方式：到**設定 → Project Dashboard**，那裡現在多了第四區 `Calendars`。按 `Add a calendar`，給行事曆取個名稱，再用那一列的密鑰選擇器挑一把鑰匙——在 Obsidian 裡新建一把，把行事曆的網址貼進去當它的值。在 Google 日曆，那個網址是日曆設定頁最下面的 **iCal 格式的私密網址**。網址存在 Obsidian 的密鑰儲存區，絕不進這個外掛的 `data.json`，因為外掛資料會被 Obsidian Sync 一起同步，而那個網址等於整個行事曆的讀取密碼；外掛資料只存行事曆的名稱和鑰匙的 ID。鑰匙不一定會跟著 Obsidian Sync 同步，所以第二台電腦可能會顯示 `這台裝置找不到連結`，直到你在那台也選好鑰匙。網址萬一外洩，到 Google 日曆重設它，再把新網址貼進鑰匙裡。
@@ -17,6 +19,8 @@ Reading iCalendar files and expanding repeating rules is done by [ical.js](https
 這一版開始，外掛會連網——以前完全不連——而且只為了這一件事：用 `GET` 請求你自己存進去的行事曆網址，只在上面那四個時機。它絕不寫入行事曆，也不會把筆記、設定或任何 vault 內容送到任何地方。讀回來的行程只放在記憶體，外掛卸載就丟掉。沒有設定任何行事曆時，完全不發請求。
 
 讀 iCalendar 檔案與展開重複規則是 [ical.js](https://github.com/kewisch/ical.js) 做的，它現在原封不動打包進 `main.js`，採 MPL-2.0 授權；`main.js` 開頭的註解寫出這個套件、它的授權與原始碼位置。因此 `main.js` 從約 62 KB 變成約 150 KB。
+
+修正：把儀表板分頁拖到獨立視窗後，點年視圖週格子、月視圖格子或「還沒排」格子，現在都能打開浮窗。原本點擊與捲動的監聽留在主視窗，現在會跟著分頁所在的視窗，因此在獨立視窗裡捲動時，浮窗也會照原本規則關閉。圖例拖拉排序與專案欄寬拖拉也會跟著分頁所在的視窗運作。
 
 ## 0.4.0 — 2026-10-31
 

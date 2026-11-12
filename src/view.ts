@@ -121,6 +121,7 @@ export class ProjectDashboardView extends ItemView {
 	private helpPanelOpen = false;
 	private popoverAnchor: HTMLElement | null = null;
 	private popoverTarget: PopoverTarget | null = null;
+	private unbindWeekPopoverWindowListeners: (() => void) | null = null;
 	// Restoring scroll after a re-render fires scroll events on the next frame;
 	// they must not close the popover that was just re-opened.
 	private suppressScrollCloseUntil = 0;
@@ -657,6 +658,7 @@ export class ProjectDashboardView extends ItemView {
 			const draggedKey = item.dataset.category;
 			if (!draggedKey) return;
 
+			const doc = this.containerEl.ownerDocument;
 			const startX = e.clientX;
 			const startY = e.clientY;
 			let dragging = false;
@@ -670,7 +672,7 @@ export class ProjectDashboardView extends ItemView {
 					item.classList.add('dragging');
 				}
 				if (!dragging) return;
-				const hovered = (activeDocument.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)
+				const hovered = (doc.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)
 					?.closest('.legend-item') as HTMLElement | null;
 				if (dropTargetEl && dropTargetEl !== hovered) {
 					dropTargetEl.classList.remove('drop-target');
@@ -683,8 +685,8 @@ export class ProjectDashboardView extends ItemView {
 			};
 
 			const onUp = (ev: MouseEvent): void => {
-				activeDocument.removeEventListener('mousemove', onMove);
-				activeDocument.removeEventListener('mouseup', onUp);
+				doc.removeEventListener('mousemove', onMove);
+				doc.removeEventListener('mouseup', onUp);
 				item.classList.remove('dragging');
 				if (dropTargetEl) dropTargetEl.classList.remove('drop-target');
 
@@ -695,7 +697,7 @@ export class ProjectDashboardView extends ItemView {
 					return;
 				}
 
-				const dropEl = (activeDocument.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)
+				const dropEl = (doc.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)
 					?.closest('.legend-item') as HTMLElement | null;
 				if (!dropEl || dropEl === item) return;
 				const targetKey = dropEl.dataset.category;
@@ -712,8 +714,8 @@ export class ProjectDashboardView extends ItemView {
 				this.render();
 			};
 
-			this.registerDomEvent(activeDocument, 'mousemove', onMove);
-			this.registerDomEvent(activeDocument, 'mouseup', onUp);
+			this.registerDomEvent(doc, 'mousemove', onMove);
+			this.registerDomEvent(doc, 'mouseup', onUp);
 		});
 	}
 
@@ -721,6 +723,7 @@ export class ProjectDashboardView extends ItemView {
 		this.registerDomEvent(this.chartEl, 'mousedown', (e: MouseEvent) => {
 			const target = e.target as HTMLElement;
 			if (!target.classList.contains('resize-handle')) return;
+			const doc = this.containerEl.ownerDocument;
 			e.preventDefault();
 			target.classList.add('dragging');
 			this.contentEl.addClass('col-resizing');
@@ -732,15 +735,15 @@ export class ProjectDashboardView extends ItemView {
 				this.contentEl.setCssProps({ '--proj-col-width': `${this.projColWidth}px` });
 			};
 			const onUp = (): void => {
-				activeDocument.removeEventListener('mousemove', onMove);
-				activeDocument.removeEventListener('mouseup', onUp);
+				doc.removeEventListener('mousemove', onMove);
+				doc.removeEventListener('mouseup', onUp);
 				this.contentEl.removeClass('col-resizing');
 				target.classList.remove('dragging');
 				this.writeLocalStorage('dashboard.projColWidth', String(Math.round(this.projColWidth)));
 			};
 
-			this.registerDomEvent(activeDocument, 'mousemove', onMove);
-			this.registerDomEvent(activeDocument, 'mouseup', onUp);
+			this.registerDomEvent(doc, 'mousemove', onMove);
+			this.registerDomEvent(doc, 'mouseup', onUp);
 		});
 	}
 
@@ -829,7 +832,22 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	private registerWeekPopover(): void {
-		this.registerDomEvent(activeDocument, 'click', (e: MouseEvent) => {
+		this.bindWeekPopoverWindowListeners(this.containerEl.ownerDocument);
+		this.register(this.containerEl.onWindowMigrated((win) => {
+			this.bindWeekPopoverWindowListeners(win.document, win);
+			this.closeWeekPopover();
+			win.document.body.appendChild(this.popoverEl);
+		}));
+		// Cleanup must use the latest binding because the tab may have changed windows.
+		this.register(() => {
+			this.unbindWeekPopoverWindowListeners?.();
+			this.unbindWeekPopoverWindowListeners = null;
+		});
+	}
+
+	private bindWeekPopoverWindowListeners(doc: Document, win: Window | null = doc.defaultView): void {
+		this.unbindWeekPopoverWindowListeners?.();
+		const onClick = (e: MouseEvent): void => {
 			// A click handler inside the popover may have rebuilt the popover's DOM
 			// before this document-level listener runs, which detaches e.target and
 			// would make contains() false. composedPath() still holds the popover,
@@ -854,8 +872,8 @@ export class ProjectDashboardView extends ItemView {
 			const bar = target.closest ? target.closest<HTMLElement>('.bar') : null;
 			if (bar && this.handleBarClick(bar, e)) return;
 			this.closeWeekPopover();
-		});
-		this.registerDomEvent(activeWindow, 'scroll', (e: Event) => {
+		};
+		const onScroll = (e: Event): void => {
 			if (this.popoverEl.hidden || !this.popoverAnchor) return;
 			if (Date.now() < this.suppressScrollCloseUntil) return;
 			// Only a scroll that moves the anchor detaches the fixed-position popover
@@ -868,7 +886,13 @@ export class ProjectDashboardView extends ItemView {
 			const node = e.target as { contains?: (other: Node | null) => boolean } | null;
 			if (typeof node?.contains !== 'function' || !node.contains(this.popoverAnchor)) return;
 			this.closeWeekPopover();
-		}, true);
+		};
+		doc.addEventListener('click', onClick);
+		win?.addEventListener('scroll', onScroll, true);
+		this.unbindWeekPopoverWindowListeners = () => {
+			doc.removeEventListener('click', onClick);
+			win?.removeEventListener('scroll', onScroll, true);
+		};
 	}
 
 	// 月視圖的格子：非空白的格子整格都能開浮窗，錨點就是那一格。不看
