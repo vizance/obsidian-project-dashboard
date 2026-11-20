@@ -8,4 +8,4 @@
 ## 2. 文件與驗收
 
 - [x] 2.1 規格與文件：把 `add-calendar-row` 規格裡設定頁「沿用這列原本的鑰匙 ID」改成只沿用外掛自己的 ID；CHANGELOG 0.5.0 英文與中文各加一段資安修正說明（白話、說明原因）。驗證：重讀差異。
-- [ ] 2.2 自動驗收：`npm test`、`npm run lint`、`npm run build` 通過；主代理重跑四個重現腳本確認全部解決；部署到本機 vault。驗證：貼出結果。
+- [x] 2.2 自動驗收：`npm test`、`npm run lint`、`npm run build` 通過；主代理重跑四個重現腳本確認全部解決；部署到本機 vault。驗證：貼出結果。

@@ -81,41 +81,80 @@ When the toggle fires, the dashboard SHALL show or hide the help panel DOM eleme
 ---
 ### Requirement: Help panel content
 
-The help panel SHALL display three sections with the following content:
+The help panel SHALL organize its content into three tabs labelled `年視圖`, `月視圖`, and `操作`, shown at the top of the panel. Only the selected tab's content SHALL be shown. The selected tab SHALL be marked by at least two cues (bold label and an accent-colored underline), and the tabs SHALL be keyboard accessible (`role="tablist"`/`tab`/`tabpanel`, arrow keys move between tabs). Each time the panel opens, the selected tab SHALL be `年視圖` when the year view is shown and `月視圖` when the month view is shown; clicking a tab switches to it. Within a tab, items SHALL be grouped under short subheadings, one short line per item, and every visual item SHALL show a sample drawn with the same classes the chart uses.
 
-- **Shortcuts section**: lists at minimum `T` (切換週視圖 / Timeline，只作用在年視圖), `M` (切換年 / 月), and `?` (顯示 / 隱藏面板).
-- **Visual legend section**: explains the five visual states found in the gantt chart:
-  - Solid filled block in category color → 該週有任務排定（尚未完成）
-  - Dimmed category-color block with a checkmark (✓) → 該週任務已全部完成（settled）
-  - Dashed border block in category color → 該週無任務（仍在專案區間）
-  - Solid filled block in warning red → 超出原訂結束日（scope creep）— 該回去更新 frontmatter `預計結束日期`
-  - Blank cell → 不在專案區間 / 已結案專案的無任務週
-- **Month view section**: explains the task text styles of the month view:
+`年視圖` SHALL contain these groups and items:
+
+- **每一格＝這週的任務**:
+  - Solid filled block in category color → 有任務，還沒全部完成
+  - Dimmed block with a checkmark (✓) → 這週的任務都完成了
+  - Dashed border block → 在專案期間內，這週沒有任務
+  - Blank cell → 沒有任務，也不在專案期間（或專案已結案）
+- **需要注意**:
+  - Solid block in warning red → 超出預計結束日期還有任務；可以更新 frontmatter 的 `預計結束日期`
+  - `⚠` after a project name → 日期有缺漏、是推算的，或有問題；滑過去看原因
+- **整列＝專案狀態**:
+  - Diagonal stripes with the label `⏳ 暫停` → 暫停的專案（勾「顯示暫停」才會出現）
+  - Grey block → 已完成或取消的專案（勾「顯示已結案」才會出現）
+- **顏色與欄位**:
+  - Category-colored dot → 專案的分類，對照上方圖例
+  - Light red column → 今天所在的週
+
+`月視圖` SHALL contain these groups and items:
+
+- **格子裡的任務文字**:
   - `✓` before greyed text → 已完成的任務
   - Text in warning red → 週已過還沒完成的任務
   - Normal text → 還沒完成、週還沒過的任務
-  - The General row → 行事曆的行程，只能看；按 `↻` 重新讀取
+- **格子底色**:
+  - One line → 底色的意思和年視圖一樣（實心、淡色、虛線、紅色、斜線紋）
+- **General 列（行事曆）**:
+  - A colored label before an event → 行事曆名稱；顏色在設定頁改
+  - `↻` → 重新讀取行事曆；行程只能看，不能改
+- **還沒排**:
+  - The `還沒排` number → 還沒排日期的任務；點一下排進這個月的某一週
 
-The help panel MUST be a static DOM structure (not dynamically generated from data) so its content is always available regardless of which projects are loaded.
+`操作` SHALL contain these groups and items:
 
-#### Scenario: Panel contains both sections
+- **編輯**:
+  - 點格子 → 打開那一週的任務：勾完成、換週、排進或新增任務
+  - 點專案名稱 → 在右側開啟筆記
+  - 勾「編輯分類與狀態」 → 改專案的分類，或改成暫停、完成、取消
+- **切換**:
+  - `年` / `月`，或按 `M` → 切換年視圖與月視圖
+  - `◀` `▶` → 換年份或月份；`今年`、`本月` 回到現在
+  - `T` → 切換逐週與 Timeline（只在年視圖）
+  - `?` → 打開或關閉這個面板
+- **版面**:
+  - 點圖例 → 把一類置頂；拖拉圖例 → 調整分類順序
+  - 拖拉專案欄的右邊 → 調整欄寬
 
-- **WHEN** the help panel is visible
-- **THEN** the DOM MUST contain at least one element matching the shortcuts section (e.g., a `<section class="shortcuts">` or equivalent identifier)
-- **AND** the DOM MUST contain at least one element matching the visual legend section
-- **AND** the shortcuts section MUST include literal text matching `T` and `?` (or `/`)
-- **AND** the visual legend section MUST include the substring `超出原訂結束日` (or equivalent explanation of the red color)
+When the panel is taller than the window, it SHALL scroll inside itself and SHALL NOT extend past the window. The help panel MUST be a static DOM structure (not dynamically generated from data) so its content is always available regardless of which projects are loaded.
 
-#### Scenario: Legend includes the settled state
+#### Scenario: The panel opens on the tab of the current view
 
-- **WHEN** the help panel is visible
-- **THEN** the visual legend section MUST include an entry explaining the settled state (a dimmed category-color block with a checkmark) with text matching `已全部完成` (or equivalent)
+- **GIVEN** the month view is shown
+- **WHEN** the user presses `?`
+- **THEN** the `月視圖` tab MUST be selected and its content shown
+- **AND** the `年視圖` and `操作` content MUST be hidden
 
-#### Scenario: Panel explains the month view
+#### Scenario: Switching tabs
 
-- **WHEN** the help panel is visible
-- **THEN** the shortcuts section MUST include literal text matching `M`
-- **AND** the panel MUST include the substring `週已過還沒完成`
+- **GIVEN** the help panel is open on `年視圖`
+- **WHEN** the user clicks `操作`
+- **THEN** the `操作` content MUST be shown and contain `編輯分類與狀態` and `M`
+- **AND** the `年視圖` content MUST be hidden
+
+#### Scenario: Year tab groups
+
+- **WHEN** the `年視圖` tab is shown
+- **THEN** it MUST show the subheadings `每一格＝這週的任務`, `需要注意`, `整列＝專案狀態`, and `顏色與欄位`
+- **AND** it MUST include `⏳ 暫停`, `暫停的專案`, and `超出預計結束日期`
+
+#### Scenario: Month tab groups
+
+- **WHEN** the `月視圖` tab is shown
+- **THEN** it MUST include `週已過還沒完成`, `還沒排`, and `行事曆名稱`
 
 ---
 ### Requirement: Persistent reopen affordance (help FAB)
