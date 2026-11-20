@@ -2,7 +2,7 @@
 
 ### Requirement: Paused projects are hidden behind their own toggle
 
-A project whose status is `pending` (its filename starts with `⏳`) is a paused project. Paused projects SHALL be hidden from the year view and the month view by default. The controls row SHALL show, next to `顯示已結案`, a checkbox labelled `顯示暫停（<n>）`, where `<n>` is the number of paused projects that would be shown if the checkbox were checked (projects in the project folder, not skipped by `Projects to skip`, and with a start and end date); the checkbox SHALL NOT be shown when `<n>` is 0, and SHALL be unchecked whenever the dashboard tab opens. While it is checked, paused projects SHALL be shown in their usual place and order, with their rows drawn at reduced opacity (about 0.6) but keeping their category colors, so they look neither active nor closed. The count SHALL update on every re-scan.
+A project whose status is `pending` (its filename starts with `⏳`) is a paused project. Paused projects SHALL be hidden from the year view and the month view by default. The controls row SHALL show, next to `顯示已結案`, a checkbox labelled `顯示暫停（<n>）`, where `<n>` is the number of paused projects that would be shown if the checkbox were checked (projects in the project folder, not skipped by `Projects to skip`, and with a start and end date); the checkbox SHALL NOT be shown when `<n>` is 0, and SHALL be unchecked whenever the dashboard tab opens. While it is checked, paused projects SHALL be shown in their usual place and order, and every paused row SHALL read as paused at a glance: the label `⏳ 暫停` SHALL follow the project name, and the row's year-view bars and month-view cells SHALL be drawn with diagonal stripes in the category color at reduced opacity (about 0.6), so a paused row looks neither active (solid color) nor closed (grey). The count SHALL update on every re-scan.
 
 #### Scenario: Paused projects are hidden with a count
 
@@ -11,7 +11,8 @@ A project whose status is `pending` (its filename starts with `⏳`) is a paused
 - **THEN** 13 project rows MUST be shown
 - **AND** the controls row MUST show an unchecked `顯示暫停（2）`
 - **WHEN** the user checks `顯示暫停（2）`
-- **THEN** 15 rows MUST be shown, the two paused ones at reduced opacity
+- **THEN** 15 rows MUST be shown
+- **AND** each of the two paused rows MUST show the label `⏳ 暫停` after its name and striped bars
 
 #### Scenario: No paused projects, no checkbox
 
