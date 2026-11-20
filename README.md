@@ -47,6 +47,7 @@ One row per calendar, each with:
   - `Paste the calendar link here` — no link has been set up yet.
   - `Link saved. Paste a new link to change it.` — the link is saved on this computer.
   - `This computer has no link yet. Paste it here.` — the calendar is in the list, but its link is missing on this computer.
+- a color picker (tooltip `Color`) — choose the color for the calendar's name labels. Until you choose one, the colors follow the list order: blue, green, orange, purple, teal, pink, then repeat. The defaults avoid red, which is reserved for overdue tasks and work beyond a project's expected end.
 - `Delete` — removes that calendar and clears the link the plugin saved for it.
 
 `Add a calendar` appends an empty row. A row that has never had a link is skipped: it is never fetched and never reported as a problem. The link is checked when you paste it, press Enter, or leave the field. If it does not start with `https://` or `webcal://`, nothing is saved and the row shows `This is not a calendar link. It should start with https:// or webcal://.` The link is kept in Obsidian's secret storage, outside the plugin's data file; the plugin handles storage for you.
@@ -87,7 +88,7 @@ Above every project row, the month view shows one more row, `General`: the event
 
 **Get the link.** In Google Calendar, open **Settings**, pick the calendar in the left list, scroll to the bottom and copy **Secret address in iCal format**. That address is a password: anyone who has it can read the whole calendar. For iCloud, open the Calendar app on your Mac, right-click the calendar and choose **Share Calendar…** (`共享行事曆⋯`, or `分享行事曆⋯` in some versions). Check **Public Calendar** (`公開行事曆`) and copy the link starting with `webcal://`. Anyone who gets this public link can read the calendar. If the calendar already lives in Google and iCloud only subscribes to it, use the Google address instead. If a Google secret address leaks, reset it on the same Google Calendar settings page, then paste the new address into the plugin's link field; the old address stops working.
 
-**Add the calendar.** In **Settings → Project Dashboard → Calendars**, press `Add a calendar`, type a name into the row (`工作`, `家庭` — Chinese is fine), and paste the link into its link field. The plugin saves it and clears the field; `Link saved. Paste a new link to change it.` confirms that it is saved. The name labels the calendar's events and identifies it when it cannot be read.
+**Add the calendar.** In **Settings → Project Dashboard → Calendars**, press `Add a calendar`, type a name into the row (`工作`, `家庭` — Chinese is fine), and paste the link into its link field. The plugin saves it and clears the field; `Link saved. Paste a new link to change it.` confirms that it is saved. You can also choose a color with the `Color` picker. Each event starts with a label showing this name in the calendar's color; an unnamed calendar uses `行事曆 1`, `行事曆 2`, … by its position in the list. The name also identifies the calendar when it cannot be read.
 
 Saved links may not travel with Obsidian Sync the way the rest of the settings do. If a second computer has the calendar list but no saved link, the link field says `This computer has no link yet. Paste it here.` and the General row reports `這台裝置找不到連結`. Paste the link into that row on the second computer too.
 
@@ -97,18 +98,18 @@ Saved links may not travel with Obsidian Sync the way the rest of the settings d
 2. When you press `↻` in the General row's name cell.
 3. When you run `Refresh calendars` (`Project Dashboard: Refresh calendars` in the command palette).
 4. When you paste a new link for a calendar that was already set up; it is read again right away.
-5. When the calendar list changes: after settings are saved, settings changed outside the running plugin are loaded, or a failed save restores the last saved settings.
+5. When the list of calendars with a link, or their order, changes: after settings are saved, settings changed outside the running plugin are loaded, or a failed save restores the last saved settings. This comparison uses only the link settings. Renaming a calendar or changing its color does not read events again; the labels update when the change is saved.
 
 Nothing else reads them: no timer, no year or month navigation (including `今年` and `本月`), no `年` / `月` switch, and no note update. Pressing `↻` while a week popover is open leaves the popover where it is.
 
-**What a line looks like.** Local dates as month/day with the weekday in brackets, local 24-hour times:
+**What a line looks like.** Each line starts with the calendar's name label in that calendar's color, followed by event text like the examples below. Local dates use month/day with the weekday in brackets, and times use the local 24-hour clock:
 
 - `11/6（五）13:30 讀書會` — an event with a time, inside one day.
 - `11/11（三）休假` — an all-day event of one day.
 - `11/7（六）–11/9（一）研習營` — an all-day event over several days.
 - `11/8（日）22:00–11/9（一）01:00 夜間維護` — an event with a time that ends on a later day.
 
-An event without a title reads `（沒有標題）`. Hovering a line shows the name of the calendar it came from. Within a week the lines are ordered by date, all-day events before timed ones on the same date. An event appears in every week it touches, so a trip over a weekend is listed in both weeks. Repeating events are expanded into their single occurrences, with the calendar's own exceptions and moved occurrences respected, and events marked cancelled are not shown at all. `Saturday tasks count for next week` applies to tasks only: an event on a Saturday is listed in the week of that Saturday whatever that setting says.
+An event without a title reads `（沒有標題）`. Within a week the lines are ordered by date, all-day events before timed ones on the same date. An event appears in every week it touches, so a trip over a weekend is listed in both weeks. Repeating events are expanded into their single occurrences, with the calendar's own exceptions and moved occurrences respected, and events marked cancelled are not shown at all. `Saturday tasks count for next week` applies to tasks only: an event on a Saturday is listed in the week of that Saturday whatever that setting says.
 
 **The status line** sits under the word `General`. Before the first read of this Obsidian session it is empty; while a read is running it says `讀取中…`; afterwards it says `更新於 15:20` with the time the last read finished. When a calendar could not be read, `・⚠ 1 個行事曆讀不到` follows, and hovering the status line lists one `<name>：<reason>` per failed calendar. The five reasons are:
 
@@ -212,6 +213,7 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
   - `Paste the calendar link here` — 還沒設定過連結，請貼在這裡。
   - `Link saved. Paste a new link to change it.` — 這台電腦已存好連結，貼新連結就能更換。
   - `This computer has no link yet. Paste it here.` — 清單裡有這個行事曆，但這台電腦還沒有連結，請貼在這裡。
+- 顏色選擇（提示文字 `Color`）— 選擇行事曆名稱標籤的顏色。還沒選過時，依清單順序使用藍、綠、橘、紫、青、粉，再從藍色輪流。預設色避開紅色，紅色留給逾期任務與超出專案預計結束日期的工作。
 - `Delete`（刪除）— 把那個行事曆從清單移除，也清空外掛替它存的連結。
 
 按 `Add a calendar`（新增行事曆）加一列空白。從未設定過連結的那一列會直接跳過：不會去讀，也不會被當成錯誤回報。貼上、按 Enter 或離開連結欄時會檢查格式。如果不是 `https://` 或 `webcal://` 開頭，就不會儲存，並在該列下方顯示 `This is not a calendar link. It should start with https:// or webcal://.`（這不是行事曆連結，應以 `https://` 或 `webcal://` 開頭。）連結存在 Obsidian 的密鑰儲存區，不在外掛資料檔裡，儲存方式由外掛自動處理。
@@ -252,7 +254,7 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 
 **取得連結。**在 Google 日曆打開**設定**，在左邊清單點選那個日曆，拉到最下面複製 **iCal 格式的私密網址**。這個網址等於密碼：任何拿到它的人都能讀整個行事曆。使用 iCloud 時，在 Mac 的行事曆 app 對行事曆按右鍵，選「共享行事曆⋯」（有些版本寫「分享行事曆⋯」），勾選「公開行事曆」，複製 `webcal://` 開頭的網址。任何人拿到這個公開連結，都看得到行事曆。如果行事曆原本就在 Google、iCloud 只是訂閱它，請改用 Google 的網址。Google 的私密網址萬一外洩，到同一個日曆設定頁重設，再把新網址貼進外掛的連結欄；舊網址就會失效。
 
-**加入行事曆。**到**設定 → Project Dashboard → Calendars**，按 `Add a calendar`，在那一列打上名稱（`工作`、`家庭`，可以打中文），再把連結貼進連結欄。外掛會自動儲存並清空欄位，看到 `Link saved. Paste a new link to change it.` 就表示存好了。這個名稱用來標示行程來自哪個行事曆，也會在讀不到時指出是哪一個。
+**加入行事曆。**到**設定 → Project Dashboard → Calendars**，按 `Add a calendar`，在那一列打上名稱（`工作`、`家庭`，可以打中文），再把連結貼進連結欄。外掛會自動儲存並清空欄位，看到 `Link saved. Paste a new link to change it.` 就表示存好了。也可以用 `Color` 選擇顏色。每筆行程前面都有名稱標籤，使用這個行事曆的顏色；沒取名時，依清單位置顯示 `行事曆 1`、`行事曆 2`……讀不到時，也會用這個名稱指出是哪一個行事曆。
 
 已存的連結不一定會像其他設定一樣跟著 Obsidian Sync 走。如果第二台電腦有行事曆清單、卻沒有存好的連結，連結欄會顯示 `This computer has no link yet. Paste it here.`，General 列會回報 `這台裝置找不到連結`。在第二台電腦的同一列也貼上連結即可。
 
@@ -262,18 +264,18 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 2. 按 General 列名稱格裡的 `↻` 時。
 3. 執行 `Refresh calendars` 時（命令面板裡是 `Project Dashboard: Refresh calendars`）。
 4. 在已設好的行事曆貼上新連結時，會馬上重新讀取。
-5. 行事曆清單改變時：設定存好、載入外掛執行期間由外部改動的設定，或存檔失敗而還原上次設定之後。
+5. 設定過連結的行事曆清單或順序改變時：設定存好、載入外掛執行期間由外部改動的設定，或存檔失敗而還原上次設定之後。比對只看連結設定。改名或換色不會重新讀取行程，存檔後標籤就會更新。
 
 其他情況都不會讀：沒有定時器，切換年份或月份（含 `今年`、`本月`）、切換 `年` / `月`、更新筆記都不會。開著週浮窗時按 `↻`，浮窗會留在原地。
 
-**一行長什麼樣。**日期是本地時間的月/日加星期，時間是本地的 24 小時制：
+**一行長什麼樣。**每行前面都有行事曆名稱標籤，使用那個行事曆的顏色，後面接著下列範例這樣的行程文字。日期是本地時間的月/日加星期，時間是本地的 24 小時制：
 
 - `11/6（五）13:30 讀書會`——有時間、在同一天內的行程。
 - `11/11（三）休假`——只有一天的整天行程。
 - `11/7（六）–11/9（一）研習營`——跨好幾天的整天行程。
 - `11/8（日）22:00–11/9（一）01:00 夜間維護`——有時間、結束在後面某一天的行程。
 
-沒有標題的行程寫成 `（沒有標題）`。滑過一行會顯示它來自哪個行事曆。同一週裡依日期排序，同一天的整天行程排在有時間的行程前面。行程會出現在它碰到的每一週，所以跨週末的旅行會在兩週都列出來。重複的行程會展開成一次一次的行程，行事曆自己的例外與被移動的那幾次都照算，標成已取消的行程完全不顯示。`Saturday tasks count for next week` 只作用在任務：不管那個設定開不開，週六的行程都列在那個週六所屬的那一週。
+沒有標題的行程寫成 `（沒有標題）`。同一週裡依日期排序，同一天的整天行程排在有時間的行程前面。行程會出現在它碰到的每一週，所以跨週末的旅行會在兩週都列出來。重複的行程會展開成一次一次的行程，行事曆自己的例外與被移動的那幾次都照算，標成已取消的行程完全不顯示。`Saturday tasks count for next week` 只作用在任務：不管那個設定開不開，週六的行程都列在那個週六所屬的那一週。
 
 **狀態列**在 `General` 這個字下面。這次 Obsidian 執行期間還沒讀過之前是空的；讀取中寫 `讀取中…`；讀完寫 `更新於 15:20`，也就是最後一次讀完的時間。有行事曆讀不到時，後面接 `・⚠ 1 個行事曆讀不到`，滑過狀態列會一行一個列出 `<名稱>：<原因>`。五種原因是：
 
