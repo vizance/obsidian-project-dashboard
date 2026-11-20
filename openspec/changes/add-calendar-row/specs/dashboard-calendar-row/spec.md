@@ -27,7 +27,7 @@ An address starting with `https://` SHALL be fetched as it is. An address starti
 ---
 ### Requirement: When calendars are fetched
 
-The plugin SHALL fetch every calendar whose secret ID is not empty at exactly these moments: when a dashboard tab opens; when the user presses the General row's `↻` button; when the user runs the command `Refresh calendars` (id `refresh-calendars`; the command palette shows `Project Dashboard: Refresh calendars`); when the settings tab stores a new link for a calendar whose secret ID does not change; and whenever the `calendars` setting held in memory becomes different from the one used by the last fetch: after a save of plugin data, after a reload of plugin data changed outside the running plugin, or after a failed save restores the last saved settings. Nothing else SHALL start a fetch: no timer, no change of the shown month, no switch between the year view and the month view, and no note change. When no calendar has a non-empty secret ID, no network request SHALL be made.
+The plugin SHALL fetch every calendar whose secret ID is not empty at exactly these moments: when a dashboard tab opens; when the user presses the General row's `↻` button; when the user runs the command `Refresh calendars` (id `refresh-calendars`; the command palette shows `Project Dashboard: Refresh calendars`); when the settings tab stores a new link for a calendar whose secret ID does not change; and whenever the list of calendars to fetch — the non-empty secret IDs in settings order — becomes different from the one used by the last fetch: after a save of plugin data, after a reload of plugin data changed outside the running plugin, or after a failed save restores the last saved settings. Renaming a calendar or changing its color SHALL NOT start a fetch. Nothing else SHALL start a fetch: no timer, no change of the shown month, no switch between the year view and the month view, and no note change. When no calendar has a non-empty secret ID, no network request SHALL be made.
 
 All open dashboard tabs SHALL share one fetch and one set of results. A fetch requested while another is running SHALL NOT start a second concurrent fetch; instead exactly one more fetch SHALL run after the running one finishes, using the settings at that moment. Each calendar SHALL be requested with Obsidian's request function using `GET` and no body. A response whose status is outside 200–299 SHALL count as a failed calendar with the reason `讀取失敗（HTTP <status>）`; a request that throws SHALL count as failed with `連不上`; a response whose text is not a valid iCalendar object SHALL count as failed with `內容看不懂`. When a calendar fails, the events it returned in the last successful fetch during this plugin session SHALL stay shown; a calendar that has never succeeded in this session shows no events. Retained events SHALL be identified by the calendar's secret ID, never by its position in the list: a calendar that is removed from `calendars`, or whose secret ID changes, SHALL lose its retained events at the next fetch, and the remaining calendars SHALL keep their own events and display names. Fetched events SHALL be kept in memory only and SHALL be discarded when the plugin unloads; a response that arrives after the plugin has unloaded, and any follow-up fetch queued before it, SHALL be dropped without notifying any dashboard.
 
@@ -55,7 +55,7 @@ All open dashboard tabs SHALL share one fetch and one set of results. A fetch re
 
 - **GIVEN** two calendars, `工作` (secret ID `work-calendar`) and `家庭` (secret ID `family-calendar`), were both fetched successfully
 - **WHEN** the user deletes `工作` in the settings tab, the change is saved, and the following fetch of `家庭` fails
-- **THEN** the General row MUST show only the events last fetched from `家庭`, with the tooltip `家庭`
+- **THEN** the General row MUST show only the events last fetched from `家庭`, each with the label `家庭`
 - **AND** no event from `工作` MUST be shown
 
 #### Scenario: Repeated presses make one extra fetch
@@ -113,7 +113,7 @@ Each occurrence SHALL be shown as one line of text built from local dates and 24
 - An all-day occurrence lasting one day: `<date><title>`.
 - An all-day occurrence lasting more than one day: `<first day>–<last day><title>`, where the last day is the day before the exclusive end.
 
-An occurrence without a title SHALL use the title `（沒有標題）`. Each line's tooltip SHALL be the display name of its calendar.
+An occurrence without a title SHALL use the title `（沒有標題）`. In the General row, each line SHALL begin with a label showing its calendar's display name in its calendar's color (see "Calendar names and colors"), followed by the line text.
 
 #### Scenario: Line text for each kind of occurrence
 
@@ -148,7 +148,7 @@ The year view SHALL NOT show any events.
 - **GIVEN** the device's time zone is `Asia/Taipei`, a calendar `工作` contains `讀書會` on `2026-11-06` from 13:30 to 15:00, and its fetch has finished at 15:20
 - **WHEN** the month view shows `2026-11`
 - **THEN** the first body row MUST be the General row
-- **AND** its `W45` cell MUST list `11/6（五）13:30 讀書會` with the tooltip `工作`
+- **AND** its `W45` cell MUST list `11/6（五）13:30 讀書會` with the label `工作` in the color `#4a7fd4`, the default color of the first calendar
 - **AND** its status line MUST read `更新於 15:20`
 
 #### Scenario: A failed calendar is reported by name
@@ -175,3 +175,21 @@ The plugin bundles ical.js, which is licensed under MPL-2.0. The comment at the 
 
 - **WHEN** a release `main.js` is built
 - **THEN** its opening comment MUST contain `ical.js`, `MPL-2.0`, and `https://github.com/kewisch/ical.js`
+
+---
+### Requirement: Calendar names and colors
+
+Each calendar SHALL have a display name — its stored name, or `行事曆 <n>` when the name is empty, where `<n>` is its 1-based position in the settings list — and a color: its stored color, or, when the stored color is empty, the default color for its position, taken in order from `#4a7fd4`, `#2f9e6e`, `#e08a2c`, `#8e5bd6`, `#1b9aaa`, `#d6559e` and starting again after the sixth. The default colors avoid red, which the dashboard keeps for overdue and overflow. The General row SHALL take every calendar's display name and color from the current settings, matched by secret ID, each time it is drawn, so renaming a calendar or changing its color shows on the next redraw without fetching.
+
+#### Scenario: Default colors by position
+
+- **GIVEN** three calendars with empty colors
+- **WHEN** the General row is drawn
+- **THEN** their labels MUST use `#4a7fd4`, `#2f9e6e`, and `#e08a2c` in settings order
+
+#### Scenario: Renaming and recoloring do not fetch
+
+- **GIVEN** the calendar `工作` was fetched and its events are shown with the label `工作`
+- **WHEN** the user renames it to `公司`, picks the color `#8e5bd6`, and the change is saved
+- **THEN** no request MUST be made
+- **AND** its events MUST be shown with the label `公司` in `#8e5bd6`

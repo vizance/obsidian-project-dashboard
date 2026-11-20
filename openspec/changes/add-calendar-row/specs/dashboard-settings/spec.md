@@ -13,7 +13,7 @@ The plugin SHALL keep its settings in the plugin data object under the key `sett
     "excludedProjects": [],
     "scheduleWeekday": 5,
     "saturdayCountsAsNextWeek": false,
-    "calendars": [{ "name": "工作", "secretId": "work-calendar" }]
+    "calendars": [{ "name": "工作", "secretId": "work-calendar", "color": "#4a7fd4" }]
   }
 }
 ```
@@ -25,7 +25,7 @@ The plugin SHALL normalize each field on its own, so that one invalid field neve
 - `excludedProjects`: string entries, trimmed, with empty entries dropped; a missing or non-array value SHALL become `[]`.
 - `scheduleWeekday`: an integer from 1 (Monday) to 7 (Sunday); any other value SHALL become `5` (Friday).
 - `saturdayCountsAsNextWeek`: a boolean; any other value SHALL become `false`.
-- `calendars`: a list of calendars, each `{ "name": <string>, "secretId": <string> }`. Every entry that is an object SHALL be kept in order, with `name` and `secretId` trimmed and any missing or non-string `name` or `secretId` becoming `""`; entries with empty `name` or empty `secretId` SHALL be kept, so that a calendar the user has just added survives saving. Every other entry SHALL be dropped. A missing or non-array value SHALL become `[]`. The calendar's address is never part of plugin data; `secretId` names the entry in Obsidian's secret storage that holds it (see `dashboard-calendar-row`).
+- `calendars`: a list of calendars, each `{ "name": <string>, "secretId": <string>, "color": <string> }`. Every entry that is an object SHALL be kept in order, with `name` and `secretId` trimmed and any missing or non-string `name` or `secretId` becoming `""`; `color` SHALL be kept, in lower case, when it is `#` followed by exactly six hexadecimal digits, and SHALL become `""` otherwise, where `""` means the calendar's default color (see `dashboard-calendar-row`); entries with empty `name` or empty `secretId` SHALL be kept, so that a calendar the user has just added survives saving. Every other entry SHALL be dropped. A missing or non-array value SHALL become `[]`. The calendar's address is never part of plugin data; `secretId` names the entry in Obsidian's secret storage that holds it (see `dashboard-calendar-row`).
 
 The default classification rules SHALL be, in order: `企業內訓` → `corporate`, `內訓` → `corporate`, `線上課程` → `online_course`, `課程` → `online_course`, `出版` → `publishing`, `教練` → `coaching`, `諮詢` → `coaching`, `業配` → `sponsorship`, `合作` → `sponsorship`, `生活` → `life`.
 
@@ -48,7 +48,8 @@ The default classification rules SHALL be, in order: `企業內訓` → `corpora
 | `"scheduleWeekday": 6` | `6` |
 | `"scheduleWeekday": 0`, `8`, `2.5`, or `"5"` | `5` |
 | `"saturdayCountsAsNextWeek": "yes"` | `false` |
-| `"calendars": [{ "name": " 工作 ", "secretId": " work-calendar " }, { "name": "", "secretId": "" }, { "name": 3 }, "工作", null]` | `[{ "name": "工作", "secretId": "work-calendar" }, { "name": "", "secretId": "" }, { "name": "", "secretId": "" }]` |
+| `"calendars": [{ "name": " 工作 ", "secretId": " work-calendar " }, { "name": "", "secretId": "" }, { "name": 3 }, "工作", null]` | `[{ "name": "工作", "secretId": "work-calendar", "color": "" }, { "name": "", "secretId": "", "color": "" }, { "name": "", "secretId": "", "color": "" }]` |
+| `"calendars": [{ "name": "工作", "secretId": "a", "color": "#4A7FD4" }, { "name": "家庭", "secretId": "b", "color": "blue" }]` | `[{ "name": "工作", "secretId": "a", "color": "#4a7fd4" }, { "name": "家庭", "secretId": "b", "color": "" }]` |
 | `"calendars": "工作"` | `[]` |
 
 ---
@@ -77,7 +78,7 @@ The plugin SHALL register a settings tab. Its text SHALL be plain English that a
 - The description `Show events from your calendars at the top of the month view. The plugin only reads your calendars. It never changes them.`
 - The hint `Google Calendar: open the calendar's settings and copy "Secret address in iCal format" (iCal 格式的私密網址).`
 - The hint `iCloud: share the calendar as a public calendar and copy its link.`
-- One row per stored calendar, in the stored order, including rows whose name or link is empty. Each row has a text field (placeholder `Calendar name`) holding `name`, which accepts any text including Chinese; a link field; and a button labelled `Delete`.
+- One row per stored calendar, in the stored order, including rows whose name or link is empty. Each row has a text field (placeholder `Calendar name`) holding `name`, which accepts any text including Chinese; a link field; a color picker (tooltip `Color`) holding `color`, which shows the calendar's default color while `color` is empty and stores the picked color as `#rrggbb`; and a button labelled `Delete`.
 - The link field SHALL never show a stored address. Its placeholder SHALL be `Paste the calendar link here` when the calendar has no secret ID, `Link saved. Paste a new link to change it.` when its secret ID holds a non-empty value on this device, and `This computer has no link yet. Paste it here.` when its secret ID holds no value on this device.
 - The link field SHALL take its text when the user pastes into it, presses Enter, or leaves it. When the trimmed text starts with `https://` or `webcal://`, the plugin SHALL store it in Obsidian's secret storage under the calendar's secret ID — the existing one, or, when the calendar has none, a new ID `project-dashboard-calendar-` followed by 8 random lowercase letters and digits that no other calendar in the list uses — save that ID in `secretId` through the normal delayed save, clear the field, and show the saved placeholder. Any other non-empty text SHALL NOT be stored; the text `This is not a calendar link. It should start with https:// or webcal://.` SHALL be shown under the row until the field's text changes. Empty text SHALL change nothing.
 - `Delete` SHALL remove that calendar from the stored list; when its secret ID starts with `project-dashboard-calendar-`, the plugin SHALL also overwrite that stored value with an empty string, so no link the plugin saved is left behind.
