@@ -5,5 +5,5 @@
 
 ## 2. 文件
 
-- [ ] 2.1 兩份 README 教學與細節文件（README teaches setup and everyday use；設計：README 拆成英文與中文兩份，教學在前、細節另存、延伸閱讀放朱騏網站的 6 篇文章）：寫 `README.md` 與 `README.zh-TW.md`，章節照規格順序、互相連結、每段配截圖；原本的細部規則搬到 `docs/details.md` 與 `docs/details.zh-TW.md`；連網說明與第三方程式碼留在兩份 README；延伸閱讀 6 個連結；AGENTS.md 補「畫面改了要重拍截圖」與重拍方法；`add-calendar-row` 規格的 README 文字改成兩份 README。驗證：6 個網址都回 200；所有圖片路徑存在；私人名稱與本機路徑檢查沒有命中；重讀兩份確認一致。
+- [x] 2.1 兩份 README 教學與細節文件（README teaches setup and everyday use；設計：README 拆成英文與中文兩份，教學在前、細節另存、延伸閱讀放朱騏網站的 6 篇文章）：寫 `README.md` 與 `README.zh-TW.md`，章節照規格順序、互相連結、每段配截圖；原本的細部規則搬到 `docs/details.md` 與 `docs/details.zh-TW.md`；連網說明與第三方程式碼留在兩份 README；延伸閱讀 6 個連結；AGENTS.md 補「畫面改了要重拍截圖」與重拍方法；`add-calendar-row` 規格的 README 文字改成兩份 README。驗證：6 個網址都回 200；所有圖片路徑存在；私人名稱與本機路徑檢查沒有命中；重讀兩份確認一致。
 - [ ] 2.2 朱騏看過兩份 README 與截圖。驗證：朱騏在對話中確認。

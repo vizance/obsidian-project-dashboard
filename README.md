@@ -1,345 +1,202 @@
 # Project Dashboard
 
-A year-at-a-glance Gantt chart for Obsidian project notes, rendered as a plugin tab. It scans a configured folder of project notes, derives each project's start/end dates and category from the filename, frontmatter, and task dates, and renders one row per project across ISO week columns — so you can see at a glance how projects are spread across the year, which ones are overloaded in the same month, and which ones have quietly slipped past their promised end date. Per-week cells come from `📅` (planned) and `✅` (done) task dates written by the [Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) plugin convention; a project whose task dates run past its end date shows an overflow segment, and a project with no scheduled tasks yet shows as settled/dashed instead of solid.
+See your Obsidian projects across a whole year, then plan each week's tasks in a month view. Edit tasks right from the dashboard.
 
-[繁體中文說明如下](#繁體中文說明)
+[繁體中文說明](README.zh-TW.md)
+
+## What is this?
+
+Project Dashboard reads the project notes in one folder. Each project gets one row, and each week gets one cell. Use the year view to see the whole year. Use the month view to read the task text for each week of a month. The dashboard is in Traditional Chinese; the settings tab is in English.
+
+![Year view with one row per example project and one cell per week](docs/images/year-view.png)
 
 ## Install
 
+Requires Obsidian **1.11.7 or later**. Desktop only.
+
+### With BRAT (recommended)
+
+1. Install and enable BRAT in Obsidian.
+2. Run `BRAT: Plugins: Add a beta plugin for testing (with or without version)`.
+3. Enter `vizance/obsidian-project-dashboard`.
+4. Choose the latest version.
+5. Enable Project Dashboard under **Settings → Community plugins**.
+
 ### Manually
 
-Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/vizance/obsidian-project-dashboard/releases/latest), put them in `.obsidian/plugins/project-dashboard/` inside your vault, then enable the plugin under **Settings → Community plugins**.
+1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest Release](https://github.com/vizance/obsidian-project-dashboard/releases/latest).
+2. Put all three files in `.obsidian/plugins/project-dashboard/` inside your vault.
+3. Enable Project Dashboard under **Settings → Community plugins**.
 
-### With BRAT
+To open it, run `Project Dashboard: Open dashboard` from the command palette. Or click the calendar-range icon in the left ribbon, with the tooltip `Open project dashboard`. If the dashboard is already open, this brings you back to its tab.
 
-BRAT support is planned once the plugin has a tagged release; for now use the manual install above.
+## First-time setup
 
-## Configure the dashboard
+1. Go to **Settings → Project Dashboard → Project notes**.
+2. Set `Project folder` to the folder that holds your project notes. It starts as `Projects`. Only notes right inside that folder are read; notes in subfolders are skipped.
+3. Create a Markdown note there. A name such as `🚧 P-20261102 範例專案.md` works well. `P-` is a naming habit, not a required prefix. The leading symbol sets the status: `🚧 進行中` (active), `⏳ 暫停` (paused), `✅ 完成` (done), or `❌ 取消` (cancelled). No symbol means active.
+4. Put the dates in the properties block at the top of the note (frontmatter). Use `開始日期` for the start and `預計結束日期` for the expected end. `實際結束日期` is used as the end only when there is no expected end. Write dates as `YYYY-MM-DD`.
+5. Give tasks a date with `📅 YYYY-MM-DD`. A checked box or `✅ YYYY-MM-DD` marks a task as done. Leave an open task without a date to plan it later.
 
-Everything is configured inside Obsidian, under **Settings → Project Dashboard**. No source editing, no rebuild. The settings tab is in English; the dashboard itself (year view, month view, and week popover) is in Traditional Chinese. The tab has four sections.
+For example, save this as `🚧 P-20261102 範例專案.md`:
 
-**`Project notes`**
+```markdown
+---
+開始日期: 2026-11-02
+預計結束日期: 2026-12-18
+---
 
-- `Project folder` — the vault-relative folder holding your project notes, default `Projects`. Only notes directly inside that folder are scanned, never its subfolders. When no folder matches what you typed, the hint `Can't find this folder.` appears under the field; clearing the field falls back to `Projects`.
-- `Projects to skip` — one filename fragment per line. A project note whose name contains any of these never shows up on the dashboard.
+- [ ] 準備讀書會 📅 2026-11-20
+- [x] 整理閱讀清單 📅 2026-11-13 ✅ 2026-11-13
+- [ ] 寄出邀請
+```
 
-**`Categories`**
+Open the dashboard and go to November 2026 to see these tasks. You can type this task format yourself; the Tasks plugin is not required.
 
-An ordered list of rules: a project whose name contains the rule's text gets the rule's category. The list is matched from top to bottom and **the first matching rule wins**, so keep a longer word above a shorter word it contains (`企業內訓` above `內訓`). A project that matches no rule is classified as `other`. Each row has `Move up`, `Move down`, and `Delete`; `Add a rule` appends an empty row, which survives saving and takes no part in classification until you type something into it.
+See [note names and dates](docs/details.md#note-names-and-dates) for date fallbacks and [task dates](docs/details.md#task-dates) for the full date rules.
 
-The ten default rules are, in order: `企業內訓` → `企業內訓` (corporate), `內訓` → `企業內訓`, `線上課程` → `線上課程 / Cohort` (online course), `課程` → `線上課程 / Cohort`, `出版` → `出版` (publishing), `教練` → `1-on-1 教練` (coaching), `諮詢` → `1-on-1 教練`, `業配` → `業配 / 合作` (sponsorship), `合作` → `業配 / 合作`, `生活` → `生活` (life).
+## Year view
 
-A category you pick by hand on the dashboard (`編輯分類與狀態` on a project row) wins over every rule, and applies only to the project whose full name matches.
+Each cell shows what is planned for that week:
 
-**`Dates`**
+- **Solid color:** there are tasks, with some still open.
+- **Pale color with `✓`:** all tasks for the week are done.
+- **Dashed border:** the week is in the project period, with no tasks yet.
+- **Blank:** no tasks and outside the project period, or an idle week of a closed project.
+- **Red block:** an active or paused project still has tasks in a week beyond its expected end. This stays red even if those tasks are done.
 
-- `Which day to write` — the weekday written into the note when you schedule a task into a week from the week popover. Default `Friday`.
-- `Saturday tasks count for next week` — off by default. When it is on, a task dated on a Saturday is shown in the following week, which is how "on Saturday I set up next week's work" reads on the chart; when it is off, a Saturday task stays in its own week.
+A dated task always appears in its week, including before the start or after the expected end. The expected end only decides whether a task week is red; it never hides a task. Closed projects use grey blocks when shown. Hover over `⚠` beside a name to learn about missing, inferred, or problem dates.
 
-**`Calendars`**
+Use `◀ 2026 年 ▶` to move between years and plan next year. `今年` means “this year” and brings you back.
 
-The calendars whose events fill the month view's General row, described in [The General row](#the-general-row) below. The section's description reads `Show events from your calendars at the top of the month view. The plugin only reads your calendars. It never changes them.` Two hints follow: `Google Calendar: open the calendar's settings and copy "Secret address in iCal format" (iCal 格式的私密網址).` and `iCloud: share the calendar as a public calendar and copy its link.`
+![Year view switched to 2027 to plan next year's example projects](docs/images/year-2027.png)
 
-One row per calendar, each with:
+Click `?` at the bottom right to open help. Its tabs are `年視圖` (year view), `月視圖` (month view), and `操作` (actions). It opens on the tab for your current view, with small samples that match the chart.
 
-- a name field (placeholder `Calendar name`) — accepts Chinese too. The name labels the calendar's events and identifies it when it cannot be read. A calendar with no name is called `行事曆 1`, `行事曆 2`, … by its position in the list.
-- a link field — paste the calendar link here. The plugin saves it for you and clears the field. A stored link is never shown again. The field's hint tells you its state:
-  - `Paste the calendar link here` — no link has been set up yet.
-  - `Link saved. Paste a new link to change it.` — the link is saved on this computer.
-  - `This computer has no link yet. Paste it here.` — the calendar is in the list, but its link is missing on this computer.
-- a color picker (tooltip `Color`) — choose the color for the calendar's name labels. Until you choose one, the colors follow the list order: blue, green, orange, purple, teal, pink, then repeat. The defaults avoid red, which is reserved for overdue tasks and work beyond a project's expected end.
-- `Delete` — removes that calendar and clears the link the plugin saved for it.
+![Year help tab showing filled, done, dashed, blank, red, and paused styles](docs/images/help-year.png)
 
-`Add a calendar` appends an empty row. A row that has never had a link is skipped: it is never fetched and never reported as a problem. The link is checked when you paste it, press Enter, or leave the field. If it does not start with `https://` or `webcal://`, nothing is saved and the row shows `This is not a calendar link. It should start with https:// or webcal://.` The link is kept in Obsidian's secret storage, outside the plugin's data file; the plugin handles storage for you.
+See [year-view rules](docs/details.md#year-view) for week boundaries and the optional Timeline view.
 
-Settings are saved into the vault's plugin data (`.obsidian/plugins/project-dashboard/data.json`), next to the category choices you make by hand, 400 ms after your last edit; an open dashboard then re-scans and re-renders by itself. Obsidian Sync carries that file like any other plugin data, so settings changed on one computer arrive on the others. Nothing you configure is stored in this repository.
+## Week popover
 
-Category labels and colors (`CATEGORIES` in `src/core/config.ts`) are the one thing still edited in source.
+1. Click a week's cell to open its task list. Dashed cells work too.
+2. Tick a task done, or untick it. Use `◀` or `▶` beside an open task to move its date by one week.
+3. Use `＋ 從還沒排日期的任務挑一個` to pick an undated task, or `＋ 新增任務` to add a task. New dates use Friday by default.
+4. Use `↗` to jump to a task's line. Click the project name to open the note on the right.
 
-## The year view and the month view
+These actions save straight to the note. In the year view, use the per-week view for editing; Timeline popovers only show text.
 
-Paused projects (filenames starting with `⏳`) are hidden by default in both views. Next to the show-closed checkbox, `顯示暫停（<n>）` shows how many paused projects checking it would add: only projects in the configured folder, not skipped, with both a start and end date. The checkbox appears only when that count is greater than zero and updates after each re-scan. Check it to show paused projects in their usual order with a grey `⏳ 暫停` badge after the name and diagonal stripes in the category color on year-view bars and month-view cells. Paused and closed visibility each reset to unchecked when the dashboard tab opens.
+![Week popover with task checkboxes, week arrows, and options to pick or add a task](docs/images/week-popover.png)
 
-Check `編輯分類與狀態` to reveal the category and status menus on each project row in either view. The status choices are `🚧 進行中`, `⏳ 暫停`, `✅ 完成`, and `❌ 取消`; a filename without a status symbol counts as active. Choosing a different status replaces the status symbol among the filename's first three characters and its following spaces with the chosen symbol and one space, or adds that prefix when there is no leading symbol. The rest of the filename and its folder stay the same, and manual category choices are kept. Links from other notes update according to Obsidian's **Automatically update internal links** setting (`自動更新內部連結`), just as when you rename a note yourself. An existing note with the same target name prevents the change and shows a message. If the new status is hidden by its checkbox, the row and its open popover disappear after the re-scan.
+See [popover and editing rules](docs/details.md#week-popover-and-editing) for date choices and protected lines.
 
-The controls row has a `年` / `月` switch, and `M` toggles between the two as well. The year view is the whole-year chart described above. The month view shows one month at a time and writes the tasks into the cells, which is what weekly planning usually needs.
+## Month view
 
-In the year view, the controls row shows `◀`, a year title such as `2026 年`, and `▶`. The arrows step one year back or forward. `今年` appears only when you are looking at another year and returns to this year. Today's week is highlighted only in this year's chart.
+Click `年` (year) / `月` (month), or press `M`, to switch views. The month view puts task text right in each week's cell. A done task is grey with `✓`. An open task is red once its week has passed. Use `◀` and `▶` to change months; `本月` means “this month” and returns to the month of today's week.
 
-In the month view, the same place shows `◀`, the month title, and `▶`. The title reads `2026 年 10 月（W41–W44）`: the year, the month, and the weeks that month holds. The arrows step one month back or forward, across year boundaries. `本月` appears only when you are looking at another month and returns to the month of today's week.
+![November month view with weekly task text, a General calendar row, and undated task counts](docs/images/month-view.png)
 
-Switching views keeps the period you are planning. From another year, such as 2027, switching to the month view opens January of that year. From this year, it opens the month of today's week. Switching from a month to the year view shows that month's year. Opening the dashboard starts on this year or the month of today's week. Only the year-versus-month choice is remembered; the shown year and month are not. Changing the year or month, or switching views, closes an open popover. A note update keeps the year or month you are looking at.
+Open `?` here to see the `月視圖` help tab. It explains task text, cell colors, calendar labels, and undated tasks.
 
-If a project's expected end date was in an earlier year but its tasks extend into the shown year, the per-week view still marks its overflow weeks red. In timeline mode, the bar starts at the shown year's first week. A project with no end date still defaults to December 31 of today's year, whatever year you are looking at.
+![Month help tab explaining task text, calendar name labels, refresh, and undated counts](docs/images/help-month.png)
 
-A week belongs to the month its **Monday** falls in. October 2026 is therefore W41–W44 and November 2026 is W45–W49 — the same way you fill in a weekly table, by the week's Monday. The one exception is week 1, which always counts as January, even when its Monday is still in December. The year view's month and quarter headers follow the same rule, so both views say the same thing about any week.
+See [month-view rules](docs/details.md#month-view) for how weeks belong to months.
 
-Each week cell lists the project's task lines for that week: the same lines, in the same order, as the week popover for that week. Three text styles:
+## Unscheduled tasks
 
-- `✓` in front of greyed text — the task is done.
-- Red text — the week is over and the task is not done.
-- Normal text — everything else.
+The last column, `還沒排` (“not scheduled yet”), counts open tasks with no date. Click a number, then click a week button to put a task into that week of the shown month. The task gets a date in your note. Empty counts stay blank.
 
-The cell's background and border follow the same cell kind as the year view: filled for a week with tasks, dimmed when they are all done, red for a week past the project's expected end date, dashed for a week inside the project's range with no task. A cell outside the project's range stays blank and shows nothing, even when a task happens to be dated in that week.
+![Unscheduled task popover with a week button for each week of the shown month](docs/images/unscheduled-popover.png)
 
-Click a cell to open the same week popover the year view opens, anchored on that cell, with every editing action available; clicking the same cell again closes it. This works even when the year view was left in timeline mode, because timeline mode applies to the year view only — and so does `T`: pressing `T` in the month view changes nothing.
+See [unscheduled-task rules](docs/details.md#unscheduled-tasks) for which week buttons you can use.
 
-The last column, `還沒排`, shows how many of the project's tasks have no date yet, and stays empty when there are none. Click the count to open a popover — the same single popover the week cells use — which lists those undated tasks in note order. Each row has `↗` and one button per week of the shown month (`W41`, `W42`, `W43`, `W44`). A week button schedules that task into that week, writing exactly the date the week popover would write: the weekday from `Which day to write`, with the `Saturday tasks count for next week` exception. Weeks outside the project's range are greyed out and cannot be picked; `↗` jumps to the task's line in the note. After a task is scheduled the popover stays open with one row fewer, and it closes once the last one is gone. An empty cell does nothing.
+## General row (calendars)
 
-## The General row
+The month view's top row, `General`, shows calendar events by week. Each event has a label with its calendar's name and color. Events are read-only. Press `↻` to read them again.
 
-Above every project row, the month view shows one more row, `General`: the events of your own calendars, week by week, so the things that are not projects — a class, a trip, a day off — sit in the same table as the work. The row appears as soon as one calendar in the `Calendars` section has been given a link, and disappears again when none has been set up. It is read-only: clicking one of its cells opens no popover (it only closes one that is open), and its `還沒排` cell stays empty.
+1. Go to **Settings → Project Dashboard → Calendars**.
+2. Press `Add a calendar`.
+3. Give it a name. Chinese names work too.
+4. Paste its calendar link into the link field. The field clears after saving.
+5. Pick a label color if you want.
 
-**Get the link.** In Google Calendar, open **Settings**, pick the calendar in the left list, scroll to the bottom and copy **Secret address in iCal format**. That address is a password: anyone who has it can read the whole calendar. For iCloud, open the Calendar app on your Mac, right-click the calendar and choose **Share Calendar…** (`共享行事曆⋯`, or `分享行事曆⋯` in some versions). Check **Public Calendar** (`公開行事曆`) and copy the link starting with `webcal://`. Anyone who gets this public link can read the calendar. If the calendar already lives in Google and iCloud only subscribes to it, use the Google address instead. If a Google secret address leaks, reset it on the same Google Calendar settings page, then paste the new address into the plugin's link field; the old address stops working.
+![Calendar settings with names, saved-link hints, color pickers, and Add a calendar](docs/images/settings-calendars.png)
 
-**Add the calendar.** In **Settings → Project Dashboard → Calendars**, press `Add a calendar`, type a name into the row (`工作`, `家庭` — Chinese is fine), and paste the link into its link field. The plugin saves it and clears the field; `Link saved. Paste a new link to change it.` confirms that it is saved. You can also choose a color with the `Color` picker. Each event starts with a label showing this name in the calendar's color; an unnamed calendar uses `行事曆 1`, `行事曆 2`, … by its position in the list. The name also identifies the calendar when it cannot be read.
+Where to copy the link:
 
-Saved links may not travel with Obsidian Sync the way the rest of the settings do. If a second computer has the calendar list but no saved link, the link field says `This computer has no link yet. Paste it here.` and the General row reports `這台裝置找不到連結`. Paste the link into that row on the second computer too.
+- **Google Calendar:** open **Settings → Settings for my calendars → choose a calendar → Integrate calendar**, and copy **Secret address in iCal format** (`iCal 格式的私密網址`).
+- **iCloud:** open Calendar on your Mac, right-click the calendar, choose **Share Calendar…**, turn on **Public Calendar**, and copy the link.
+- **A Google calendar subscribed in iCloud:** use the Google link.
 
-**When the events are read.** At exactly five moments:
+Anyone with either link can read that calendar, so keep it private.
 
-1. When a dashboard tab opens.
-2. When you press `↻` in the General row's name cell.
-3. When you run `Refresh calendars` (`Project Dashboard: Refresh calendars` in the command palette).
-4. When you paste a new link for a calendar that was already set up; it is read again right away.
-5. When the list of calendars with a link, or their order, changes: after settings are saved, settings changed outside the running plugin are loaded, or a failed save restores the last saved settings. This comparison uses only the link settings. Renaming a calendar or changing its color does not read events again; the labels update when the change is saved.
+Links stay in Obsidian's secret storage, outside the settings carried by Obsidian Sync. Paste the link again on each computer. The field says `This computer has no link yet. Paste it here.` when it is missing there.
 
-Nothing else reads them: no timer, no year or month navigation (including `今年` and `本月`), no `年` / `月` switch, and no note update. Pressing `↻` while a week popover is open leaves the popover where it is.
+See [calendar details](docs/details.md#general-row-and-calendars) for when events are read and what errors mean.
 
-**What a line looks like.** Each line starts with the calendar's name label in that calendar's color, followed by event text like the examples below. Local dates use month/day with the weekday in brackets, and times use the local 24-hour clock:
+## Paused projects and status changes
 
-- `11/6（五）13:30 讀書會` — an event with a time, inside one day.
-- `11/11（三）休假` — an all-day event of one day.
-- `11/7（六）–11/9（一）研習營` — an all-day event over several days.
-- `11/8（日）22:00–11/9（一）01:00 夜間維護` — an event with a time that ends on a later day.
+Paused projects are hidden by default. Check `顯示暫停（n）` (“show paused,” with a count) to reveal them. Each has a `⏳ 暫停` label and stripes in its category color.
 
-An event without a title reads `（沒有標題）`. Within a week the lines are ordered by date, all-day events before timed ones on the same date. An event appears in every week it touches, so a trip over a weekend is listed in both weeks. Repeating events are expanded into their single occurrences, with the calendar's own exceptions and moved occurrences respected, and events marked cancelled are not shown at all. `Saturday tasks count for next week` applies to tasks only: an event on a Saturday is listed in the week of that Saturday whatever that setting says.
+![Paused example projects with a paused badge and striped year-view bars](docs/images/paused-rows.png)
 
-**The status line** sits under the word `General`. Before the first read of this Obsidian session it is empty; while a read is running it says `讀取中…`; afterwards it says `更新於 15:20` with the time the last read finished. When a calendar could not be read, `・⚠ 1 個行事曆讀不到` follows, and hovering the status line lists one `<name>：<reason>` per failed calendar. The five reasons are:
+Check `編輯分類與狀態` (“edit category and status”) to show menus on each row. Pick a category or choose active, paused, done, or cancelled. Changing status changes the leading symbol in the note's filename. Use `顯示已結案` (“show closed”) to show done and cancelled projects.
 
-- `連結格式不對` — the stored address is not an `https://` or `webcal://` address.
-- `這台裝置找不到連結` — no link is saved for this calendar on this computer.
-- `讀取失敗（HTTP 404）` — the server answered, but with an error status.
-- `連不上` — the request itself failed, e.g. with no internet connection.
-- `內容看不懂` — the answer was not a calendar the plugin can read.
+![Category and status menus shown on each example project row](docs/images/status-editing.png)
 
-A calendar that fails keeps the events of its last successful read in this session, and the other calendars are unaffected — as are the project rows, which never depend on a calendar at all. The year view shows no events; the General row belongs to the month view only.
+See [status and category rules](docs/details.md#status-and-categories) for name conflicts and link updates.
+
+## Settings
+
+Go to **Settings → Project Dashboard**. There are four sections:
+
+- **Project notes:** choose the project folder and names to skip.
+- **Categories:** match words in note names to categories. The first matching rule wins; a category picked by hand wins over the rules.
+- **Dates:** choose the day written when you schedule into a week. You can also count Saturday tasks in the following week.
+- **Calendars:** add calendar names and links, and choose label colors.
+
+Changes save and update the dashboard on their own. See [all settings](docs/details.md#settings) for the full field list and defaults.
 
 ## Network use
 
-The plugin is offline unless you set up a calendar:
+Without a calendar set up, the plugin makes **no network requests**. With calendars set up:
 
-- It makes no network request at all while the `Calendars` list is empty or no row has been given a link.
-- The only addresses it ever requests are the calendar addresses you stored yourself, and it requests them only with `GET`, only at the five moments listed above.
-- It never writes to a calendar — no event is created, changed, or deleted — and it sends no note, no setting, and no other content out of your vault.
-- Fetched events are held in memory only. They are never written to disk and are gone when the plugin unloads.
-- The calendar addresses live in Obsidian's secret storage. They are not in the plugin's `data.json`, not in local storage, and never appear in a notice, a tooltip, an error message, or the dashboard's text.
+- It reads only the calendar addresses you stored, using `GET` with no body, at [these five times](docs/details.md#when-calendars-are-read).
+- It never writes to a calendar. It never creates, changes, or deletes events.
+- It sends no notes, settings, or other vault content anywhere.
+- Events stay in memory only. They are not saved to disk and are cleared when the plugin unloads.
+- Addresses stay in **Obsidian's secret storage**, outside the settings that Obsidian Sync carries. They are never written to plugin data or local storage, or shown in notices, tooltips, error messages, or dashboard text.
 
 ## Third-party code
 
-The bundled `main.js` contains [ical.js](https://github.com/kewisch/ical.js), used to read the iCalendar files the calendars return and to expand repeating events. ical.js is licensed under the [MPL-2.0](https://www.mozilla.org/MPL/2.0/) and is bundled unmodified; the comment at the top of `main.js` names it, its license, and the address of its source code.
+The plugin bundles [ical.js](https://github.com/kewisch/ical.js) **unmodified**, under the [MPL-2.0 license](https://www.mozilla.org/MPL/2.0/). It reads iCalendar files and repeating events. The notice at the top of `main.js` names ical.js, its license, and its [source code](https://github.com/kewisch/ical.js).
 
-## Edit tasks from the week popover
+## Further reading
 
-Click a project's week cell to open that week's popover: the year view's cells in the per-week view mode — filled cells, empty dashed weeks, and the long dashed bar of a project that has no task dates yet — and the month view's cells. (The month view's `還沒排` column opens the same popover showing the undated-task list described above, not a week.) From there you can:
+These six articles by 朱騏 are in **Traditional Chinese**, in this order: the method, monthly planning, weekly planning, and Obsidian use.
 
-- tick a task done, or untick it
-- move a task to the previous or next week with `◀` / `▶` (the date moves by 7 days, so the weekday stays the same)
-- pick one of the note's tasks that has no date yet and put it in this week
-- add a new task to this week
-- jump to the task's line in the note with `↗`
-- open the note beside the dashboard by clicking the project name at the top of the popover
-
-Every change is written straight into the project note in the Tasks plugin's emoji format, `- [ ] task 📅 YYYY-MM-DD`, and ticking a task adds `✅ <today>`. A task placed into a week (picked or newly added) is dated on the weekday chosen in `Which day to write`, that week's Friday by default. When you choose `Saturday` while `Saturday tasks count for next week` is on, the Saturday before that week's Monday is written instead, so the task still shows in the week you picked. New tasks go right after the last checkbox task in the note, and the input stays open so you can add several in a row. Checkbox lines inside code blocks or the frontmatter are never edited. Recurring tasks (`🔁`) have to be ticked in the note itself, because creating the next occurrence is the Tasks plugin's job. If the line changed in the note after the dashboard last read it, nothing is written and the dashboard asks you to try again.
-
-If your Tasks plugin uses the Dataview format or doesn't add done dates, the dashboard still writes the emoji format above.
+1. [A five-level personal project system](https://chichu.co/blog/5-levels-personal-project-management) — Connect yearly goals to daily tasks on paper.
+2. [Eight steps for a monthly plan](https://chichu.co/blog/8-steps-using-google-sheet-to-design-your-monthly-plan) — Break monthly goals into work that fits in your time.
+3. [Three steps for weekly planning with a Muji planner](https://chichu.co/blog/3-steps-using-muji-vertical-planner) — Plan and review a week in a paper planner.
+4. [Ten steps for a project system in Obsidian](https://chichu.co/blog/10-steps-using-obsidian-to-build-a-personal-project-management-system) — Break goals into quarters and small daily actions.
+5. [Turn project lessons into the next task list](https://chichu.co/blog/obsidian-claudian-project-note) — Use Obsidian and Claudian to keep what you learned from a project.
+6. [Manage personal projects in Obsidian](https://chichu.co/blog/how-to-use-obsidian-to-manage-personal-project) — Set up notes to manage your own projects.
 
 ## Development
 
 ```bash
 npm install
-npm test          # vitest, must stay green
-npm run lint       # eslint with the Obsidian plugin rules, must report 0 errors
-npm run build      # type-check, then bundle to main.js
+npm test
+npm run lint
+npm run build
 ```
 
-To deploy a build into a vault for manual testing, set the vault path either via an environment variable or a git-ignored local config file, then run `npm run deploy`:
+For a test vault, set its location and deploy:
 
 ```bash
-OBSIDIAN_VAULT="/path/to/your/vault" npm run deploy
-# or create deploy.local.json: { "vault": "/path/to/your/vault" }
+OBSIDIAN_VAULT="<test-vault-folder>" npm run deploy
 ```
 
-## Specifications
+Or put the location in the ignored `deploy.local.json` as `{ "vault": "<test-vault-folder>" }`, then run `npm run deploy`. It builds and copies the three plugin files into the test vault.
 
-This project is developed spec-first with [Spectra](https://github.com/0xfdb/spectra). `openspec/specs/` holds the current behavioral specification for each capability; read `openspec/LANGUAGE.md` first to align on vocabulary (status, promised_end, overflow, closed, …).
-
----
-
-## 繁體中文說明
-
-把 Obsidian 裡的專案筆記自動畫成一張年度甘特圖，用外掛分頁呈現。外掛掃描你指定的專案資料夾，從檔名、frontmatter 與筆記內的任務日期推算每個專案的起訖日與分類，再依 ISO 週欄位畫成一條一條的色條，讓你一眼看完整年所有專案的時間分布、哪個月份塞太多專案、哪個專案已經偷偷拖過原本承諾的結束日。每週儲存格的狀態來自筆記裡 `📅`（預計）與 `✅`（完成）的任務日期，沿用 Obsidian Tasks 外掛的標記慣例；任務日期超出專案結束日時會畫出溢出色段，還沒排定任務的部分則顯示為已結算或虛線，而不是實線。
-
-### 安裝
-
-從[最新發布版本](https://github.com/vizance/obsidian-project-dashboard/releases/latest)下載 `main.js`、`manifest.json`、`styles.css`，放進你的 vault 裡的 `.obsidian/plugins/project-dashboard/`，再到**設定 → 第三方外掛**開啟。
-
-### 設定儀表板
-
-所有設定都在 Obsidian 裡的**設定 → Project Dashboard**，不用改程式、不用重新建置。設定頁的文字是英文，儀表板本身（年視圖、月視圖與週浮窗）是繁體中文。設定頁分四區。
-
-**`Project notes`（專案筆記）**
-
-- `Project folder`（專案資料夾）— vault 內放專案筆記的資料夾，預設 `Projects`。只讀這一層，不含子資料夾。找不到你填的資料夾時，欄位下方會顯示 `Can't find this folder.`（找不到這個資料夾）；欄位清空時會回到 `Projects`。
-- `Projects to skip`（不列入的專案）— 一行一個檔名片段。檔名包含其中任何一段的專案筆記不會出現在儀表板。
-
-**`Categories`（分類）**
-
-一份有順序的規則清單：專案名稱包含規則左邊的文字，就歸到右邊的分類。由上往下比對，**第一個符合的規則生效**，所以較長的詞要排在包含它的短詞上面（`企業內訓` 排在 `內訓` 之前）。沒有任何規則符合的專案歸到 `other`。每一列都有 `Move up`（上移）、`Move down`（下移）、`Delete`（刪除）；按 `Add a rule` 會加一列空白規則，存檔後不會消失，在你打字之前不參與分類。
-
-十條預設規則依序是：`企業內訓` → 企業內訓、`內訓` → 企業內訓、`線上課程` → 線上課程 / Cohort、`課程` → 線上課程 / Cohort、`出版` → 出版、`教練` → 1-on-1 教練、`諮詢` → 1-on-1 教練、`業配` → 業配 / 合作、`合作` → 業配 / 合作、`生活` → 生活。
-
-在儀表板上手動指定的分類（專案列的 `編輯分類與狀態`）優先於所有規則，而且只影響全名相同的那個專案。
-
-**`Dates`（日期規則）**
-
-- `Which day to write`（排進某週時寫星期幾）— 從週浮窗把任務排進某一週時，寫進筆記的那一天。預設 `Friday`（星期五）。
-- `Saturday tasks count for next week`（週六的任務算到下一週）— 預設關閉。開啟後，日期寫週六的任務會顯示在下一週，對應「週六先排好下週要做的事」的習慣；關閉時週六的任務算在當週。
-
-**`Calendars`（行事曆）**
-
-這裡設定的行事曆，行程會填進月視圖的 General 列，詳見下面的 [General 列](#general-列)。區塊的說明文字是 `Show events from your calendars at the top of the month view. The plugin only reads your calendars. It never changes them.`（把你行事曆的行程顯示在月視圖最上面。外掛只會讀取，絕不修改行事曆。）接著有兩行提示：`Google Calendar: open the calendar's settings and copy "Secret address in iCal format" (iCal 格式的私密網址).`（在 Google 日曆打開該日曆的設定，複製「iCal 格式的私密網址」。）以及 `iCloud: share the calendar as a public calendar and copy its link.`（將 iCloud 行事曆設為公開，複製它的連結。）
-
-一個行事曆一列，每列有：
-
-- 名稱欄（提示文字 `Calendar name`）— 可以打中文。行事曆的名稱用來標示行程來自哪個行事曆，以及讀不到時指出是哪一個。沒取名的行事曆依它在清單裡的位置叫 `行事曆 1`、`行事曆 2`……
-- 連結欄 — 把行事曆連結貼進去，外掛會自動儲存並清空欄位。已存的連結不會再顯示，只用提示文字說明狀態：
-  - `Paste the calendar link here` — 還沒設定過連結，請貼在這裡。
-  - `Link saved. Paste a new link to change it.` — 這台電腦已存好連結，貼新連結就能更換。
-  - `This computer has no link yet. Paste it here.` — 清單裡有這個行事曆，但這台電腦還沒有連結，請貼在這裡。
-- 顏色選擇（提示文字 `Color`）— 選擇行事曆名稱標籤的顏色。還沒選過時，依清單順序使用藍、綠、橘、紫、青、粉，再從藍色輪流。預設色避開紅色，紅色留給逾期任務與超出專案預計結束日期的工作。
-- `Delete`（刪除）— 把那個行事曆從清單移除，也清空外掛替它存的連結。
-
-按 `Add a calendar`（新增行事曆）加一列空白。從未設定過連結的那一列會直接跳過：不會去讀，也不會被當成錯誤回報。貼上、按 Enter 或離開連結欄時會檢查格式。如果不是 `https://` 或 `webcal://` 開頭，就不會儲存，並在該列下方顯示 `This is not a calendar link. It should start with https:// or webcal://.`（這不是行事曆連結，應以 `https://` 或 `webcal://` 開頭。）連結存在 Obsidian 的密鑰儲存區，不在外掛資料檔裡，儲存方式由外掛自動處理。
-
-設定存進 vault 裡的外掛資料（`.obsidian/plugins/project-dashboard/data.json`），和你手動指定的分類放在同一份，在最後一次修改後 400 ms 存檔；開著的儀表板接著自己重新掃描、重繪。Obsidian Sync 會像同步其他外掛資料一樣同步這個檔案，所以在一台電腦改的設定會傳到其他電腦。你的設定不會留在這個 repository 裡。
-
-分類標籤與配色（`src/core/config.ts` 的 `CATEGORIES`）是唯一還要改程式的部分。
-
-### 年視圖與月視圖
-
-暫停的專案（檔名開頭是 `⏳`）在年視圖與月視圖都預設隱藏。「顯示已結案」旁的 `顯示暫停（<n>）` 表示勾選後會多出幾個暫停專案：只計算指定資料夾內、沒有被略過，而且有開始與結束日期的專案。數量大於 0 才會出現這個勾選框，每次重新掃描都會更新數字。勾起來後，暫停專案會照原本順序顯示，名稱後面有灰色的 `⏳ 暫停` 標籤，年視圖色條與月視圖格子則以分類色斜線紋呈現。每次打開儀表板分頁，「顯示暫停」與「顯示已結案」都會回到未勾選。
-
-勾選 `編輯分類與狀態`，兩個視圖的每列專案都會顯示分類與狀態選單。狀態選項是 `🚧 進行中`、`⏳ 暫停`、`✅ 完成`、`❌ 取消`；檔名沒有狀態符號時算進行中。選擇不同狀態後，檔名前三個字元內的狀態符號與其後空白，會換成新符號加一個空白；沒有開頭符號就加在最前面。檔名其他部分與所在資料夾不變，手動指定的分類也會保留。其他筆記的連結是否更新，取決於 Obsidian 的「自動更新內部連結」設定，和自己手動改名相同。如果已經有同名筆記，就不會改名並顯示提示。新狀態若被勾選框隱藏，重新掃描後該列與開著的浮窗都會消失。
-
-控制列有一組 `年` / `月` 切換，按 `M` 也能切換。年視圖就是上面說的那張整年的圖；月視圖一次顯示一個月，格子裡直接寫出任務，這是每週規劃時通常需要的樣子。
-
-年視圖時，控制列顯示 `◀`、年份標題（例如 `2026 年`）、`▶`。箭頭往前或往後一年。翻到別的年份才會出現 `今年`，按下就回到今年。只有今年的圖會標示今天所在的週。
-
-月視圖時，同一個位置顯示 `◀`、月份標題、`▶`。標題寫成 `2026 年 10 月（W41–W44）`：年、月，以及這個月有哪幾週。箭頭往前或往後一個月，可以跨年。翻到別的月份才會出現 `本月`，按下就回到今天這週所屬的月份。
-
-切換視圖會沿用正在規劃的期間。在別的年份（例如 2027 年）切到月視圖，會顯示那一年的一月；在今年切到月視圖，會顯示今天這週所屬的月份。月視圖切回年視圖，會顯示那個月所在的年份。打開儀表板時，從今年或今天這週所屬的月份開始。只有「年或月」這個選擇會被記住，顯示的年份與月份都不會。換年份、換月份或切換視圖，都會關掉開著的浮窗。筆記更新時，會保留正在看的年份或月份。
-
-如果專案的預計結束日期在前一年，任務卻延伸到顯示中的這一年，逐週模式仍會把超出期限的週標紅；timeline 模式的色條會從這一年的第一週開始。沒有結束日期的專案，預設結束日仍是今天所在年份的 12/31，不會跟著顯示的年份改變。
-
-一週屬於它**星期一**落在的那個月。所以 2026 年 10 月是 W41–W44，11 月是 W45–W49，和你照著週一填週表格的方式一樣。唯一的例外是第 1 週，它永遠算一月，即使它的星期一還在去年 12 月。年視圖的月份與季度表頭用同一條規則，所以兩個視圖對任何一週的說法都相同。
-
-每個週格子列出該專案那一週的任務行：和那一週的週浮窗完全相同的行、相同的順序。三種文字樣式：
-
-- 灰字前面加 `✓`——任務已完成。
-- 紅字——那一週已經過了，任務還沒完成。
-- 一般文字——其他情況。
-
-格子的底色與邊框跟年視圖同一週的格子種類一致：那一週有任務就是實心，任務全部完成就變淡，超過專案預計結束日期的那幾週是紅色，在專案區間內但沒有任務的那一週是虛線。不在專案區間的格子是空白的，什麼都不顯示，就算剛好有任務的日期落在那一週也一樣。
-
-點格子會打開年視圖打開的那個週浮窗，錨點就在那一格，所有編輯動作都能用；再點同一格就關掉。年視圖存在 timeline 模式時也一樣可以點，因為 timeline 模式只作用在年視圖——`T` 也是：在月視圖按 `T` 什麼都不會改。
-
-最後一欄 `還沒排` 顯示這個專案還有幾個任務沒有日期，沒有時留白。點那個數字會打開一個浮窗——和週格子用的是同一個浮窗——按筆記裡的順序列出這些還沒排日期的任務。每一列有 `↗`，以及顯示中那個月每一週一顆按鈕（`W41`、`W42`、`W43`、`W44`）。按週按鈕就把那個任務排進那一週，寫進筆記的日期和週浮窗寫的完全一樣：`Which day to write` 設定的那一天，以及 `Saturday tasks count for next week` 的例外。不在專案期間的那幾週按鈕是灰的，按不下去；`↗` 跳到筆記裡那一行。排好一個之後浮窗會留著，少一列，排完最後一個就關掉。留白的格子點了沒有反應。
-
-### General 列
-
-月視圖在所有專案列的上面，多畫一列 `General`：你自己行事曆的行程，一週一格，讓不是專案的事情——上課、出遊、休假——和工作排在同一張表裡。`Calendars` 區塊只要有一個行事曆設定過連結，這一列就會出現；全部沒設定時就不見。這一列只能看：點它的格子不會打開浮窗（只會把開著的浮窗關掉），`還沒排` 那一格永遠留白。
-
-**取得連結。**在 Google 日曆打開**設定**，在左邊清單點選那個日曆，拉到最下面複製 **iCal 格式的私密網址**。這個網址等於密碼：任何拿到它的人都能讀整個行事曆。使用 iCloud 時，在 Mac 的行事曆 app 對行事曆按右鍵，選「共享行事曆⋯」（有些版本寫「分享行事曆⋯」），勾選「公開行事曆」，複製 `webcal://` 開頭的網址。任何人拿到這個公開連結，都看得到行事曆。如果行事曆原本就在 Google、iCloud 只是訂閱它，請改用 Google 的網址。Google 的私密網址萬一外洩，到同一個日曆設定頁重設，再把新網址貼進外掛的連結欄；舊網址就會失效。
-
-**加入行事曆。**到**設定 → Project Dashboard → Calendars**，按 `Add a calendar`，在那一列打上名稱（`工作`、`家庭`，可以打中文），再把連結貼進連結欄。外掛會自動儲存並清空欄位，看到 `Link saved. Paste a new link to change it.` 就表示存好了。也可以用 `Color` 選擇顏色。每筆行程前面都有名稱標籤，使用這個行事曆的顏色；沒取名時，依清單位置顯示 `行事曆 1`、`行事曆 2`……讀不到時，也會用這個名稱指出是哪一個行事曆。
-
-已存的連結不一定會像其他設定一樣跟著 Obsidian Sync 走。如果第二台電腦有行事曆清單、卻沒有存好的連結，連結欄會顯示 `This computer has no link yet. Paste it here.`，General 列會回報 `這台裝置找不到連結`。在第二台電腦的同一列也貼上連結即可。
-
-**什麼時候讀行程。**只有五個時機：
-
-1. 儀表板分頁打開時。
-2. 按 General 列名稱格裡的 `↻` 時。
-3. 執行 `Refresh calendars` 時（命令面板裡是 `Project Dashboard: Refresh calendars`）。
-4. 在已設好的行事曆貼上新連結時，會馬上重新讀取。
-5. 設定過連結的行事曆清單或順序改變時：設定存好、載入外掛執行期間由外部改動的設定，或存檔失敗而還原上次設定之後。比對只看連結設定。改名或換色不會重新讀取行程，存檔後標籤就會更新。
-
-其他情況都不會讀：沒有定時器，切換年份或月份（含 `今年`、`本月`）、切換 `年` / `月`、更新筆記都不會。開著週浮窗時按 `↻`，浮窗會留在原地。
-
-**一行長什麼樣。**每行前面都有行事曆名稱標籤，使用那個行事曆的顏色，後面接著下列範例這樣的行程文字。日期是本地時間的月/日加星期，時間是本地的 24 小時制：
-
-- `11/6（五）13:30 讀書會`——有時間、在同一天內的行程。
-- `11/11（三）休假`——只有一天的整天行程。
-- `11/7（六）–11/9（一）研習營`——跨好幾天的整天行程。
-- `11/8（日）22:00–11/9（一）01:00 夜間維護`——有時間、結束在後面某一天的行程。
-
-沒有標題的行程寫成 `（沒有標題）`。同一週裡依日期排序，同一天的整天行程排在有時間的行程前面。行程會出現在它碰到的每一週，所以跨週末的旅行會在兩週都列出來。重複的行程會展開成一次一次的行程，行事曆自己的例外與被移動的那幾次都照算，標成已取消的行程完全不顯示。`Saturday tasks count for next week` 只作用在任務：不管那個設定開不開，週六的行程都列在那個週六所屬的那一週。
-
-**狀態列**在 `General` 這個字下面。這次 Obsidian 執行期間還沒讀過之前是空的；讀取中寫 `讀取中…`；讀完寫 `更新於 15:20`，也就是最後一次讀完的時間。有行事曆讀不到時，後面接 `・⚠ 1 個行事曆讀不到`，滑過狀態列會一行一個列出 `<名稱>：<原因>`。五種原因是：
-
-- `連結格式不對`——存的網址不是 `https://` 或 `webcal://` 開頭。
-- `這台裝置找不到連結`——這台電腦沒有存好這個行事曆的連結。
-- `讀取失敗（HTTP 404）`——伺服器有回應，但回的是錯誤狀態。
-- `連不上`——請求本身失敗，例如沒有網路。
-- `內容看不懂`——回來的內容不是外掛讀得懂的行事曆。
-
-讀不到的行事曆，會保留它這次執行期間上次成功讀到的行程，其他行事曆不受影響——專案列也不受影響，它們從來不依賴任何行事曆。年視圖不顯示任何行程；General 列只屬於月視圖。
-
-### 連網說明
-
-沒有設定行事曆時，這個外掛完全不連網：
-
-- `Calendars` 清單是空的，或沒有任何一列設定過連結時，不發出任何網路請求。
-- 它唯一會請求的網址，就是你自己存進去的行事曆網址，而且只用 `GET`，只在上面那五個時機。
-- 它絕不寫入行事曆——不新增、不修改、不刪除任何行程——也不會把筆記、設定或任何其他內容送出你的 vault。
-- 讀回來的行程只放在記憶體裡，不寫進硬碟，外掛卸載就不見了。
-- 行事曆的網址存在 Obsidian 的密鑰儲存區，不在外掛的 `data.json`、不在 local storage，也絕不出現在通知、提示、錯誤訊息或儀表板的任何文字裡。
-
-### 第三方程式碼
-
-打包出來的 `main.js` 內含 [ical.js](https://github.com/kewisch/ical.js)，用來讀行事曆回傳的 iCalendar 檔案並展開重複的行程。ical.js 採 [MPL-2.0](https://www.mozilla.org/MPL/2.0/) 授權，原封不動打包進來；`main.js` 開頭的註解寫出它的名稱、授權，以及原始碼位置。
-
-### 在週浮窗裡編輯任務
-
-點專案的週格子，就會打開那一週的浮窗：逐週模式下年視圖的格子（實心的格子、空的虛線週，還有還沒有任何任務日期的整條虛線），以及月視圖的格子。（月視圖的 `還沒排` 欄打開的是同一個浮窗，裡面是上面說的那份還沒排日期的任務清單，不是某一週。）打開後可以：
-
-- 勾選任務完成，或取消勾選
-- 用 `◀` `▶` 把任務移到前一週或下一週（日期加減 7 天，星期幾不變）
-- 從這則筆記還沒排日期的任務挑一個，排進這週
-- 在這週新增一個任務
-- 按 `↗` 跳到筆記裡那一行
-- 點浮窗最上方的專案名稱，在儀表板右側打開這則筆記
-
-所有改動都直接寫回專案筆記，格式固定用 Tasks 外掛的 emoji 寫法 `- [ ] 任務 📅 YYYY-MM-DD`，勾完成時會補上 `✅ 今天日期`。排進某一週的任務（挑選或新增的都算）會寫 `Which day to write` 設定的那一天，預設是那週的星期五；選 `Saturday` 又開著 `Saturday tasks count for next week` 時，寫的是那週星期一前面的那個星期六，所以任務仍然顯示在你挑的那一週。新增的任務放在筆記裡最後一個任務的下一行，輸入框會保持開著，可以連續新增好幾個。程式碼區塊與 frontmatter 裡的核取方塊不會被修改。有 `🔁` 的重複任務要到筆記裡勾，因為產生下一次的任務是 Tasks 外掛的工作。如果那一行在儀表板讀取之後又被改過，儀表板不會寫入，會請你再按一次。
-
-如果你的 Tasks 外掛設定成 Dataview 格式，或沒有開啟完成日期，儀表板仍然會寫上面的 emoji 格式。
-
-### 開發
-
-```bash
-npm install
-npm test          # vitest，須保持全綠
-npm run lint       # eslint，套用 Obsidian 外掛規則，須為 0 錯誤
-npm run build      # 先型別檢查，再打包成 main.js
-```
-
-部署到 vault 做手動測試前，先用環境變數或 git 忽略的本機設定檔指定 vault 路徑，再執行 `npm run deploy`：
-
-```bash
-OBSIDIAN_VAULT="/path/to/your/vault" npm run deploy
-# 或建立 deploy.local.json：{ "vault": "/path/to/your/vault" }
-```
-
-### 規格文件
-
-本專案採用 [Spectra](https://github.com/0xfdb/spectra) 做 Spec-Driven Development。`openspec/specs/` 是每個 capability 目前的行為規格；建議先讀 `openspec/LANGUAGE.md` 對齊詞彙（status、promised_end、overflow、closed 等）。
+The specs are in [openspec/](openspec/); start with [the vocabulary](openspec/LANGUAGE.md). To retake screenshots with example data, run `npm run screenshots:build`, then `python3 scripts/screenshots/capture.py`. See [AGENTS.md](AGENTS.md#screenshots) for the requirements and image checks.

@@ -18,6 +18,10 @@ Paused projects used to stay among active work, making it harder to see what nee
 
 Security fixes: a malformed repeating event could keep searching for a date forever, so it now stops without blocking Obsidian or hiding other events. Calendar responses over 20 MB are rejected, and calendar time zones no longer keep entire calendars in memory after unloading. Pasting a link now replaces only a link created by this plugin, preserving secrets used elsewhere; the field hides pasted text and clears rejected links. Long spaces in a task no longer slow down unticking it, and examples inside longer code fences stay protected from edits. Unloading saves any pending settings once and stops later saves.
 
+Dated tasks now always appear in their own week and can be opened in both views. Previously, a task outside the project's expected date range could disappear: a project expected to end on 11/6 could still have two tasks on 12/5, yet both views showed a blank week. With Saturday tasks counted in the following week, the example dated `2026-12-05` now appears in `2026-W50`. The expected end only decides whether an active or paused project's task week is red. It is an estimate, so getting it wrong should not hide real work. Tasks before the start also stay visible, and closed projects keep later tasks in grey when shown. A date mistake in one project, such as an end in 9999, no longer prevents the rest of the chart from appearing. If one row cannot be drawn, only that row has empty week cells and `⚠`; the other rows still appear.
+
+The `?` help panel now has three tabs: `年視圖`, `月視圖`, and `操作`. It opens on the tab for the current view. As more features were added, the old single long list became hard to read. Each tab now groups its short lines by topics such as what a cell means, what a whole row means, colors and columns, and things needing attention. Each visual item has a small sample matching the chart, including paused rows, calendar name labels, and `還沒排` counts.
+
 月視圖最上面新增一列 General，一週一格列出你行事曆的行程。月視圖從 0.4.0 開始就會畫出專案，但週表格最上面那一列通常是「不是專案的事情」——上課、出遊、休假——在這之前得每週從 Google 或 Apple 行事曆手抄。現在儀表板會去讀你指定的行事曆，把行程寫進和任務相同的那幾週：`11/6（五）13:30 讀書會`、`11/11（三）休假`、`11/7（六）–11/9（一）研習營`。每筆行程前面都有名稱標籤，使用那個行事曆的顏色；沒取名時，依設定清單的位置顯示 `行事曆 1`、`行事曆 2`……重複的行程會展開成一次一次的行程，行事曆自己的例外與被移動的那幾次都照算，已取消的行程不顯示，跨好幾天的行程會列在它碰到的每一週。這一列只能看——點格子不會打開浮窗——年視圖不顯示任何行程。讀取只發生在五個時機：儀表板分頁打開時、按這一列的 `↻` 時、執行新指令 `Refresh calendars` 時、在已設好的行事曆貼上新連結時（會馬上重新讀取），以及在設定裡改動設定過連結的行事曆清單或順序時。最後這項比對只看連結設定。改名或換色存檔後，標籤就會更新，不會重新讀取行程。在月份之間移動永遠不會去讀。`General` 下面的狀態列在讀取中寫 `讀取中…`，讀完寫 `更新於 15:20`；有行事曆讀不到時會接上 `・⚠ 1 個行事曆讀不到`，並在提示裡寫出是哪個行事曆、什麼原因，其他行事曆——以及每一列專案——都照常。
 
 設定方式：到**設定 → Project Dashboard → Calendars**，這是新增的第四區。按 `Add a calendar`，給行事曆取個名稱（可以打中文），再把連結貼進連結欄。外掛會自動儲存並清空欄位。可以用 `Color` 選擇標籤顏色；還沒選過時，依清單順序使用藍、綠、橘、紫、青、粉，再從藍色輪流。預設色避開紅色，紅色留給逾期任務與超出專案預計結束日期的工作。提示文字會告訴你這台電腦已存好連結，或還沒有連結。貼上的內容如果不是 `https://` 或 `webcal://` 開頭，就不會儲存，並在該列下方顯示說明。按 `Delete` 會移除行事曆，也清空外掛替它存的連結。在 Google 日曆，到該日曆的設定複製 **iCal 格式的私密網址**；使用 iCloud 時，複製公開行事曆的連結，任何人拿到都看得到。連結存在 Obsidian 的密鑰儲存區，不會進入 Obsidian Sync 同步的設定裡，因為行事曆連結可能等於讀取密碼。如果第二台電腦顯示 `這台裝置找不到連結`，在那台同一個行事曆的連結欄也貼上即可。Google 網址萬一外洩，到 Google 日曆重設，再把新網址貼進連結欄。
@@ -33,6 +37,10 @@ Security fixes: a malformed repeating event could keep searching for a date fore
 暫停的專案以前仍混在進行中的工作裡，讓人難以看出現在該推進什麼。現在年視圖與月視圖都會預設隱藏暫停專案。有暫停專案可顯示時，控制列才會出現 `顯示暫停（<n>）`，每次重新掃描都更新數量；勾起來後，名稱後面有灰色的 `⏳ 暫停` 標籤，年視圖色條與月視圖格子則以分類色斜線紋呈現。勾選 `編輯分類與狀態`，每列分類選單旁會出現狀態選單，規劃時就能暫停、恢復進行、完成或取消專案。改狀態會替換筆記檔名開頭的符號，保留所在資料夾與手動指定的分類；其他筆記的連結是否更新，依 Obsidian 的「自動更新內部連結」設定處理。如果已經有同名筆記，就不會改名並顯示提示。
 
 資安修正：寫壞的重複行程原本可能一直尋找不存在的日期，讓 Obsidian 卡住；現在會停止尋找，其他行程仍照常顯示。超過 20 MB 的行事曆會停止讀取，卸載後也不再因時區資料而留住整份行事曆。貼新連結時只會覆寫外掛自己存的連結，保留其他用途的密鑰；輸入欄會遮住文字，貼錯時清空並顯示原因。任務裡很長的空白不再拖慢取消勾選，較長程式碼圍欄裡的範例任務也不會被誤改。卸載時會把尚未儲存的設定存一次，之後不再存檔。
+
+有日期的任務現在一律出現在它那一週，年視圖與月視圖都能點開。以前任務超出專案預計日期範圍時可能消失：例如預計 11/6 結束的專案，還有兩個 12/5 的任務，兩個視圖卻都顯示空白。開著週六算到下一週時，範例的 `2026-12-05` 任務現在會出現在 `2026-W50`。預計結束日期只決定進行中或暫停專案的任務週要不要標紅色。日期本來就是預估，估不準時不該讓真實任務消失。開始日期之前的任務也會顯示，已結案專案的後續任務在顯示時保留灰色。單一專案日期寫壞，例如結束日期寫成 9999 年，也不會再讓整張圖畫不出來。如果某列無法顯示，只有那列的週格子留白並加上 `⚠`，其他列照畫。
+
+右下角 `?` 的說明面板改成 `年視圖`、`月視圖`、`操作` 三個分頁。在哪個視圖打開，就先顯示哪個分頁。功能增加後，原本一長串清單擠在一起很難讀。現在各分頁依一格的意思、整列的意思、顏色與欄位、需要注意的事項等主題分組，每行保持簡短。每個視覺項目左邊都有和畫面相同的小示範，也補上暫停列、行事曆名稱標籤與 `還沒排` 數字。
 
 ## 0.4.0 — 2026-10-31
 
