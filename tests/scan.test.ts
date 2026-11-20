@@ -3,6 +3,7 @@ import {
 	classify,
 	computeOccupiedWeeks,
 	detectStatus,
+	filenameWithStatus,
 	parseDateStr,
 	parseFilenameDates,
 	parseFrontmatter,
@@ -11,6 +12,7 @@ import {
 	scanProjectFolder,
 	scanProjectNote,
 	stripStatus,
+	type ProjectStatus,
 } from '../src/core/scan';
 import { defaultSettings, type ClassificationRule, type DashboardSettings } from '../src/core/settings';
 
@@ -31,6 +33,28 @@ describe('detectStatus', () => {
 		['P-foo.md', 'active'],
 	])('%s -> %s', (filename, expected) => {
 		expect(detectStatus(filename)).toBe(expected);
+	});
+});
+
+describe('filenameWithStatus', () => {
+	it.each<[string, ProjectStatus, string]>([
+		['⏳ P-20260824 範例專案.md', 'active', '🚧 P-20260824 範例專案.md'],
+		['P-20260824 範例專案.md', 'pending', '⏳ P-20260824 範例專案.md'],
+		['🚧  P-20260824 範例專案.md', 'done', '✅ P-20260824 範例專案.md'],
+		['🚧 P-20260824 範例 ✅ 檢查表.md', 'cancelled', '❌ P-20260824 範例 ✅ 檢查表.md'],
+	])('%s -> %s -> %s', (filename, status, expected) => {
+		expect(filenameWithStatus(filename, status)).toBe(expected);
+	});
+
+	// detectStatus 用 Unicode 字元算前三個字元，改名也要遵守同一個邊界。
+	it('replaces a symbol at the third Unicode character and keeps the prefix', () => {
+		expect(filenameWithStatus('甲乙⏳   範例.md', 'active')).toBe('甲乙🚧 範例.md');
+		expect(filenameWithStatus('甲乙丙⏳ 範例.md', 'active')).toBe('🚧 甲乙丙⏳ 範例.md');
+	});
+
+	it('preserves the manual category key when only the leading status changes', () => {
+		const filename = '🚧 P-20260824 範例 ✅ 檢查表.md';
+		expect(stripStatus(filenameWithStatus(filename, 'pending'))).toBe(stripStatus(filename));
 	});
 });
 

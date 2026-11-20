@@ -113,10 +113,16 @@ export class SettingsElement extends EventTarget {
 	placeholder = '';
 	type = '';
 	hidden = false;
+	checked = false;
+	disabled = false;
+	selected = false;
+	parentElement: SettingsElement | null = null;
+	get classList(): { contains: (name: string) => boolean } { return { contains: (name) => this.classes.has(name) }; }
 
 	createEl(tag: string, options: { cls?: string; text?: string; attr?: Record<string, string | number> } = {}): SettingsElement {
 		const child = new SettingsElement();
 		child.tagName = tag;
+		child.parentElement = this;
 		for (const cls of options.cls?.split(' ') ?? []) child.addClass(cls);
 		for (const [name, value] of Object.entries(options.attr ?? {})) child.setAttribute(name, String(value));
 		child.textContent = options.text ?? '';
@@ -130,7 +136,23 @@ export class SettingsElement extends EventTarget {
 	setCssProps(props: Record<string, string>): void { Object.assign(this.cssProps, props); }
 
 	addClass(name: string): void { this.classes.add(name); }
-	setAttribute(name: string, value: string): void { this.attributes.set(name, value); }
+	setAttribute(name: string, value: string): void {
+		this.attributes.set(name, value);
+		if (name.startsWith('data-')) this.dataset[name.slice(5)] = value;
+		if (name === 'value') this.value = value;
+		if (name === 'type') this.type = value;
+	}
+	removeClass(name: string): void { this.classes.delete(name); }
+	toggleClass(name: string, enabled: boolean): void {
+		if (enabled) this.addClass(name);
+		else this.removeClass(name);
+	}
+	setText(text: string): void { this.textContent = text; }
+	appendText(text: string): void { this.textContent += text; }
+	closest(selector: string): SettingsElement | null {
+		if (selector.split(',').some((part) => this.classes.has(part.trim().slice(1)))) return this;
+		return this.parentElement?.closest(selector) ?? null;
+	}
 	querySelector(selector: string): SettingsElement | null {
 		for (const child of this.children) {
 			if (selector === 'input[type="color"]' && child.type === 'color') return child;

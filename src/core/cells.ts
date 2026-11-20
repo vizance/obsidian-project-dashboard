@@ -281,10 +281,11 @@ export function spanWeekOffset(offset: number, width: number, weeks: number): nu
 	return Math.max(0, Math.min(weeks - 1, index));
 }
 
-export function visibleProjects(projects: ProjectRecord[], showClosed: boolean): ProjectRecord[] {
+export function visibleProjects(projects: ProjectRecord[], showClosed: boolean, showPaused = false): ProjectRecord[] {
 	return projects.filter((p) => {
 		const isClosed = p.status === 'done' || p.status === 'cancelled';
 		if (!showClosed && isClosed) return false;
+		if (!showPaused && p.status === 'pending') return false;
 		if (!p.start || !p.end) return false;
 		return true;
 	});

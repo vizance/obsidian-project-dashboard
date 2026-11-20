@@ -14,6 +14,8 @@ You can now plan next year in the year view. Use `◀` and `▶` beside the year
 
 Fixed: clicking a year-view week cell, a month-view cell, or a `還沒排` cell now opens its popover after you move the dashboard tab into a pop-out window. Click and scroll handling previously stayed in the main window; it now follows the window containing the tab, so scrolling there closes the popover as before. Category legend dragging and project column resizing follow that window too.
 
+Paused projects used to stay among active work, making it harder to see what needs attention. They are now hidden by default in both the year and month views. `顯示暫停（<n>）` appears when there are paused projects to show, updates its count after each scan, and reveals them with lighter category colors when checked. `編輯分類與狀態` now reveals a status menu alongside each category menu, so you can pause, resume, complete, or cancel a project while planning. Changing status renames the note's leading symbol in the same folder and keeps your manual category choice; links from other notes follow Obsidian's automatically-update-internal-links setting. An existing note with the target name prevents the change and shows a message.
+
 月視圖最上面新增一列 General，一週一格列出你行事曆的行程。月視圖從 0.4.0 開始就會畫出專案，但週表格最上面那一列通常是「不是專案的事情」——上課、出遊、休假——在這之前得每週從 Google 或 Apple 行事曆手抄。現在儀表板會去讀你指定的行事曆，把行程寫進和任務相同的那幾週：`11/6（五）13:30 讀書會`、`11/11（三）休假`、`11/7（六）–11/9（一）研習營`。每筆行程前面都有名稱標籤，使用那個行事曆的顏色；沒取名時，依設定清單的位置顯示 `行事曆 1`、`行事曆 2`……重複的行程會展開成一次一次的行程，行事曆自己的例外與被移動的那幾次都照算，已取消的行程不顯示，跨好幾天的行程會列在它碰到的每一週。這一列只能看——點格子不會打開浮窗——年視圖不顯示任何行程。讀取只發生在五個時機：儀表板分頁打開時、按這一列的 `↻` 時、執行新指令 `Refresh calendars` 時、在已設好的行事曆貼上新連結時（會馬上重新讀取），以及在設定裡改動設定過連結的行事曆清單或順序時。最後這項比對只看連結設定。改名或換色存檔後，標籤就會更新，不會重新讀取行程。在月份之間移動永遠不會去讀。`General` 下面的狀態列在讀取中寫 `讀取中…`，讀完寫 `更新於 15:20`；有行事曆讀不到時會接上 `・⚠ 1 個行事曆讀不到`，並在提示裡寫出是哪個行事曆、什麼原因，其他行事曆——以及每一列專案——都照常。
 
 設定方式：到**設定 → Project Dashboard → Calendars**，這是新增的第四區。按 `Add a calendar`，給行事曆取個名稱（可以打中文），再把連結貼進連結欄。外掛會自動儲存並清空欄位。可以用 `Color` 選擇標籤顏色；還沒選過時，依清單順序使用藍、綠、橘、紫、青、粉，再從藍色輪流。預設色避開紅色，紅色留給逾期任務與超出專案預計結束日期的工作。提示文字會告訴你這台電腦已存好連結，或還沒有連結。貼上的內容如果不是 `https://` 或 `webcal://` 開頭，就不會儲存，並在該列下方顯示說明。按 `Delete` 會移除行事曆，也清空外掛替它存的連結。在 Google 日曆，到該日曆的設定複製 **iCal 格式的私密網址**；使用 iCloud 時，複製公開行事曆的連結，任何人拿到都看得到。連結存在 Obsidian 的密鑰儲存區，不會進入 Obsidian Sync 同步的設定裡，因為行事曆連結可能等於讀取密碼。如果第二台電腦顯示 `這台裝置找不到連結`，在那台同一個行事曆的連結欄也貼上即可。Google 網址萬一外洩，到 Google 日曆重設，再把新網址貼進連結欄。
@@ -25,6 +27,8 @@ Fixed: clicking a year-view week cell, a month-view cell, or a `還沒排` cell 
 現在可以在年視圖開始排明年了。在年份標題旁按 `◀`、`▶` 切換年份，位置和月視圖的導覽相同。翻到別的年份才會出現 `今年`；`本月` 也改成翻到別的月份才出現。在別的年份切到月視圖，會顯示那一年的一月；在今年切換，會顯示今天這週所屬的月份。月視圖切回年視圖，會顯示那個月所在的年份。打開儀表板時，從今年或今天這週所屬的月份開始，不記住上次看的年份與月份。跨年專案也修正了：預計結束日期在前一年，任務卻延伸到顯示中的這一年時，逐週模式仍會把超出期限的週標紅，timeline 色條則從這一年的第一週開始。以前年視圖只看今年，這個情況很少碰到；開始排明年後就容易遇到。沒有結束日期的專案，預設結束日仍是今天所在年份的 12/31，不會跟著顯示的年份改變。
 
 修正：把儀表板分頁拖到獨立視窗後，點年視圖週格子、月視圖格子或「還沒排」格子，現在都能打開浮窗。原本點擊與捲動的監聽留在主視窗，現在會跟著分頁所在的視窗，因此在獨立視窗裡捲動時，浮窗也會照原本規則關閉。圖例拖拉排序與專案欄寬拖拉也會跟著分頁所在的視窗運作。
+
+暫停的專案以前仍混在進行中的工作裡，讓人難以看出現在該推進什麼。現在年視圖與月視圖都會預設隱藏暫停專案。有暫停專案可顯示時，控制列才會出現 `顯示暫停（<n>）`，每次重新掃描都更新數量；勾起來後以較淡的分類色顯示。勾選 `編輯分類與狀態`，每列分類選單旁會出現狀態選單，規劃時就能暫停、恢復進行、完成或取消專案。改狀態會替換筆記檔名開頭的符號，保留所在資料夾與手動指定的分類；其他筆記的連結是否更新，依 Obsidian 的「自動更新內部連結」設定處理。如果已經有同名筆記，就不會改名並顯示提示。
 
 ## 0.4.0 — 2026-10-31
 

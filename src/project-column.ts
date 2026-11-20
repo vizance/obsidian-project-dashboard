@@ -1,5 +1,5 @@
 import { CATEGORIES } from './core/config';
-import type { ProjectRecord } from './core/scan';
+import type { ProjectRecord, ProjectStatus } from './core/scan';
 
 // 專案欄由年視圖與月視圖共用。拖拉欄寬、編輯分類、點專案名稱開筆記都是掛在
 // `#chart` 上的委派事件（view.ts 的 registerInteractions），所以兩個視圖只要畫出
@@ -21,6 +21,7 @@ export function renderProjectHeadCell(
 	project: ProjectRecord,
 	categoryOrder: string[],
 ): HTMLTableCellElement {
+	if (project.status === 'pending') tr.addClass('status-pending');
 	const statusCls = project.status === 'done'
 		? 'status-done'
 		: project.status === 'cancelled' ? 'status-cancelled' : '';
@@ -37,7 +38,8 @@ export function renderProjectHeadCell(
 		projCell.createSpan({ cls: 'warn', text: '⚠', attr: { title: project.warnings.join(', ') } });
 	}
 
-	const select = projCell.createEl('select', {
+	const editors = projCell.createDiv({ cls: 'project-editors' });
+	const select = editors.createEl('select', {
 		cls: 'cat-select',
 		attr: { 'data-project': project.name, title: '變更此專案的分類（自動＝清除手動覆寫）' },
 	});
@@ -48,6 +50,21 @@ export function renderProjectHeadCell(
 		const option = select.createEl('option', { attr: { value: key }, text: category.label });
 		if (key === project.category) option.selected = true;
 	}
+
+	const statusSelect = editors.createEl('select', {
+		cls: 'status-select',
+		attr: { 'data-path': project.path, 'aria-label': '變更專案狀態', title: '變更專案狀態' },
+	});
+	const statuses: Array<[ProjectStatus, string]> = [
+		['active', '🚧 進行中'],
+		['pending', '⏳ 暫停'],
+		['done', '✅ 完成'],
+		['cancelled', '❌ 取消'],
+	];
+	for (const [status, label] of statuses) {
+		statusSelect.createEl('option', { attr: { value: status }, text: label });
+	}
+	statusSelect.value = project.status;
 
 	return projCell;
 }

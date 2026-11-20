@@ -69,9 +69,12 @@
 .project-dashboard td.proj-cell .name:hover { text-decoration: underline; }
 .project-dashboard td.proj-cell.status-done .name { color: var(--text-dim); text-decoration: line-through; }
 .project-dashboard td.proj-cell .warn { color: #f59e0b; font-size: 10px; margin-left: 4px; }
-.project-dashboard td.proj-cell .cat-select { display: none; margin-top: 4px; max-width: 100%; font-size: 11px; color: var(--text-dim); border: 1px solid var(--grid); border-radius: 4px; padding: 1px 4px; background: #fff; cursor: pointer; }
-.project-dashboard.editing-categories td.proj-cell .cat-select { display: block; }
-.project-dashboard td.proj-cell .cat-select:hover { color: var(--text); border-color: #bbb; }
+.project-dashboard td.proj-cell .cat-select,
+.project-dashboard td.proj-cell .status-select { display: none; margin-top: 4px; max-width: 100%; font-size: 11px; color: var(--text-dim); border: 1px solid var(--grid); border-radius: 4px; padding: 1px 4px; background: #fff; cursor: pointer; }
+.project-dashboard.editing-categories td.proj-cell .cat-select,
+.project-dashboard.editing-categories td.proj-cell .status-select { display: inline-block; }
+.project-dashboard td.proj-cell .cat-select:hover,
+.project-dashboard td.proj-cell .status-select:hover { color: var(--text); border-color: #bbb; }
 .project-dashboard td.week-cell { height: 28px; position: relative; }
 .project-dashboard td.today-col { background: rgba(239, 68, 68, 0.12) !important; }
 
@@ -89,6 +92,8 @@
 .project-dashboard .bar.bar-solid { background: var(--pd-cat-color) !important; border: none; }
 .project-dashboard .bar.bar-dashed { background: transparent !important; border: 1.5px dashed var(--pd-cat-color); }
 .project-dashboard .bar.bar-overflow { background: #e3563a !important; border: none; }
+.project-dashboard tr.status-pending .bar,
+.project-dashboard tr.status-pending td.month-cell { opacity: 0.6; }
 .project-dashboard .bar.done, .project-dashboard .bar.cancelled { filter: grayscale(100%); opacity: 0.35; }
 /* settled：該週任務全完成 — 類別色淡化 + 疊一個 ✓，遠看退場、近看可辨 */
 .project-dashboard .bar.bar-settled::before {

@@ -4,11 +4,11 @@ This file is the canonical vocabulary for the dashboard project. Use these terms
 
 ## Canonical Terms
 
-### `pending`
+### `pending`（暫停）
 
-- **Definition**: A project that is waiting on an external trigger before becoming active — confirmation from a client, availability of a date, contract sign-off, or similar. Represented by `⏳` in Obsidian filenames.
-- **Avoid**: `planned` (different meaning — see below), `waiting` (too generic).
-- **Why**: `pending` precisely conveys "in queue, not yet committed to a schedule"; `planned` implies the decision has been made and only execution is left.
+- **Definition**: A paused project, represented by `⏳` among the filename's first three characters. Hidden by default in both the year and month views. Check `顯示暫停（<n>）` to show paused projects with lighter category colors; `<n>` counts projects in the configured folder that are not skipped and have start and end dates. The checkbox appears only when the count is greater than zero, updates on every re-scan, and resets to unchecked when the dashboard tab opens.
+- **Avoid**: `planned` (a different meaning — see below), `waiting` (too generic), or treating paused projects as [[closed]].
+- **Why**: 暫停表示目前不推進的專案；需要時可勾選 `顯示暫停（<n>）` 找回，並在 `編輯分類與狀態` 的狀態選單改回進行中。
 
 ### `active`
 

@@ -102,6 +102,16 @@ export function detectStatus(filename: string): ProjectStatus {
 	return 'active';
 }
 
+export function filenameWithStatus(filename: string, status: ProjectStatus): string {
+	const head = Array.from(filename).slice(0, 3).join('');
+	const leading = STATUS_EMOJI.find(([emoji]) => head.includes(emoji));
+	const symbol = STATUS_EMOJI.find(([, value]) => value === status)![0];
+	if (!leading) return `${symbol} ${filename}`;
+	const index = filename.indexOf(leading[0]);
+	const rest = filename.slice(index + leading[0].length).replace(/^\s*/, '');
+	return `${filename.slice(0, index)}${symbol} ${rest}`;
+}
+
 export function stripStatus(filename: string): string {
 	let name = filename;
 	for (const [emoji] of STATUS_EMOJI) {

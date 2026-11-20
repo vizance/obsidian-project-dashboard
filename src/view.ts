@@ -25,7 +25,7 @@ import {
 	resolveInitialHelpPanel,
 } from './core/prefs';
 import { placePopover } from './core/popover-position';
-import type { ProjectRecord } from './core/scan';
+import { detectStatus, filenameWithStatus, type ProjectRecord, type ProjectStatus } from './core/scan';
 import {
 	locateLine,
 	scheduleDateForWeek,
@@ -120,6 +120,7 @@ export class ProjectDashboardView extends ItemView {
 	private pinnedCategory: string | null = null;
 	private projColWidth = 280;
 	private showClosed = false;
+	private showPaused = false;
 	private helpPanelOpen = false;
 	private popoverAnchor: HTMLElement | null = null;
 	private popoverTarget: PopoverTarget | null = null;
@@ -151,6 +152,8 @@ export class ProjectDashboardView extends ItemView {
 	private metaEl!: HTMLElement;
 	private legendEl!: HTMLElement;
 	private chartEl!: HTMLElement;
+	private showPausedLabel!: HTMLLabelElement;
+	private showPausedText!: HTMLElement;
 	private scaleYearBtn!: HTMLButtonElement;
 	private scaleMonthBtn!: HTMLButtonElement;
 	private monthNavEl!: HTMLElement;
@@ -276,6 +279,7 @@ export class ProjectDashboardView extends ItemView {
 	// Later tasks call this after a background re-scan; rebuilds the stats,
 	// legend, and chart only (design.md: "重繪時保留畫面狀態" keeps the controls row).
 	render(): void {
+		this.updatePausedControl();
 		this.renderMeta();
 		this.renderLegend();
 		this.renderChart();
@@ -321,6 +325,9 @@ export class ProjectDashboardView extends ItemView {
 	private buildLayout(): void {
 		this.contentEl.empty();
 		this.contentEl.addClass('project-dashboard');
+		this.contentEl.removeClass('editing-categories');
+		this.showClosed = false;
+		this.showPaused = false;
 		this.contentEl.setCssProps({ '--proj-col-width': `${this.projColWidth}px` });
 
 		const header = this.contentEl.createEl('header');
@@ -332,9 +339,17 @@ export class ProjectDashboardView extends ItemView {
 		const showClosedLabel = controls.createEl('label');
 		const showClosedInput = showClosedLabel.createEl('input', { attr: { type: 'checkbox', id: 'show-closed' } });
 		showClosedLabel.appendText('顯示已結案（已完成 + 取消）');
+		this.showPausedLabel = controls.createEl('label');
+		this.showPausedLabel.hidden = true;
+		const showPausedInput = this.showPausedLabel.createEl('input', { attr: { type: 'checkbox', id: 'show-paused' } });
+		this.showPausedText = this.showPausedLabel.createSpan();
+		this.registerDomEvent(showPausedInput, 'change', () => {
+			this.showPaused = showPausedInput.checked;
+			this.renderChart();
+		});
 		const editCategoriesLabel = controls.createEl('label');
 		const editCategoriesInput = editCategoriesLabel.createEl('input', { attr: { type: 'checkbox', id: 'edit-categories' } });
-		editCategoriesLabel.appendText('編輯分類');
+		editCategoriesLabel.appendText('編輯分類與狀態');
 
 		this.registerDomEvent(showClosedInput, 'change', () => {
 			this.showClosed = showClosedInput.checked;
@@ -606,6 +621,7 @@ export class ProjectDashboardView extends ItemView {
 		this.registerLegendDrag();
 		this.registerResizeHandle();
 		this.registerCategoryOverride();
+		this.registerStatusChange();
 		this.registerWeekPopover();
 		this.registerProjectNameClick();
 	}
@@ -803,12 +819,52 @@ export class ProjectDashboardView extends ItemView {
 		}
 	}
 
+	private registerStatusChange(): void {
+		this.registerDomEvent(this.chartEl, 'change', (e: Event) => {
+			const select = e.target as HTMLSelectElement;
+			if (!select.classList?.contains('status-select')) return;
+			void this.handleStatusChange(select);
+		});
+	}
+
+	private async handleStatusChange(select: HTMLSelectElement): Promise<void> {
+		const project = this.projects.find((p) => p.path === select.dataset.path);
+		if (!project || select.disabled) return;
+		const status = select.value as ProjectStatus;
+		if (!['active', 'pending', 'done', 'cancelled'].includes(status)) return;
+		const file = this.app.vault.getAbstractFileByPath(project.path);
+		if (!(file instanceof TFile)) {
+			select.value = project.status;
+			this.showToast(MSG_MISSING_FILE, true);
+			return;
+		}
+		const currentStatus = detectStatus(file.name);
+		if (status === currentStatus) return;
+		const folder = file.path.slice(0, file.path.lastIndexOf('/') + 1);
+		const newPath = folder + filenameWithStatus(file.name, status);
+		if (this.app.vault.getAbstractFileByPath(newPath)) {
+			select.value = currentStatus;
+			this.showToast('已經有同名的筆記，狀態沒有改', true);
+			return;
+		}
+		// 等待改名時先停用，避免連續選擇讓兩次改名互相覆蓋。
+		select.disabled = true;
+		try {
+			await this.app.fileManager.renameFile(file, newPath);
+		} catch {
+			select.value = currentStatus;
+			this.showToast('狀態沒有改，請再試一次', true);
+		} finally {
+			select.disabled = false;
+		}
+	}
+
 	// design.md: "在右側分割開啟筆記並重複使用" — clicking a project name opens its
 	// note in a split to the right, reusing that split while it is still attached.
 	private registerProjectNameClick(): void {
 		this.registerDomEvent(this.chartEl, 'click', (e: MouseEvent) => {
 			const target = e.target as HTMLElement;
-			if (target.closest('.cat-select')) return;
+			if (target.closest('.cat-select, .status-select')) return;
 			const nameEl = target.closest<HTMLElement>('.name');
 			if (!nameEl) return;
 			const path = nameEl.dataset.path;
@@ -882,6 +938,7 @@ export class ProjectDashboardView extends ItemView {
 			// so expanding a footer section never closes the popover itself.
 			if (!this.popoverEl.hidden && e.composedPath().includes(this.popoverEl)) return;
 			const target = e.target as HTMLElement;
+			if (target.closest?.('.status-select')) return;
 			// 點到哪裡依目前顯示的視圖判斷：年視圖找畫出來的色條，月視圖找格子本身
 			// （整格可點，包含格子裡的任務文字）。
 			if (this.scale === 'month') {
@@ -1263,6 +1320,12 @@ export class ProjectDashboardView extends ItemView {
 		this.render();
 	}
 
+	private updatePausedControl(): void {
+		const count = visibleProjects(this.projects, true, true).filter((p) => p.status === 'pending').length;
+		this.showPausedLabel.hidden = count === 0;
+		this.showPausedText.setText(`顯示暫停（${count}）`);
+	}
+
 	private renderMeta(): void {
 		this.metaEl.setText(`更新於 ${this.today}  ·  共 ${this.projects.length} 個專案`);
 	}
@@ -1342,7 +1405,7 @@ export class ProjectDashboardView extends ItemView {
 	// 與年視圖共用的列：篩選、排序、分組都走這一條，月視圖才會有相同的列與順序。
 	private visibleSortedProjects(): ProjectRecord[] {
 		return sortProjects(
-			visibleProjects(this.projects, this.showClosed),
+			visibleProjects(this.projects, this.showClosed, this.showPaused),
 			this.categoryOrder,
 			this.pinnedCategory,
 		);

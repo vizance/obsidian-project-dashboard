@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Cell, monthViewCells, perWeekCells, sortProjects, spanWeekOffset, timelineCells, yearViewCells } from '../src/core/cells';
+import { type Cell, monthViewCells, perWeekCells, sortProjects, spanWeekOffset, timelineCells, visibleProjects, yearViewCells } from '../src/core/cells';
 import { monthCellTaskLines, weeksOfMonth } from '../src/core/months';
 import { scanProjectNote, type ProjectRecord } from '../src/core/scan';
 import { defaultSettings } from '../src/core/settings';
@@ -408,6 +408,43 @@ describe('spanWeekOffset', () => {
 
 	it('clamps a click past the span to the last week', () => {
 		expect(spanWeekOffset(500, 400, 10)).toBe(9);
+	});
+});
+
+describe('visibleProjects', () => {
+	it('shows 13 active rows by default and 15 with the two paused projects', () => {
+		const projects = [
+			...Array.from({ length: 13 }, () => project({ status: 'active' })),
+			scanned('⏳ P-20260601 範例專案 B.md', [], { 開始日期: '2026-06-01', 預計結束日期: '2026-06-30' }),
+			scanned('⏳ P-20260701 範例專案 C.md', [], { 開始日期: '2026-07-01', 預計結束日期: '2026-07-31' }),
+		];
+		expect(visibleProjects(projects, false, false)).toHaveLength(13);
+		expect(visibleProjects(projects, false)).toHaveLength(13);
+		expect(visibleProjects(projects, false, true)).toHaveLength(15);
+		expect(visibleProjects(projects, false, true).length - visibleProjects(projects, false, false).length).toBe(2);
+	});
+
+	it('shows 13 then 20 rows for the closed example while paused stays off', () => {
+		const projects = [
+			...Array.from({ length: 8 }, () => project({ status: 'pending' })),
+			...Array.from({ length: 13 }, () => project({ status: 'active' })),
+			...Array.from({ length: 7 }, () => project({ status: 'done' })),
+		];
+		expect(projects).toHaveLength(28);
+		expect(visibleProjects(projects, false, false)).toHaveLength(13);
+		expect(visibleProjects(projects, true, false)).toHaveLength(20);
+	});
+
+	it.each([false, true])('keeps the paused toggle independent from closed = %s', (closed) => {
+		const projects = ['active', 'pending', 'done', 'cancelled'].map((status) => project({ status: status as ProjectRecord['status'] }));
+		expect(visibleProjects(projects, closed, false).map((p) => p.status)).toEqual(closed ? ['active', 'done', 'cancelled'] : ['active']);
+		expect(visibleProjects(projects, closed, true).map((p) => p.status)).toEqual(closed ? ['active', 'pending', 'done', 'cancelled'] : ['active', 'pending']);
+	});
+
+	it('excludes projects without either date even with both toggles on', () => {
+		expect(visibleProjects([
+			project({ status: 'pending', start: null }), project({ status: 'pending', end: null }),
+		], true, true)).toEqual([]);
 	});
 });
 
