@@ -74,10 +74,15 @@ The plugin SHALL register a settings tab. Its text SHALL be plain English that a
 
 `Calendars`:
 
-- The description `Show events from your calendars at the top of the month view. The plugin reads your calendars over the internet. It never changes them. Each calendar's link is kept in a safe place inside Obsidian, not in this plugin's files.`
-- The hint `In Google Calendar, open the settings of a calendar and copy "Secret address in iCal format".`
-- One row per stored calendar, in the stored order, including rows whose name or secret is empty. Each row has a text field (placeholder `Calendar name`) holding `name`, Obsidian's secret picker holding `secretId`, and a button labelled `Delete` that removes that calendar from the stored list.
+- The description `Show events from your calendars at the top of the month view. The plugin only reads your calendars. It never changes them.`
+- The hint `Google Calendar: open the calendar's settings and copy "Secret address in iCal format" (iCal 格式的私密網址).`
+- The hint `iCloud: share the calendar as a public calendar and copy its link.`
+- One row per stored calendar, in the stored order, including rows whose name or link is empty. Each row has a text field (placeholder `Calendar name`) holding `name`, which accepts any text including Chinese; a link field; and a button labelled `Delete`.
+- The link field SHALL never show a stored address. Its placeholder SHALL be `Paste the calendar link here` when the calendar has no secret ID, `Link saved. Paste a new link to change it.` when its secret ID holds a non-empty value on this device, and `This computer has no link yet. Paste it here.` when its secret ID holds no value on this device.
+- The link field SHALL take its text when the user pastes into it, presses Enter, or leaves it. When the trimmed text starts with `https://` or `webcal://`, the plugin SHALL store it in Obsidian's secret storage under the calendar's secret ID — the existing one, or, when the calendar has none, a new ID `project-dashboard-calendar-` followed by 8 random lowercase letters and digits that no other calendar in the list uses — save that ID in `secretId` through the normal delayed save, clear the field, and show the saved placeholder. Any other non-empty text SHALL NOT be stored; the text `This is not a calendar link. It should start with https:// or webcal://.` SHALL be shown under the row until the field's text changes. Empty text SHALL change nothing.
+- `Delete` SHALL remove that calendar from the stored list; when its secret ID starts with `project-dashboard-calendar-`, the plugin SHALL also overwrite that stored value with an empty string, so no link the plugin saved is left behind.
 - A button `Add a calendar` that appends `{ "name": "", "secretId": "" }`.
+- The `Calendars` section SHALL NOT show the words `secret` or `ID`, except inside Google's own label quoted in the hint.
 
 The `Can't find this folder.` hint SHALL be evaluated against the normalized folder, so an emptied field is checked as `Projects`.
 
@@ -112,6 +117,21 @@ The `Can't find this folder.` hint SHALL be evaluated against the normalized fol
 
 #### Scenario: Adding a calendar keeps the link out of plugin data
 
-- **WHEN** the user presses `Add a calendar`, types `工作` as its name, and picks a secret whose ID is `work-calendar` in the secret picker
-- **THEN** after the change is saved the plugin data MUST hold `"calendars": [{ "name": "工作", "secretId": "work-calendar" }]`
+- **WHEN** the user presses `Add a calendar`, types `家人行事曆` as its name, and pastes `https://calendar.example.com/private-abc/basic.ics` into its link field
+- **THEN** after the change is saved the plugin data MUST hold one calendar named `家人行事曆` whose `secretId` matches `project-dashboard-calendar-[a-z0-9]{8}`
+- **AND** Obsidian's secret storage MUST hold `https://calendar.example.com/private-abc/basic.ics` under that ID
 - **AND** the plugin data MUST NOT hold the calendar's address
+- **AND** the link field MUST be empty with the placeholder `Link saved. Paste a new link to change it.`
+
+#### Scenario: A wrong link is not saved
+
+- **WHEN** the user pastes `calendar.example.com/feed.ics` into an empty calendar row's link field
+- **THEN** nothing MUST be stored in Obsidian's secret storage and the calendar's `secretId` MUST stay `""`
+- **AND** the row MUST show `This is not a calendar link. It should start with https:// or webcal://.`
+
+#### Scenario: Deleting a calendar removes its saved link
+
+- **GIVEN** a calendar whose link was pasted in the settings tab and saved under the ID `project-dashboard-calendar-a1b2c3d4`
+- **WHEN** the user presses that row's `Delete`
+- **THEN** the calendar MUST be removed from `calendars`
+- **AND** the value stored under `project-dashboard-calendar-a1b2c3d4` MUST be an empty string

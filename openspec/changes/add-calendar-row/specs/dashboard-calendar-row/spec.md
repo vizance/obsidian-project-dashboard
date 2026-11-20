@@ -2,13 +2,13 @@
 
 ### Requirement: Calendar links are kept in Obsidian's secret storage
 
-Each configured calendar SHALL be stored in plugin data only as a name and a secret ID (see `dashboard-settings`). The calendar's address SHALL be read from Obsidian's secret storage with that secret ID each time the calendar is fetched, and SHALL NOT be written to plugin data, local storage, the console, a notice, a tooltip, or any text the dashboard shows. Every message about a calendar SHALL name it by its display name: its stored name, or `行事曆 <n>` when the stored name is empty, where `<n>` is its 1-based position in the settings list.
+Each configured calendar SHALL be stored in plugin data only as a name and a secret ID (see `dashboard-settings`). The user pastes the calendar's address into the settings tab's link field, and the plugin stores it in Obsidian's secret storage under that secret ID; the user never has to see or choose the ID. The calendar's address SHALL be read from Obsidian's secret storage with that secret ID each time the calendar is fetched, and SHALL NOT be written to plugin data, local storage, the console, a notice, a tooltip, any text the dashboard shows, or back into the settings tab's link field. Every message about a calendar SHALL name it by its display name: its stored name, or `行事曆 <n>` when the stored name is empty, where `<n>` is its 1-based position in the settings list.
 
 An address starting with `https://` SHALL be fetched as it is. An address starting with `webcal://` SHALL be fetched with `webcal://` replaced by `https://` and the rest unchanged. Leading and trailing whitespace SHALL be ignored. Any other address SHALL NOT be fetched and SHALL count as a failed calendar with the reason `連結格式不對`. A calendar whose secret ID is empty SHALL be skipped without a request and without a message, because it is a row the user has not finished. A calendar whose secret ID has no stored value on this device SHALL count as a failed calendar with the reason `這台裝置找不到連結`.
 
 #### Scenario: The address never reaches plugin data
 
-- **GIVEN** the user adds a calendar named `工作` whose secret holds `https://calendar.example.com/private-abc/basic.ics`
+- **GIVEN** the user adds a calendar named `工作` and pastes `https://calendar.example.com/private-abc/basic.ics` into its link field
 - **WHEN** the change is saved and the calendar is fetched
 - **THEN** the plugin data file MUST NOT contain `calendar.example.com`
 - **AND** no notice, tooltip, or dashboard text MUST contain `calendar.example.com`

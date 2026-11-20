@@ -33,7 +33,7 @@
 
 ### 行事曆連結存在 SecretStorage，外掛資料只記名稱與鑰匙 ID
 
-`settings.calendars` 只存 `{ name, secretId }`。設定頁每一列用 Obsidian 的 `SecretComponent` 挑選或建立一把鑰匙，鑰匙的值才是連結。每次讀取時，才用 `app.secretStorage.getSecret(secretId)` 取得連結。
+`settings.calendars` 只存 `{ name, secretId }`。使用者在設定頁把連結貼進「連結」欄，外掛自己用 `app.secretStorage.setSecret(secretId, link)` 存進 Obsidian 的密鑰儲存區，鑰匙的 ID 由外掛自動產生。每次讀取時，才用 `app.secretStorage.getSecret(secretId)` 取得連結。
 
 - 連結不寫進外掛資料、本機偏好、console、通知或提示文字。
 - 顯示錯誤時，只用行事曆的顯示名稱（沒取名就是 `行事曆 <n>`）。
@@ -123,13 +123,21 @@ ical.js 的型別大多是 `any`，而本專案的 lint 有型別檢查規則。
 
 設定頁在 `Dates` 後面新增 `Calendars` 區塊：
 
-- 說明文字和 Google 的取得方式提示。
-- 每個行事曆一列，有名稱欄、密鑰選擇器、`Delete`。
+- 說明文字，以及 Google 與 iCloud 取得連結的兩行提示。
+- 每個行事曆一列，有名稱欄、連結欄、`Delete`。
 - 最後一個 `Add a calendar` 按鈕。
 
-密鑰選擇器用 `Setting.addComponent` 搭配 `new SecretComponent(app, el)`，`setValue(secretId)` 與 `onChange` 寫回設定，走既有的 400 ms 延遲存檔。
+2026-11-20 朱騏實際用過第一版後要求改掉：第一版用 Obsidian 的 `SecretComponent`，點下去會跳出 Obsidian 的「Add secret」視窗，要使用者自己取一個只能用小寫英文、數字和減號的 ID，再把網址貼進「Secret」欄。名稱不能打中文，「secret」「ID」一般人也看不懂。所以改成：
 
-文字照規格，維持國小五年級看得懂的英文。實作時要在 Obsidian 1.13 實際點一次密鑰選擇器，確認建立新鑰匙的步驟。README 照實際畫面寫，例如在哪裡貼上網址、鑰匙要取什麼名字。
+- 連結欄是一般的文字欄。使用者貼上、按 Enter 或離開欄位時，外掛檢查開頭是不是 `https://` 或 `webcal://`：
+  - 是：用這個行事曆原本的鑰匙 ID 存（沒有就自動產生 `project-dashboard-calendar-` 加 8 個隨機小寫英數），把 ID 寫回設定，清空欄位。
+  - 不是：不存，在這一列下面用白話說明。
+- 連結欄永遠不顯示已存的連結，只用 placeholder 說明狀態：還沒貼、已存好、這台電腦還沒有連結。
+- `Delete` 刪掉這一列。這把鑰匙是外掛自己建的（ID 以 `project-dashboard-calendar-` 開頭）時，把它的值改成空字串。Obsidian 的密鑰儲存區沒有刪除的 API，清空是能做到最接近刪除的方式。
+- 用舊方式選的鑰匙（使用者自己取的 ID）照樣能讀。在連結欄貼新連結會覆蓋那把鑰匙的值，刪除時不清空它，因為那把鑰匙可能還有別的用途。
+- 純函式放在 src/core/settings.ts 或 src/core/calendar.ts：產生新鑰匙 ID（傳入亂數來源方便測試，並避開清單裡已用的 ID）、判斷連結格式（沿用 `normalizeCalendarAddress`）、依狀態決定 placeholder 文字。設定頁只負責接線。
+
+替代方案是保留 `SecretComponent`，在 README 教使用者怎麼取 ID。畫面上的技術用語還是在，朱騏明講不要，所以不採用。
 
 ### 授權與連網說明
 
