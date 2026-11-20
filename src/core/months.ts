@@ -74,6 +74,14 @@ export function monthOfDate(date: string): MonthRef {
 	return monthOfWeek(label);
 }
 
+export function monthWhenEnteringMonthView(shownYear: number, today: string): MonthRef {
+	return shownYear === Number(today.slice(0, 4)) ? monthOfDate(today) : { year: shownYear, month: 1 };
+}
+
+export function yearWhenEnteringYearView(shownMonth: MonthRef): number {
+	return shownMonth.year;
+}
+
 // `2026 年 10 月（W41–W44）`。週數不補零，和年視圖的週表頭一致。
 export function monthTitle(year: number, month: number, weeks: WeekInfo[]): string {
 	const first = weeks[0];

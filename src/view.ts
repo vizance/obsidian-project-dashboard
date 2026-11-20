@@ -3,13 +3,15 @@ import { CATEGORIES, CATEGORY_KEYS } from './core/config';
 import type { Cell } from './core/cells';
 import { calendarStatusLine, monthEventRange } from './core/calendar-row';
 import { eventLineText, occurrencesForWeek, occurrencesInRange, type EventOccurrence } from './core/calendar';
-import { perWeekCells, sortProjects, spanWeekOffset, timelineCells, visibleProjects } from './core/cells';
+import { sortProjects, spanWeekOffset, visibleProjects, yearViewCells } from './core/cells';
 import {
 	monthOfDate,
 	monthTitle,
+	monthWhenEnteringMonthView,
 	shiftMonth,
 	unscheduledWeekOptions,
 	weeksOfMonth,
+	yearWhenEnteringYearView,
 	type MonthRef,
 } from './core/months';
 import {
@@ -93,7 +95,7 @@ interface UnscheduledTarget {
 type PopoverTarget = WeekTarget | UnscheduledTarget;
 
 // 重繪前記下來、重繪後放回去的畫面狀態（dashboard-note-sync：Re-render preserves
-// the user's view state）。年／月、顯示的月份、各種開關都在欄位裡，重繪不會動到。
+// the user's view state）。年／月、顯示的年份與月份、各種開關都在欄位裡，重繪不會動到。
 interface PreservedViewState {
 	scrollLeft: number;
 	scrollTop: number;
@@ -111,8 +113,8 @@ export class ProjectDashboardView extends ItemView {
 	private today = '';
 	private viewMode: 'per-week' | 'timeline' = 'per-week';
 	private scale: 'year' | 'month' = 'year';
-	// 顯示中的月份只放在記憶體：每次進月視圖都回到今天這週所屬的月份
-	// （dashboard-month-view：the shown month SHALL NOT be stored）。
+	// 顯示中的期間只放在記憶體，重開分頁才回到今天，重繪保留正在規劃的期間。
+	private shownYear = 1970;
 	private shownMonth: MonthRef = { year: 1970, month: 1 };
 	private categoryOrder: string[] = [];
 	private pinnedCategory: string | null = null;
@@ -139,7 +141,7 @@ export class ProjectDashboardView extends ItemView {
 
 	private projects: ProjectRecord[] = [];
 	private weeks: WeekInfo[] = [];
-	// 月視圖那個月的週。年視圖的 this.weeks 只有今年，所以兩份分開放。
+	// 月視圖那個月的週。年視圖的 this.weeks 是顯示中的年份，所以兩份分開放。
 	private monthWeeks: WeekInfo[] = [];
 	private missingFolderMessage: string | null = null;
 	private popover!: WeekPopover;
@@ -153,6 +155,10 @@ export class ProjectDashboardView extends ItemView {
 	private scaleMonthBtn!: HTMLButtonElement;
 	private monthNavEl!: HTMLElement;
 	private monthTitleEl!: HTMLElement;
+	private periodPrevBtn!: HTMLButtonElement;
+	private periodNextBtn!: HTMLButtonElement;
+	private periodCurrentBtn!: HTMLButtonElement;
+	private periodCurrentEl!: HTMLElement;
 	private helpPanelEl!: HTMLElement;
 	private helpFabEl!: HTMLElement;
 	private popoverEl!: HTMLElement;
@@ -294,7 +300,8 @@ export class ProjectDashboardView extends ItemView {
 	private loadPreferences(): void {
 		this.viewMode = parseViewMode(this.readLocalStorage('dashboard.viewMode'));
 		this.scale = parseScale(this.readLocalStorage('dashboard.scale'));
-		// 分頁以月視圖開啟時也從本月開始，不是從上次看的月份。
+		// 期間不存進偏好，分頁開啟時一律從今年或本月開始。
+		this.shownYear = Number(this.today.slice(0, 4));
 		this.shownMonth = monthOfDate(this.today);
 		this.categoryOrder = parseCategoryOrder(this.readLocalStorage('dashboard.categoryOrder'), CATEGORY_KEYS);
 		this.pinnedCategory = parsePinnedCategory(this.readLocalStorage('dashboard.pinnedCategory'), CATEGORY_KEYS);
@@ -436,7 +443,7 @@ export class ProjectDashboardView extends ItemView {
 		this.setHelpPanelVisible(this.helpPanelOpen);
 	}
 
-	// 控制列的「年／月」切換與月份導覽。元素只建一次，之後只改文字與顯示與否，
+	// 控制列的「年／月」切換與期間導覽。元素只建一次，之後只改文字與顯示與否，
 	// 重繪圖表不會動到控制列（design.md：重繪時保留畫面狀態）。
 	private buildScaleControls(controls: HTMLElement): void {
 		const scaleSwitch = controls.createDiv({ cls: 'scale-switch', attr: { role: 'group', 'aria-label': '年或月視圖' } });
@@ -454,25 +461,30 @@ export class ProjectDashboardView extends ItemView {
 		this.registerDomEvent(this.scaleMonthBtn, 'click', () => this.setScale('month'));
 
 		this.monthNavEl = controls.createDiv({ cls: 'month-nav' });
-		const prev = this.monthNavEl.createEl('button', {
+		this.periodPrevBtn = this.monthNavEl.createEl('button', {
 			cls: 'month-nav-btn',
 			text: '◀',
 			attr: { type: 'button', title: '上一個月' },
 		});
 		this.monthTitleEl = this.monthNavEl.createSpan({ cls: 'month-title' });
-		const next = this.monthNavEl.createEl('button', {
+		this.periodNextBtn = this.monthNavEl.createEl('button', {
 			cls: 'month-nav-btn',
 			text: '▶',
 			attr: { type: 'button', title: '下一個月' },
 		});
-		const current = this.monthNavEl.createEl('button', {
+		// 沿用 month-nav[hidden] 的顯示規則，避免 Obsidian 的按鈕 display 蓋過 hidden。
+		this.periodCurrentEl = this.monthNavEl.createSpan({ cls: 'month-nav' });
+		this.periodCurrentBtn = this.periodCurrentEl.createEl('button', {
 			cls: 'month-nav-btn',
 			text: '本月',
 			attr: { type: 'button', title: '回到今天這週所屬的月份' },
 		});
-		this.registerDomEvent(prev, 'click', () => this.showMonth(shiftMonth(this.shownMonth, -1)));
-		this.registerDomEvent(next, 'click', () => this.showMonth(shiftMonth(this.shownMonth, 1)));
-		this.registerDomEvent(current, 'click', () => this.showMonth(monthOfDate(this.today)));
+		this.registerDomEvent(this.periodPrevBtn, 'click', () => this.shiftPeriod(-1));
+		this.registerDomEvent(this.periodNextBtn, 'click', () => this.shiftPeriod(1));
+		this.registerDomEvent(this.periodCurrentBtn, 'click', () => {
+			if (this.scale === 'month') this.showMonth(monthOfDate(this.today));
+			else this.showYear(Number(this.today.slice(0, 4)));
+		});
 
 		this.updateScaleControls();
 	}
@@ -480,18 +492,26 @@ export class ProjectDashboardView extends ItemView {
 	private setScale(next: 'year' | 'month'): void {
 		if (this.scale === next) return;
 		this.scale = next;
-		// 每次進月視圖都回到今天這週所屬的月份。
-		if (next === 'month') this.shownMonth = monthOfDate(this.today);
+		if (next === 'month') this.shownMonth = monthWhenEnteringMonthView(this.shownYear, this.today);
+		else this.shownYear = yearWhenEnteringYearView(this.shownMonth);
 		this.writeLocalStorage('dashboard.scale', next);
-		this.updateScaleControls();
 		// renderChart 會關掉浮窗，切換年／月之後沒有任何路徑會再把它打開。
 		this.renderChart();
 	}
 
 	private showMonth(ref: MonthRef): void {
 		this.shownMonth = ref;
-		this.updateScaleControls();
 		this.renderChart();
+	}
+
+	private showYear(year: number): void {
+		this.shownYear = year;
+		this.renderChart();
+	}
+
+	private shiftPeriod(delta: number): void {
+		if (this.scale === 'month') this.showMonth(shiftMonth(this.shownMonth, delta));
+		else this.showYear(this.shownYear + delta);
 	}
 
 	private updateScaleControls(): void {
@@ -500,10 +520,18 @@ export class ProjectDashboardView extends ItemView {
 		this.scaleMonthBtn.toggleClass('active', isMonth);
 		this.scaleYearBtn.setAttribute('aria-pressed', String(!isMonth));
 		this.scaleMonthBtn.setAttribute('aria-pressed', String(isMonth));
-		this.monthNavEl.hidden = !isMonth;
+		this.periodPrevBtn.setAttribute('title', isMonth ? '上一個月' : '上一年');
+		this.periodNextBtn.setAttribute('title', isMonth ? '下一個月' : '下一年');
+		this.periodCurrentBtn.setText(isMonth ? '本月' : '今年');
+		this.periodCurrentBtn.setAttribute('title', isMonth ? '回到今天這週所屬的月份' : '回到今年');
 		if (isMonth) {
 			const { year, month } = this.shownMonth;
+			const current = monthOfDate(this.today);
 			this.monthTitleEl.setText(monthTitle(year, month, weeksOfMonth(year, month)));
+			this.periodCurrentEl.hidden = year === current.year && month === current.month;
+		} else {
+			this.monthTitleEl.setText(`${this.shownYear} 年`);
+			this.periodCurrentEl.hidden = this.shownYear === Number(this.today.slice(0, 4));
 		}
 	}
 
@@ -1012,7 +1040,7 @@ export class ProjectDashboardView extends ItemView {
 		this.positionWeekPopover(this.popoverAnchor);
 	}
 
-	// 重繪後依浮窗的種類分開重開（重繪不會動到年／月與顯示的月份）。
+	// 重繪後依浮窗的種類分開重開（重繪不會動到年／月與顯示的期間）。
 	private reopenPopover(previous: PopoverTarget & { state: PopoverViewState }): void {
 		if (previous.kind === 'unscheduled') {
 			this.reopenUnscheduledPopover(previous.path);
@@ -1075,7 +1103,7 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	// 找月視圖裡該專案該週的格子。用格子自己帶的 data-path／data-week 比對，不碰
-	// this.weeks（那是年視圖今年的週列表）；空白格沒有這兩個屬性，所以找不到。
+	// this.weeks（那是年視圖顯示年份的週列表）；空白格沒有這兩個屬性，所以找不到。
 	private findMonthCell(path: string, week: string): HTMLElement | null {
 		for (const cell of Array.from(this.chartEl.querySelectorAll<HTMLElement>('td.month-cell'))) {
 			if (cell.dataset.path === path && cell.dataset.week === week) return cell;
@@ -1256,6 +1284,8 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	private renderChart(): void {
+		// 今天可能在筆記更新時跨月或跨年，返回按鈕的顯示條件也要跟著更新。
+		this.updateScaleControls();
 		// 每個錨點都會被換掉，所以先關閉浮窗；需要留著的呼叫端（重繪）會在之後
 		// 用 reopenWeekPopover 在新的格子上重開。
 		this.closeWeekPopover();
@@ -1318,12 +1348,11 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	private renderYearChart(): void {
-		const year = Number(this.today.slice(0, 4));
-		const weeks = buildWeeks(year);
+		const weeks = buildWeeks(this.shownYear);
 		this.weeks = weeks;
 		const quarterGroups = groupQuarters(weeks);
 		const monthGroups = groupMonths(weeks);
-		const todayIdx = todayWeekIndex(weeks, this.today);
+		const todayIdx = this.shownYear === Number(this.today.slice(0, 4)) ? todayWeekIndex(weeks, this.today) : -1;
 		const visible = this.visibleSortedProjects();
 
 		const table = this.chartEl.createEl('table', { cls: 'gantt' });
@@ -1372,9 +1401,7 @@ export class ProjectDashboardView extends ItemView {
 		const tr = tbody.createEl('tr');
 		renderProjectHeadCell(tr, project, this.categoryOrder);
 
-		const cells: Cell[] = this.viewMode === 'timeline'
-			? timelineCells(project, weeks)
-			: perWeekCells(project, weeks, this.settings);
+		const cells = yearViewCells(project, weeks, this.settings, this.viewMode);
 		weeks.forEach((w, i) => {
 			const cell = cells[i]!;
 			const borderCls = w.isQuarterStart ? 'q-start' : w.isMonthStart ? 'm-start' : '';

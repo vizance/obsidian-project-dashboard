@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Cell, monthViewCells, perWeekCells, sortProjects, spanWeekOffset, timelineCells } from '../src/core/cells';
+import { type Cell, monthViewCells, perWeekCells, sortProjects, spanWeekOffset, timelineCells, yearViewCells } from '../src/core/cells';
 import { monthCellTaskLines, weeksOfMonth } from '../src/core/months';
 import { scanProjectNote, type ProjectRecord } from '../src/core/scan';
 import { defaultSettings } from '../src/core/settings';
@@ -287,6 +287,113 @@ describe('timelineCells', () => {
 		expect(cells[startIdx]!.kind).toBe('span-solid');
 		expect(cells[startIdx]!.spanWeeks).toBe(rightIdx - startIdx + 1);
 		expect(cells[startIdx]!.tooltip).toBe('P-測試專案\n2026-02-02 ~ 2026-09-15');
+	});
+});
+
+describe('yearViewCells', () => {
+	const nextYear = buildWeeks(2027);
+	const modes = ['per-week', 'timeline'] as const;
+
+	it('renders all 52 ISO weeks of 2027', () => {
+		expect(nextYear).toHaveLength(52);
+		expect(nextYear[0]!.label).toBe('2027-W01');
+		expect(nextYear[51]!.label).toBe('2027-W52');
+	});
+
+	const overflow = scanned('🚧 P-範例專案 F.md', ['- [ ] 結案報告 📅 2027-01-13'], {
+		開始日期: '2026-10-01',
+		預計結束日期: '2026-12-20',
+	});
+
+	it('keeps only the occupied overflow week when the expected end was last year', () => {
+		expect(overflow.overflow_end).toBe('2027-01-13');
+		const cells = yearViewCells(overflow, nextYear, SAT_ON, 'per-week');
+		expect(cells).toHaveLength(52);
+		expect(cells[0]!.kind).toBe('blank');
+		expect(cells[1]!.kind).toBe('overflow');
+		expect(cells[1]!.tooltip).toContain('2027-W02');
+		expect(cells.slice(2).every((c) => c.kind === 'blank')).toBe(true);
+	});
+
+	it('clips the overflow timeline to W1–W2 of the shown year', () => {
+		const cells = yearViewCells(overflow, nextYear, SAT_ON, 'timeline');
+		expect(cells[0]).toEqual({
+			kind: 'span-solid', spanWeeks: 2, closed: false,
+			tooltip: `${overflow.name}\n2026-10-01 ~ 2027-01-13`,
+		});
+		expect(cells.slice(1).every((c) => c.kind === 'blank')).toBe(true);
+	});
+
+	it.each(modes)('clips a %s bar starting last year to W1', (mode) => {
+		const p = project({ start: '2026-10-01', end: '2027-01-13' });
+		const cells = yearViewCells(p, nextYear, SAT_ON, mode);
+		expect(cells[0]!.kind).toBe(mode === 'timeline' ? 'span-solid' : 'span-dashed');
+		expect(cells[0]!.spanWeeks).toBe(2);
+		expect(cells.slice(1).every((c) => c.kind === 'blank')).toBe(true);
+	});
+
+	it.each(modes)('clips a %s bar ending next year to the last week', (mode) => {
+		const p = project({ start: '2027-12-20', end: '2028-01-20' });
+		const cells = yearViewCells(p, nextYear, SAT_ON, mode);
+		expect(cells[50]!.kind).toBe(mode === 'timeline' ? 'span-solid' : 'span-dashed');
+		expect(cells[50]!.spanWeeks).toBe(2);
+		expect(cells.filter((c) => c.kind !== 'blank')).toHaveLength(1);
+	});
+
+	it.each(modes)('clips both ends of a %s bar spanning the whole year', (mode) => {
+		const p = project({ start: '2026-10-01', end: '2028-01-20' });
+		const cells = yearViewCells(p, nextYear, SAT_ON, mode);
+		expect(cells[0]!.kind).toBe(mode === 'timeline' ? 'span-solid' : 'span-dashed');
+		expect(cells[0]!.spanWeeks).toBe(52);
+		expect(cells.slice(1).every((c) => c.kind === 'blank')).toBe(true);
+	});
+
+	it.each(modes)('keeps a %s project outside the shown year blank', (mode) => {
+		const p = project({ start: '2026-10-01', end: '2026-12-20' });
+		expect(yearViewCells(p, nextYear, SAT_ON, mode).every((c) => c.kind === 'blank')).toBe(true);
+	});
+
+	it.each(modes)('handles missing dates and empty weeks in %s mode', (mode) => {
+		const cells = yearViewCells(project({ start: null, status: 'done' }), nextYear, SAT_ON, mode);
+		expect(cells).toHaveLength(52);
+		expect(cells.every((c) => c.kind === 'blank' && c.closed)).toBe(true);
+		expect(yearViewCells(overflow, [], SAT_ON, mode)).toEqual([]);
+	});
+
+	const unchanged = [
+		['no task dates', scanned('🚧 P-範例專案 G.md', [], { 開始日期: '2026-03-02', 預計結束日期: '2026-04-10' })],
+		['tasks and settled weeks', scanned('🚧 P-範例專案 H.md', [
+			'- [x] 準備 📅 2026-10-14 ✅ 2026-10-13', '- [ ] 開工 📅 2026-11-04',
+		], { 開始日期: '2026-10-01', 預計結束日期: '2026-11-29' })],
+		['overflow this year', scanned('🚧 P-範例專案 I.md', ['- [ ] 補交成果報告 📅 2026-09-09'], {
+			開始日期: '2026-08-03', 預計結束日期: '2026-08-30',
+		})],
+		['closed project', scanned('✅ P-範例專案 J.md', ['- [x] 結案 📅 2026-06-16 ✅ 2026-06-15'], {
+			開始日期: '2026-05-04', 預計結束日期: '2026-06-28',
+		})],
+		['cancelled project', project({ status: 'cancelled', task_dates: ['2026-06-16'], occupied_weeks: ['2026-W25'] })],
+		['starts last year', project({ start: '2025-10-01', end: '2026-04-10' })],
+		['ends next year', project({ start: '2026-10-01', end: '2027-04-10' })],
+	] as const;
+
+	it.each(unchanged)('matches both old models for 2026: %s', (_label, p) => {
+		expect(yearViewCells(p, weeks, SAT_ON, 'per-week')).toEqual(perWeekCells(p, weeks, SAT_ON));
+		expect(yearViewCells(p, weeks, SAT_ON, 'timeline')).toEqual(timelineCells(p, weeks));
+	});
+
+	it('changes last year’s finished range only where an overflow task extends into 2026', () => {
+		const p = scanned('🚧 P-範例專案 K.md', ['- [ ] 結案報告 📅 2026-01-14'], {
+			開始日期: '2025-10-01', 預計結束日期: '2025-12-20',
+		});
+		expect(perWeekCells(p, weeks, SAT_ON).every((c) => c.kind === 'blank')).toBe(true);
+		expect(timelineCells(p, weeks).every((c) => c.kind === 'blank')).toBe(true);
+		const cells = yearViewCells(p, weeks, SAT_ON, 'per-week');
+		expect(cells[2]!.kind).toBe('overflow');
+		expect(cells.filter((c) => c.kind !== 'blank')).toHaveLength(1);
+		const timeline = yearViewCells(p, weeks, SAT_ON, 'timeline');
+		expect(timeline[0]!.kind).toBe('span-solid');
+		expect(timeline[0]!.spanWeeks).toBe(3);
+		expect(timeline.slice(1).every((c) => c.kind === 'blank')).toBe(true);
 	});
 });
 

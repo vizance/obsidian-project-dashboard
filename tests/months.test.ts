@@ -6,10 +6,12 @@ import {
 	monthOfDate,
 	monthOfWeek,
 	monthTitle,
+	monthWhenEnteringMonthView,
 	shiftMonth,
 	unscheduledSummary,
 	unscheduledWeekOptions,
 	weeksOfMonth,
+	yearWhenEnteringYearView,
 } from '../src/core/months';
 import type { ProjectRecord } from '../src/core/scan';
 import { parseTaskLines } from '../src/core/task-lines';
@@ -107,6 +109,26 @@ describe('monthOfDate', () => {
 	// 2025-12-30 落在 2026-W01，而 W01 永遠算一月，所以月視圖顯示 2026 年 1 月。
 	it('gives 2026-01 for a date in the W01 that starts in December', () => {
 		expect(monthOfDate('2025-12-30')).toEqual({ year: 2026, month: 1 });
+	});
+});
+
+describe('period when switching views', () => {
+	it('opens this week’s month when entering from the current calendar year', () => {
+		expect(monthWhenEnteringMonthView(2026, '2026-11-20')).toEqual({ year: 2026, month: 11 });
+	});
+
+	it('opens January when entering from another year', () => {
+		expect(monthWhenEnteringMonthView(2027, '2026-11-20')).toEqual({ year: 2027, month: 1 });
+	});
+
+	it('uses the shown month’s year when entering the year view', () => {
+		expect(yearWhenEnteringYearView({ year: 2027, month: 3 })).toBe(2027);
+	});
+
+	// 今天的西元年與這週所屬的 ISO 年可能不同，不能用月份的 year 判定今年。
+	it('uses the current calendar year but keeps the week’s month at a year boundary', () => {
+		expect(monthWhenEnteringMonthView(2025, '2025-12-30')).toEqual({ year: 2026, month: 1 });
+		expect(monthWhenEnteringMonthView(2026, '2025-12-30')).toEqual({ year: 2026, month: 1 });
 	});
 });
 

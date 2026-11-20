@@ -165,19 +165,19 @@ function mondayOfDate(iso: string): string {
 }
 
 // 一段連續的週，同時蓋住專案的整個範圍（開始日到 overflow 結束日，沒有 overflow 就到
-// 預計結束日）與要顯示的那個月。month / isMonthStart / isQuarterStart 只有表頭會用，
-// perWeekCells 只讀 label、start、end，所以這裡只把月份填對、兩個旗標一律 false。
-function weeksCoveringProjectAndMonth(project: ProjectRecord, first: WeekInfo, last: WeekInfo): WeekInfo[] {
+// 預計結束日）與要顯示的期間。month / isMonthStart / isQuarterStart 只有表頭會用，
+// 格子模型只讀 label、start、end，所以這裡只把月份填對、兩個旗標一律 false。
+function weeksCoveringProjectAndRange(project: ProjectRecord, first: WeekInfo, last: WeekInfo): WeekInfo[] {
 	const end = project.end!;
 	// overflow_end 理論上只會晚於 end，但取大的那個才保證這段週一定蓋住整個範圍。
 	const rightEnd = project.overflow_end && project.overflow_end > end ? project.overflow_end : end;
 	const projectStart = mondayOfDate(project.start!);
 	const projectEnd = mondayOfDate(rightEnd);
-	const monthStart = mondayOfWeek(first.label);
-	const monthEnd = mondayOfWeek(last.label);
+	const rangeStart = mondayOfWeek(first.label);
+	const rangeEnd = mondayOfWeek(last.label);
 	// ISO 日期字串的字典順序就是時間順序。
-	const from = projectStart < monthStart ? projectStart : monthStart;
-	const to = projectEnd > monthEnd ? projectEnd : monthEnd;
+	const from = projectStart < rangeStart ? projectStart : rangeStart;
+	const to = projectEnd > rangeEnd ? projectEnd : rangeEnd;
 
 	const run: WeekInfo[] = [];
 	for (let monday = from; monday <= to; monday = addDaysISO(monday, 7)) {
@@ -202,11 +202,40 @@ export function monthViewCells(project: ProjectRecord, weeks: WeekInfo[], rules:
 		return expandSpanDashed(perWeekCells(project, weeks, rules));
 	}
 
-	const run = weeksCoveringProjectAndMonth(project, first, last);
+	const run = weeksCoveringProjectAndRange(project, first, last);
 	const cells = expandSpanDashed(perWeekCells(project, run, rules));
 	const byLabel = new Map(run.map((w, i) => [w.label, cells[i]!]));
 	const isClosed = project.status === 'done' || project.status === 'cancelled';
 	return weeks.map((w) => byLabel.get(w.label) ?? blankCell(isClosed));
+}
+
+export function yearViewCells(
+	project: ProjectRecord,
+	weeks: WeekInfo[],
+	rules: WeekRules,
+	mode: 'per-week' | 'timeline',
+): Cell[] {
+	const derive = (run: WeekInfo[]): Cell[] => mode === 'timeline'
+		? timelineCells(project, run)
+		: perWeekCells(project, run, rules);
+	const first = weeks[0];
+	const last = weeks[weeks.length - 1];
+	if (!project.start || !project.end || !first || !last) return derive(weeks);
+
+	const run = weeksCoveringProjectAndRange(project, first, last);
+	const cells = derive(run);
+	const from = run.findIndex((w) => w.label === first.label);
+	const to = from + weeks.length - 1;
+	const visible = cells.slice(from, to + 1);
+	// 色條只存在起始格，直接切陣列會丟掉從前一年延伸進來的色條；保留交集並把
+	// 起始格移到可見範圍內，renderBar 的寬度與點擊週換算才能沿用同一份資料。
+	for (const [i, cell] of cells.entries()) {
+		if (cell.kind !== 'span-dashed' && cell.kind !== 'span-solid') continue;
+		const start = Math.max(i, from);
+		const end = Math.min(i + cell.spanWeeks - 1, to);
+		if (start <= end) visible[start - from] = { ...cell, spanWeeks: end - start + 1 };
+	}
+	return visible;
 }
 
 export function timelineCells(project: ProjectRecord, weeks: WeekInfo[]): Cell[] {
