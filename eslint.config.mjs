@@ -6,6 +6,7 @@ export default defineConfig(
 	globalIgnores([
 		'node_modules',
 		'coverage',
+		'scripts/screenshots/**',
 		'main.js',
 		'manifest.json',
 		'package-lock.json',

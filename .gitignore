@@ -6,3 +6,4 @@ deploy.local.json
 openspec/.vector-search.db*
 .DS_Store
 .privacy-patterns.local
+scripts/screenshots/dist/

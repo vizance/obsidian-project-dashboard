@@ -10,7 +10,8 @@
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint .",
-    "deploy": "node scripts/deploy.mjs"
+    "deploy": "node scripts/deploy.mjs",
+    "screenshots:build": "node scripts/screenshots/build.mjs"
   },
   "author": "朱騏",
   "license": "MIT",
