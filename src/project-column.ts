@@ -22,18 +22,22 @@ export function renderProjectHeadCell(
 	categoryOrder: string[],
 ): HTMLTableCellElement {
 	if (project.status === 'pending') tr.addClass('status-pending');
+	// 超出期限的色條原本沒有分類色，放在列上才能繼承暫停斜線紋所需的顏色。
+	tr.setCssProps({ '--pd-cat-color': project.color });
 	const statusCls = project.status === 'done'
 		? 'status-done'
 		: project.status === 'cancelled' ? 'status-cancelled' : '';
 
 	const projCell = tr.createEl('td', { cls: ['proj-cell', statusCls].filter(Boolean).join(' ') });
-	projCell.setCssProps({ '--pd-cat-color': project.color });
 	projCell.createSpan({ cls: 'cat-dot' });
 	projCell.createSpan({
 		cls: 'name',
 		text: project.name,
 		attr: { title: '在右側開啟筆記', 'data-path': project.path },
 	});
+	if (project.status === 'pending') {
+		projCell.createSpan({ cls: 'pause-badge', text: '⏳ 暫停' });
+	}
 	if (project.warnings.length > 0) {
 		projCell.createSpan({ cls: 'warn', text: '⚠', attr: { title: project.warnings.join(', ') } });
 	}

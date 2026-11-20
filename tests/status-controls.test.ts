@@ -161,6 +161,32 @@ describe('paused controls', () => {
 		expect(fixture.renderChart).not.toHaveBeenCalled();
 	});
 
+	it.each(['year', 'month'] as const)('labels only paused projects after their names in the %s view', (scale) => {
+		const paused = record('pending', '⏳ P-20260601 範例專案 B.md');
+		const active = record();
+		const { fixture } = setup([paused, active]);
+		fixture.showPaused = true;
+		if (scale === 'year') fixture.renderYearChart();
+		else new MonthView({
+			projects: () => fixture.visibleSortedProjects(), weeks: () => weeksOfMonth(2026, 8),
+			settings: defaultSettings, today: () => fixture.today, categoryOrder: () => ['other'], calendarRow: () => null,
+		}).render(fixture.chartEl as unknown as HTMLElement);
+		const heads = find(fixture.chartEl, (el) => el.classes.has('proj-cell'));
+		expect(heads).toHaveLength(2);
+		for (const project of [paused, active]) {
+			const head = heads.find((el) => find(el, (child) => child.classes.has('name') && child.dataset.path === project.path).length > 0)!;
+			const badges = find(head, (el) => el.classes.has('pause-badge'));
+			if (project.status === 'pending') {
+				expect(badges).toHaveLength(1);
+				expect(badges[0]!.textContent).toBe('⏳ 暫停');
+				const nameIndex = head.children.findIndex((el) => el.classes.has('name'));
+				expect(head.children[nameIndex + 1]).toBe(badges[0]);
+			} else {
+				expect(badges).toHaveLength(0);
+			}
+		}
+	});
+
 	it.each(['year', 'month'] as const)('renders the same status options and pending row class in the %s view', (scale) => {
 		const { fixture } = setup([record('pending', '⏳ P-20260601 範例專案 B.md')]);
 		fixture.showPaused = true;

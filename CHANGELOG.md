@@ -14,7 +14,7 @@ You can now plan next year in the year view. Use `◀` and `▶` beside the year
 
 Fixed: clicking a year-view week cell, a month-view cell, or a `還沒排` cell now opens its popover after you move the dashboard tab into a pop-out window. Click and scroll handling previously stayed in the main window; it now follows the window containing the tab, so scrolling there closes the popover as before. Category legend dragging and project column resizing follow that window too.
 
-Paused projects used to stay among active work, making it harder to see what needs attention. They are now hidden by default in both the year and month views. `顯示暫停（<n>）` appears when there are paused projects to show, updates its count after each scan, and reveals them with lighter category colors when checked. `編輯分類與狀態` now reveals a status menu alongside each category menu, so you can pause, resume, complete, or cancel a project while planning. Changing status renames the note's leading symbol in the same folder and keeps your manual category choice; links from other notes follow Obsidian's automatically-update-internal-links setting. An existing note with the target name prevents the change and shows a message.
+Paused projects used to stay among active work, making it harder to see what needs attention. They are now hidden by default in both the year and month views. `顯示暫停（<n>）` appears when there are paused projects to show, updates its count after each scan, and reveals them with a grey `⏳ 暫停` badge after the name and diagonal stripes in the category color on year-view bars and month-view cells when checked. `編輯分類與狀態` now reveals a status menu alongside each category menu, so you can pause, resume, complete, or cancel a project while planning. Changing status renames the note's leading symbol in the same folder and keeps your manual category choice; links from other notes follow Obsidian's automatically-update-internal-links setting. An existing note with the target name prevents the change and shows a message.
 
 月視圖最上面新增一列 General，一週一格列出你行事曆的行程。月視圖從 0.4.0 開始就會畫出專案，但週表格最上面那一列通常是「不是專案的事情」——上課、出遊、休假——在這之前得每週從 Google 或 Apple 行事曆手抄。現在儀表板會去讀你指定的行事曆，把行程寫進和任務相同的那幾週：`11/6（五）13:30 讀書會`、`11/11（三）休假`、`11/7（六）–11/9（一）研習營`。每筆行程前面都有名稱標籤，使用那個行事曆的顏色；沒取名時，依設定清單的位置顯示 `行事曆 1`、`行事曆 2`……重複的行程會展開成一次一次的行程，行事曆自己的例外與被移動的那幾次都照算，已取消的行程不顯示，跨好幾天的行程會列在它碰到的每一週。這一列只能看——點格子不會打開浮窗——年視圖不顯示任何行程。讀取只發生在五個時機：儀表板分頁打開時、按這一列的 `↻` 時、執行新指令 `Refresh calendars` 時、在已設好的行事曆貼上新連結時（會馬上重新讀取），以及在設定裡改動設定過連結的行事曆清單或順序時。最後這項比對只看連結設定。改名或換色存檔後，標籤就會更新，不會重新讀取行程。在月份之間移動永遠不會去讀。`General` 下面的狀態列在讀取中寫 `讀取中…`，讀完寫 `更新於 15:20`；有行事曆讀不到時會接上 `・⚠ 1 個行事曆讀不到`，並在提示裡寫出是哪個行事曆、什麼原因，其他行事曆——以及每一列專案——都照常。
 
@@ -28,7 +28,7 @@ Paused projects used to stay among active work, making it harder to see what nee
 
 修正：把儀表板分頁拖到獨立視窗後，點年視圖週格子、月視圖格子或「還沒排」格子，現在都能打開浮窗。原本點擊與捲動的監聽留在主視窗，現在會跟著分頁所在的視窗，因此在獨立視窗裡捲動時，浮窗也會照原本規則關閉。圖例拖拉排序與專案欄寬拖拉也會跟著分頁所在的視窗運作。
 
-暫停的專案以前仍混在進行中的工作裡，讓人難以看出現在該推進什麼。現在年視圖與月視圖都會預設隱藏暫停專案。有暫停專案可顯示時，控制列才會出現 `顯示暫停（<n>）`，每次重新掃描都更新數量；勾起來後以較淡的分類色顯示。勾選 `編輯分類與狀態`，每列分類選單旁會出現狀態選單，規劃時就能暫停、恢復進行、完成或取消專案。改狀態會替換筆記檔名開頭的符號，保留所在資料夾與手動指定的分類；其他筆記的連結是否更新，依 Obsidian 的「自動更新內部連結」設定處理。如果已經有同名筆記，就不會改名並顯示提示。
+暫停的專案以前仍混在進行中的工作裡，讓人難以看出現在該推進什麼。現在年視圖與月視圖都會預設隱藏暫停專案。有暫停專案可顯示時，控制列才會出現 `顯示暫停（<n>）`，每次重新掃描都更新數量；勾起來後，名稱後面有灰色的 `⏳ 暫停` 標籤，年視圖色條與月視圖格子則以分類色斜線紋呈現。勾選 `編輯分類與狀態`，每列分類選單旁會出現狀態選單，規劃時就能暫停、恢復進行、完成或取消專案。改狀態會替換筆記檔名開頭的符號，保留所在資料夾與手動指定的分類；其他筆記的連結是否更新，依 Obsidian 的「自動更新內部連結」設定處理。如果已經有同名筆記，就不會改名並顯示提示。
 
 ## 0.4.0 — 2026-10-31
 

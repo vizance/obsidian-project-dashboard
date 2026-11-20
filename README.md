@@ -58,7 +58,7 @@ Category labels and colors (`CATEGORIES` in `src/core/config.ts`) are the one th
 
 ## The year view and the month view
 
-Paused projects (filenames starting with `⏳`) are hidden by default in both views. Next to the show-closed checkbox, `顯示暫停（<n>）` shows how many paused projects checking it would add: only projects in the configured folder, not skipped, with both a start and end date. The checkbox appears only when that count is greater than zero and updates after each re-scan. Check it to show paused projects in their usual order with lighter category colors. Paused and closed visibility each reset to unchecked when the dashboard tab opens.
+Paused projects (filenames starting with `⏳`) are hidden by default in both views. Next to the show-closed checkbox, `顯示暫停（<n>）` shows how many paused projects checking it would add: only projects in the configured folder, not skipped, with both a start and end date. The checkbox appears only when that count is greater than zero and updates after each re-scan. Check it to show paused projects in their usual order with a grey `⏳ 暫停` badge after the name and diagonal stripes in the category color on year-view bars and month-view cells. Paused and closed visibility each reset to unchecked when the dashboard tab opens.
 
 Check `編輯分類與狀態` to reveal the category and status menus on each project row in either view. The status choices are `🚧 進行中`, `⏳ 暫停`, `✅ 完成`, and `❌ 取消`; a filename without a status symbol counts as active. Choosing a different status replaces the status symbol among the filename's first three characters and its following spaces with the chosen symbol and one space, or adds that prefix when there is no leading symbol. The rest of the filename and its folder stay the same, and manual category choices are kept. Links from other notes update according to Obsidian's **Automatically update internal links** setting (`自動更新內部連結`), just as when you rename a note yourself. An existing note with the same target name prevents the change and shows a message. If the new status is hidden by its checkbox, the row and its open popover disappear after the re-scan.
 
@@ -228,7 +228,7 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 
 ### 年視圖與月視圖
 
-暫停的專案（檔名開頭是 `⏳`）在年視圖與月視圖都預設隱藏。「顯示已結案」旁的 `顯示暫停（<n>）` 表示勾選後會多出幾個暫停專案：只計算指定資料夾內、沒有被略過，而且有開始與結束日期的專案。數量大於 0 才會出現這個勾選框，每次重新掃描都會更新數字。勾起來後，暫停專案會照原本順序顯示，保留分類顏色並淡化。每次打開儀表板分頁，「顯示暫停」與「顯示已結案」都會回到未勾選。
+暫停的專案（檔名開頭是 `⏳`）在年視圖與月視圖都預設隱藏。「顯示已結案」旁的 `顯示暫停（<n>）` 表示勾選後會多出幾個暫停專案：只計算指定資料夾內、沒有被略過，而且有開始與結束日期的專案。數量大於 0 才會出現這個勾選框，每次重新掃描都會更新數字。勾起來後，暫停專案會照原本順序顯示，名稱後面有灰色的 `⏳ 暫停` 標籤，年視圖色條與月視圖格子則以分類色斜線紋呈現。每次打開儀表板分頁，「顯示暫停」與「顯示已結案」都會回到未勾選。
 
 勾選 `編輯分類與狀態`，兩個視圖的每列專案都會顯示分類與狀態選單。狀態選項是 `🚧 進行中`、`⏳ 暫停`、`✅ 完成`、`❌ 取消`；檔名沒有狀態符號時算進行中。選擇不同狀態後，檔名前三個字元內的狀態符號與其後空白，會換成新符號加一個空白；沒有開頭符號就加在最前面。檔名其他部分與所在資料夾不變，手動指定的分類也會保留。其他筆記的連結是否更新，取決於 Obsidian 的「自動更新內部連結」設定，和自己手動改名相同。如果已經有同名筆記，就不會改名並顯示提示。新狀態若被勾選框隱藏，重新掃描後該列與開著的浮窗都會消失。
 

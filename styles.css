@@ -67,6 +67,7 @@
 .project-dashboard td.proj-cell .cat-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; background: var(--pd-cat-color); }
 .project-dashboard td.proj-cell .name { color: var(--text); cursor: pointer; }
 .project-dashboard td.proj-cell .name:hover { text-decoration: underline; }
+.project-dashboard td.proj-cell .pause-badge { display: inline-block; margin-left: 6px; padding: 1px 5px; border-radius: 4px; background: var(--grid-soft); color: var(--text-dim); font-size: 10px; vertical-align: middle; white-space: nowrap; }
 .project-dashboard td.proj-cell.status-done .name { color: var(--text-dim); text-decoration: line-through; }
 .project-dashboard td.proj-cell .warn { color: #f59e0b; font-size: 10px; margin-left: 4px; }
 .project-dashboard td.proj-cell .cat-select,
@@ -92,6 +93,9 @@
 .project-dashboard .bar.bar-solid { background: var(--pd-cat-color) !important; border: none; }
 .project-dashboard .bar.bar-dashed { background: transparent !important; border: 1.5px dashed var(--pd-cat-color); }
 .project-dashboard .bar.bar-overflow { background: #e3563a !important; border: none; }
+.project-dashboard tr.status-pending .bar {
+	background: repeating-linear-gradient(45deg, var(--pd-cat-color) 0 4px, transparent 4px 8px) !important;
+}
 .project-dashboard tr.status-pending .bar,
 .project-dashboard tr.status-pending td.month-cell { opacity: 0.6; }
 .project-dashboard .bar.done, .project-dashboard .bar.cancelled { filter: grayscale(100%); opacity: 0.35; }
@@ -100,6 +104,8 @@
 	content: ""; position: absolute; inset: 0;
 	background: rgba(255,255,255,0.58); border-radius: inherit;
 }
+/* 暫停已用斜線與透明度區分，避免完成遮罩再把紋路洗淡。 */
+.project-dashboard tr.status-pending .bar.bar-settled::before { background: transparent; }
 .project-dashboard .bar.bar-settled::after {
 	content: "✓"; position: absolute; inset: 0;
 	display: flex; align-items: center; justify-content: center;
@@ -163,6 +169,11 @@
 .project-dashboard table.month-grid td.month-cell.mk-settled { border-left-color: var(--pd-cat-color); }
 .project-dashboard table.month-grid td.month-cell.mk-dashed { border-left-style: dashed; border-left-color: var(--pd-cat-color); }
 .project-dashboard table.month-grid td.month-cell.mk-overflow { border-left-color: var(--overflow-red); }
+.project-dashboard table.month-grid tr.status-pending td.month-cell:not(.mk-blank)::before {
+	background: repeating-linear-gradient(45deg, var(--pd-cat-color) 0 4px, transparent 4px 8px);
+	opacity: 0.3;
+}
+.project-dashboard table.month-grid tr.status-pending td.month-cell:not(.mk-blank) { border-left-color: var(--pd-cat-color); }
 .project-dashboard table.month-grid td.month-cell.done,
 .project-dashboard table.month-grid td.month-cell.cancelled { filter: grayscale(100%); opacity: 0.55; }
 /* 空白格沒有 data-path，所以也沒有手指游標：它打不開浮窗 */
