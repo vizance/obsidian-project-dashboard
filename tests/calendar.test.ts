@@ -31,7 +31,7 @@ function ics(...events: string[][]): string {
 }
 
 function source(text: string, index = 0, name = '工作'): CalendarSource {
-	return { index, name, calendar: parseCalendar(text) };
+	return { index, name, secretId: `calendar-${index}`, calendar: parseCalendar(text) };
 }
 
 // W44–W49 蓋住規格例子用到的每一週（2026-10-26 到 2026-12-07）。
@@ -302,6 +302,7 @@ describe('eventLineText', () => {
 			end: '2026-11-06T15:00',
 			calendarIndex: 0,
 			calendarName: '工作',
+			calendarSecretId: 'calendar-0',
 			...overrides,
 		};
 	}

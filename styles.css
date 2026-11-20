@@ -185,6 +185,17 @@
 /* 行程文字和任務文字一樣會換行，格子隨之長高 */
 .project-dashboard table.month-grid td.general-cell { vertical-align: top; padding: 4px 6px; font-size: 12px; line-height: 1.45; border-left: 1px solid var(--grid-soft); }
 .project-dashboard .gc-line { color: var(--text); overflow-wrap: anywhere; }
+.project-dashboard .gc-label {
+	display: inline;
+	padding: 0 4px;
+	margin-right: 4px;
+	border-left: 3px solid var(--pd-calendar-color);
+	border-radius: 2px;
+	background: color-mix(in srgb, var(--pd-calendar-color) 15%, transparent);
+	color: var(--text-normal);
+	box-decoration-break: clone;
+	-webkit-box-decoration-break: clone;
+}
 
 .project-dashboard #help-panel {
 	position: fixed;

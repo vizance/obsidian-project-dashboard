@@ -14,6 +14,7 @@ import {
 	occurrencesInRange,
 } from '../src/core/calendar';
 import type { CalendarSetting } from '../src/core/settings';
+import { calendarLabel } from '../src/core/calendar-row';
 
 // 測試完全不連網也不碰 Obsidian：請求、鑰匙、時鐘都是假的，iCalendar 文字寫在這裡。
 // 連結一律用 calendar.example.com 這種示範網址，真實的私密網址不進任何檔案。
@@ -61,7 +62,7 @@ interface HarnessOptions {
 }
 
 function harness(options: HarnessOptions = {}): Harness {
-	let calendars: CalendarSetting[] = options.calendars ?? [{ name: '工作', secretId: 'work-calendar' }];
+	let calendars: CalendarSetting[] = options.calendars ?? [{ name: '工作', secretId: 'work-calendar', color: '' }];
 	const secrets = new Map<string, string>(Object.entries(options.secrets ?? { 'work-calendar': WORK_ADDRESS }));
 	let now = new Date(2026, 10, 6, 15, 20);
 	const urls: string[] = [];
@@ -136,7 +137,7 @@ describe('CalendarStore', () => {
 	});
 
 	it('makes no request when every calendar row has an empty secret ID', async () => {
-		const h = harness({ calendars: [{ name: '工作', secretId: '' }, { name: '', secretId: '' }], secrets: {} });
+		const h = harness({ calendars: [{ name: '工作', secretId: '', color: '' }, { name: '', secretId: '', color: '' }], secrets: {} });
 		await h.store.refresh();
 		expect(h.urls).toEqual([]);
 		expect(h.store.state.started).toBe(false);
@@ -169,8 +170,8 @@ describe('CalendarStore', () => {
 		let failing = false;
 		const h = harness({
 			calendars: [
-				{ name: '工作', secretId: 'work-calendar' },
-				{ name: '家庭', secretId: 'family-calendar' },
+				{ name: '工作', secretId: 'work-calendar', color: '' },
+				{ name: '家庭', secretId: 'family-calendar', color: '' },
 			],
 			secrets: { 'work-calendar': WORK_ADDRESS, 'family-calendar': FAMILY_ADDRESS },
 			respond: (url) => ({
@@ -181,7 +182,7 @@ describe('CalendarStore', () => {
 		await h.store.refresh();
 		expect(linesForWeek(h.store, '2026-W45')).toEqual(['11/6（五）13:30 讀書會', '11/7（六）18:00 家庭聚餐']);
 
-		h.setCalendars([{ name: '家庭', secretId: 'family-calendar' }]);
+		h.setCalendars([{ name: '家庭', secretId: 'family-calendar', color: '' }]);
 		failing = true;
 		await h.store.refresh();
 		expect(h.store.state.sources.map((source) => ({ index: source.index, name: source.name }))).toEqual([
@@ -265,7 +266,7 @@ describe('CalendarStore', () => {
 
 		it('names an unnamed calendar by its position', async () => {
 			const h = harness({
-				calendars: [{ name: '工作', secretId: 'work-calendar' }, { name: '', secretId: 'family-calendar' }],
+				calendars: [{ name: '工作', secretId: 'work-calendar', color: '' }, { name: '', secretId: 'family-calendar', color: '' }],
 				secrets: { 'work-calendar': WORK_ADDRESS, 'family-calendar': 'http://calendar.example.com/family.ics' },
 			});
 			await h.store.refresh();
@@ -341,7 +342,8 @@ describe('CalendarStore', () => {
 		it('fetches when the calendars differ from the ones used by the last fetch', async () => {
 			const h = harness();
 			await h.store.refresh();
-			h.setCalendars([{ name: '工作用', secretId: 'work-calendar' }]);
+			h.setSecret('replacement-calendar', WORK_ADDRESS);
+			h.setCalendars([{ name: '工作用', secretId: 'replacement-calendar', color: '' }]);
 			await h.store.refreshIfCalendarsChanged();
 			expect(h.urls.length).toBe(2);
 			expect(h.store.state.sources[0]?.name).toBe('工作用');
@@ -352,6 +354,56 @@ describe('CalendarStore', () => {
 			await h.store.refresh();
 			await h.store.refreshIfCalendarsChanged();
 			expect(h.urls.length).toBe(1);
+		});
+
+		it.each([
+			{ name: '公司', color: '' },
+			{ name: '工作', color: '#8e5bd6' },
+			{ name: '公司', color: '#8e5bd6' },
+		])('Renaming and recoloring do not fetch: %j', async (patch) => {
+			const h = harness();
+			await h.store.refresh();
+			const cached = occurrencesInRange(h.store.state.sources, NOVEMBER_FROM, NOVEMBER_TO);
+			expect(cached[0]?.calendarSecretId).toBe('work-calendar');
+			expect(cached[0]?.calendarName).toBe('工作');
+			const calendars = [{ secretId: 'work-calendar', ...patch }];
+			h.setCalendars(calendars);
+			await h.store.refreshIfCalendarsChanged();
+			expect(h.urls).toEqual([WORK_ADDRESS]);
+			expect(cached.map((occurrence) => calendarLabel(calendars, occurrence.calendarSecretId))).toEqual([
+				{ name: patch.name, color: patch.color || '#4a7fd4' },
+			]);
+			expect(cached.map(eventLineText)).toEqual(['11/6（五）13:30 讀書會']);
+		});
+
+		it('ignores adding and removing rows without IDs', async () => {
+			const h = harness();
+			await h.store.refresh();
+			h.setCalendars([
+				{ name: '', secretId: '', color: '' },
+				{ name: '工作', secretId: 'work-calendar', color: '' },
+			]);
+			await h.store.refreshIfCalendarsChanged();
+			h.setCalendars([{ name: '工作', secretId: 'work-calendar', color: '' }]);
+			await h.store.refreshIfCalendarsChanged();
+			expect(h.urls).toEqual([WORK_ADDRESS]);
+		});
+
+		it('fetches when non-empty IDs change order', async () => {
+			const h = harness({
+				calendars: [
+					{ name: '工作', secretId: 'work-calendar', color: '' },
+					{ name: '家庭', secretId: 'family-calendar', color: '' },
+				],
+				secrets: { 'work-calendar': WORK_ADDRESS, 'family-calendar': FAMILY_ADDRESS },
+			});
+			await h.store.refresh();
+			h.setCalendars([
+				{ name: '家庭', secretId: 'family-calendar', color: '' },
+				{ name: '工作', secretId: 'work-calendar', color: '' },
+			]);
+			await h.store.refreshIfCalendarsChanged();
+			expect(h.urls).toEqual([WORK_ADDRESS, FAMILY_ADDRESS, FAMILY_ADDRESS, WORK_ADDRESS]);
 		});
 	});
 });

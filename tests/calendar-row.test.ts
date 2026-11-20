@@ -1,5 +1,33 @@
 import { describe, expect, it } from 'vitest';
-import { calendarStatusLine, monthEventRange, type CalendarFetchStatus } from '../src/core/calendar-row';
+import { calendarLabel, calendarStatusLine, monthEventRange, type CalendarFetchStatus } from '../src/core/calendar-row';
+import type { CalendarSetting } from '../src/core/settings';
+
+describe('calendarLabel', () => {
+	it('uses the default colors by position', () => {
+		const calendars = ['工作', '家庭', '其他'].map((name, index) => ({ name, secretId: `calendar-${index}`, color: '' }));
+		expect(calendars.map((calendar) => calendarLabel(calendars, calendar.secretId))).toEqual([
+			{ name: '工作', color: '#4a7fd4' }, { name: '家庭', color: '#2f9e6e' }, { name: '其他', color: '#e08a2c' },
+		]);
+	});
+
+	it('matches the ID in current settings after renaming, recoloring and inserting an empty row', () => {
+		const calendars: CalendarSetting[] = [
+			{ name: '工作', secretId: 'a', color: '' },
+			{ name: '', secretId: 'b', color: '' },
+		];
+		expect(calendarLabel(calendars, 'a')).toEqual({ name: '工作', color: '#4a7fd4' });
+		calendars[0] = { name: '公司', secretId: 'a', color: '#8e5bd6' };
+		calendars.unshift({ name: '', secretId: '', color: '' });
+		expect(calendarLabel(calendars, 'a')).toEqual({ name: '公司', color: '#8e5bd6' });
+		expect(calendarLabel(calendars, 'b')).toEqual({ name: '行事曆 3', color: '#e08a2c' });
+	});
+
+	it('does not label an occurrence whose calendar is removed or has no ID', () => {
+		const calendars = [{ name: '工作', secretId: '', color: '' }];
+		expect(calendarLabel(calendars, 'removed-calendar')).toBeNull();
+		expect(calendarLabel(calendars, '')).toBeNull();
+	});
+});
 
 function status(patch: Partial<CalendarFetchStatus> = {}): CalendarFetchStatus {
 	return { running: false, started: true, finishedAt: '15:20', failures: [], ...patch };

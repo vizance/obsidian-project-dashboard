@@ -157,15 +157,31 @@ describe('normalizeSettings — field normalization', () => {
 			],
 		};
 		expect(normalizeSettings(raw).calendars).toEqual([
-			{ name: '工作', secretId: 'work-calendar' },
-			{ name: '', secretId: '' },
-			{ name: '', secretId: '' },
+			{ name: '工作', secretId: 'work-calendar', color: '' },
+			{ name: '', secretId: '', color: '' },
+			{ name: '', secretId: '', color: '' },
 		]);
 	});
 
 	it('falls back to an empty calendar list when the value is not an array', () => {
 		expect(normalizeSettings({ calendars: '工作' }).calendars).toEqual([]);
 	});
+
+	it('normalizes the calendar colors from the field normalization example', () => {
+		expect(normalizeSettings({ calendars: [
+			{ name: '工作', secretId: 'a', color: '#4A7FD4' },
+			{ name: '家庭', secretId: 'b', color: 'blue' },
+		] }).calendars).toEqual([
+			{ name: '工作', secretId: 'a', color: '#4a7fd4' },
+			{ name: '家庭', secretId: 'b', color: '' },
+		]);
+	});
+
+	it.each(['', '#abc', '#4a7fd400', ' #4a7fd4', '#4a7fd4 ', '#4a7fd4\n', '#gggggg', 3, null, undefined])(
+		'uses the default color for invalid stored color %j', (color) => {
+			expect(normalizeSettings({ calendars: [{ color }] }).calendars).toEqual([{ name: '', secretId: '', color: '' }]);
+		},
+	);
 });
 
 describe('the returned settings never share arrays with the defaults', () => {
@@ -246,12 +262,12 @@ describe('classification rule list helpers', () => {
 // 設定頁 Calendars 區塊用的純函式（task 2.4）：行事曆清單的新增、刪除與改一列。
 describe('calendar list helpers', () => {
 	const CALENDARS: CalendarSetting[] = [
-		{ name: '工作', secretId: 'work-calendar' },
-		{ name: '家庭', secretId: 'home-calendar' },
+		{ name: '工作', secretId: 'work-calendar', color: '' },
+		{ name: '家庭', secretId: 'home-calendar', color: '' },
 	];
 
 	it('appends an empty calendar row', () => {
-		expect(addCalendar(CALENDARS)).toEqual([...CALENDARS, { name: '', secretId: '' }]);
+		expect(addCalendar(CALENDARS)).toEqual([...CALENDARS, { name: '', secretId: '', color: '' }]);
 	});
 
 	it('removes the calendar at the given index', () => {
@@ -266,7 +282,7 @@ describe('calendar list helpers', () => {
 	it('replaces only the edited field of one calendar', () => {
 		expect(replaceCalendar(CALENDARS, 1, { secretId: 'family-calendar' })).toEqual([
 			CALENDARS[0],
-			{ name: '家庭', secretId: 'family-calendar' },
+			{ name: '家庭', secretId: 'family-calendar', color: '' },
 		]);
 	});
 
@@ -275,17 +291,17 @@ describe('calendar list helpers', () => {
 	});
 
 	it('never changes the list it was given', () => {
-		const original: CalendarSetting[] = [{ name: '工作', secretId: 'work-calendar' }];
+		const original: CalendarSetting[] = [{ name: '工作', secretId: 'work-calendar', color: '' }];
 		addCalendar(original);
 		removeCalendar(original, 0);
 		replaceCalendar(original, 0, { name: '改掉了' });
-		expect(original).toEqual([{ name: '工作', secretId: 'work-calendar' }]);
+		expect(original).toEqual([{ name: '工作', secretId: 'work-calendar', color: '' }]);
 	});
 
 	it('keeps a newly added empty row through a save', () => {
 		const added = addCalendar([]);
 		const reloaded = normalizePluginData({ settings: { calendars: added } }).settings.calendars;
-		expect(reloaded).toEqual([{ name: '', secretId: '' }]);
+		expect(reloaded).toEqual([{ name: '', secretId: '', color: '' }]);
 	});
 });
 

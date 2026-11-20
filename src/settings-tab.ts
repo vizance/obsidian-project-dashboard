@@ -1,10 +1,11 @@
-import { PluginSettingTab, Setting, TFolder, type App } from 'obsidian';
+import { PluginSettingTab, Setting, TFolder, setTooltip, type App } from 'obsidian';
 import { isCalendarAddress } from './core/calendar';
 import { CATEGORIES, CATEGORY_KEYS } from './core/config';
 import {
 	addCalendar,
 	addClassificationRule,
 	CALENDAR_SECRET_PREFIX,
+	calendarColor,
 	calendarLinkPlaceholder,
 	generateCalendarSecretId,
 	moveClassificationRule,
@@ -252,6 +253,16 @@ export class DashboardSettingTab extends PluginSettingTab {
 				});
 				text.inputEl.addEventListener('change', saveLink);
 			});
+			row.addColorPicker((picker) => {
+				picker.setValue(calendarColor(calendar, index + 1)).onChange((color) => {
+					this.patch({ calendars: replaceCalendar(this.settings.calendars, index, { color }) });
+				});
+			});
+			const colorInput = row.controlEl.querySelector<HTMLInputElement>('input[type="color"]');
+			if (colorInput) {
+				setTooltip(colorInput, 'Color');
+				colorInput.setAttribute('aria-label', 'Color');
+			}
 			row.addExtraButton((button) => {
 				button.setIcon('trash')
 					.setTooltip('Delete')

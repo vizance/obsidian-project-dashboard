@@ -1,5 +1,5 @@
 import { normalizeCalendarAddress, parseCalendar, type CalendarSource, type ParsedCalendar } from './core/calendar';
-import type { CalendarSetting } from './core/settings';
+import { calendarDisplayName, type CalendarSetting } from './core/settings';
 
 // 讀不到行事曆的原因。全部只提到行事曆的顯示名稱，絕不提到連結：連結等同讀取
 // 密碼，不能出現在畫面文字、提示、紀錄裡（design.md：行事曆連結存在 SecretStorage）。
@@ -48,12 +48,6 @@ function pad2(n: number): string {
 	return String(n).padStart(2, '0');
 }
 
-// 顯示名稱：取好的名字，沒取名就用它在設定清單裡的位置（1 起算）。
-function displayName(calendar: CalendarSetting, index: number): string {
-	const name = calendar.name.trim();
-	return name === '' ? `行事曆 ${index + 1}` : name;
-}
-
 /**
  * 外掛層級的單一行事曆讀取器，所有儀表板分頁共用一次讀取與一份結果。
  *
@@ -64,7 +58,7 @@ export class CalendarStore {
 	// 上次成功解析的內容，用鑰匙 ID 對應而不是清單位置：刪掉或換掉鑰匙的行事曆，
 	// 在下一次讀取時丟掉它的內容，其他行事曆不受影響。
 	private readonly retained = new Map<string, ParsedCalendar>();
-	// 上一次讀取用的設定；畫面上的位置與顯示名稱都照這一份算。
+	// 上一次讀取用的設定，供清單比對與行程排序；標籤另從目前設定取得。
 	private lastUsed: readonly CalendarSetting[] = [];
 	private hasRun = false;
 	private runningFlag = false;
@@ -85,7 +79,7 @@ export class CalendarStore {
 			if (calendar.secretId === '') return;
 			const parsed = this.retained.get(calendar.secretId);
 			if (!parsed) return;
-			sources.push({ calendar: parsed, index, name: displayName(calendar, index) });
+			sources.push({ calendar: parsed, index, name: calendarDisplayName(calendar, index + 1), secretId: calendar.secretId });
 		});
 		return {
 			running: this.runningFlag,
@@ -133,7 +127,7 @@ export class CalendarStore {
 
 	/**
 	 * 記憶體裡的 `calendars` 跟上次讀取用的不一樣時才讀取：外掛資料存檔後、從外部
-	 * 重新載入後、存檔失敗還原後都會問一次（design.md：讀取時機只有四種）。
+	 * 重新載入後、存檔失敗還原後都會問一次（design.md：讀取時機只有五種）。
 	 */
 	refreshIfCalendarsChanged(): Promise<void> {
 		if (this.disposed) return Promise.resolve();
@@ -176,7 +170,7 @@ export class CalendarStore {
 
 	// 一個行事曆讀成功就換掉它的內容，失敗就保留上次成功的內容並回報原因。
 	private async fetchOne(calendar: CalendarSetting, index: number): Promise<CalendarFailure | null> {
-		const fail = (reason: string): CalendarFailure => ({ displayName: displayName(calendar, index), reason });
+		const fail = (reason: string): CalendarFailure => ({ displayName: calendarDisplayName(calendar, index + 1), reason });
 		// 空字串跟沒有存值一樣：這把鑰匙在這台裝置上沒有連結可用。
 		const secret = this.options.getSecret(calendar.secretId);
 		if (secret === null || secret === '') return fail(SECRET_MISSING_REASON);
@@ -222,8 +216,11 @@ function formatTime(now: Date): string {
 	return `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
 }
 
-// 逐列比值：名稱或鑰匙改了、順序換了、列數變了都算不一樣。
+// 名稱、顏色與未填連結的列不影響要讀的內容，不應因此發出請求。
 function sameCalendars(a: readonly CalendarSetting[], b: readonly CalendarSetting[]): boolean {
-	if (a.length !== b.length) return false;
-	return a.every((calendar, i) => calendar.name === b[i]?.name && calendar.secretId === b[i]?.secretId);
+	const ids = (calendars: readonly CalendarSetting[]): string[] => calendars
+		.map((calendar) => calendar.secretId).filter((id) => id !== '');
+	const previous = ids(a);
+	const current = ids(b);
+	return previous.length === current.length && previous.every((id, i) => id === current[i]);
 }

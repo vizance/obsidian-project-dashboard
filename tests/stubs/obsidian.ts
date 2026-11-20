@@ -96,30 +96,57 @@ export class Plugin {
 	}
 }
 
+export class ItemView {
+	constructor(_leaf: unknown) {}
+}
+
 // EventTarget keeps input/paste/change ordering testable without a real browser.
 export class SettingsElement extends EventTarget {
 	children: SettingsElement[] = [];
 	classes = new Set<string>();
 	attributes = new Map<string, string>();
+	cssProps: Record<string, string> = {};
+	dataset: Record<string, string> = {};
+	tagName = '';
 	textContent = '';
 	value = '';
 	placeholder = '';
+	type = '';
 	hidden = false;
 
-	createDiv(options: { cls?: string; text?: string } = {}): SettingsElement {
+	createEl(tag: string, options: { cls?: string; text?: string; attr?: Record<string, string | number> } = {}): SettingsElement {
 		const child = new SettingsElement();
-		if (options.cls) child.addClass(options.cls);
+		child.tagName = tag;
+		for (const cls of options.cls?.split(' ') ?? []) child.addClass(cls);
+		for (const [name, value] of Object.entries(options.attr ?? {})) child.setAttribute(name, String(value));
 		child.textContent = options.text ?? '';
 		this.children.push(child);
 		return child;
 	}
+	createDiv(options: { cls?: string; text?: string } = {}): SettingsElement { return this.createEl('div', options); }
+	createSpan(options: { cls?: string; text?: string; attr?: Record<string, string | number> } = {}): SettingsElement {
+		return this.createEl('span', options);
+	}
+	setCssProps(props: Record<string, string>): void { Object.assign(this.cssProps, props); }
 
 	addClass(name: string): void { this.classes.add(name); }
 	setAttribute(name: string, value: string): void { this.attributes.set(name, value); }
+	querySelector(selector: string): SettingsElement | null {
+		for (const child of this.children) {
+			if (selector === 'input[type="color"]' && child.type === 'color') return child;
+			const found = child.querySelector(selector);
+			if (found) return found;
+		}
+		return null;
+	}
 	empty(): void { this.children = []; }
 	contains(child: SettingsElement): boolean {
 		return child === this || this.children.some((entry) => entry.contains(child));
 	}
+}
+
+export function setTooltip(el: SettingsElement, tooltip: string): void {
+	el.setAttribute('data-tooltip', tooltip);
 }
 
 export class SettingsText {
@@ -159,6 +186,7 @@ export class Setting {
 	texts: SettingsText[] = [];
 	buttons: SettingsButton[] = [];
 	extraButtons: SettingsButton[] = [];
+	colors: SettingsText[] = [];
 
 	constructor(container: SettingsElement) {
 		this.settingEl = container.createDiv();
@@ -179,6 +207,14 @@ export class Setting {
 	addTextArea(callback: (text: SettingsText) => void): this { return this.addText(callback); }
 	addDropdown(callback: (text: SettingsText) => void): this { return this.addText(callback); }
 	addToggle(callback: (toggle: SettingsToggle) => void): this { callback(new SettingsToggle()); return this; }
+	addColorPicker(callback: (color: SettingsText) => void): this {
+		const input = this.controlEl.createDiv();
+		input.type = 'color';
+		const color = new SettingsText(input);
+		this.colors.push(color);
+		callback(color);
+		return this;
+	}
 	addButton(callback: (button: SettingsButton) => void): this {
 		const button = new SettingsButton();
 		this.buttons.push(button);

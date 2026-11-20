@@ -27,6 +27,7 @@ export interface ParsedCalendar {
 export interface CalendarSource {
 	index: number;
 	name: string;
+	secretId: string;
 	calendar: ParsedCalendar;
 }
 
@@ -43,6 +44,7 @@ export interface EventOccurrence {
 	end: string;
 	calendarIndex: number;
 	calendarName: string;
+	calendarSecretId: string;
 }
 
 const EMPTY_TITLE = '（沒有標題）';
@@ -251,6 +253,7 @@ function buildOccurrence(
 		end: localValue(end),
 		calendarIndex: source.index,
 		calendarName: source.name,
+		calendarSecretId: source.secretId,
 	};
 }
 

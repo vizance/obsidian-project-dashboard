@@ -1,7 +1,7 @@
 import { ItemView, MarkdownView, Scope, TFile, type WorkspaceLeaf } from 'obsidian';
 import { CATEGORIES, CATEGORY_KEYS } from './core/config';
 import type { Cell } from './core/cells';
-import { calendarStatusLine, monthEventRange } from './core/calendar-row';
+import { calendarLabel, calendarStatusLine, monthEventRange } from './core/calendar-row';
 import { eventLineText, occurrencesForWeek, occurrencesInRange, type EventOccurrence } from './core/calendar';
 import { sortProjects, spanWeekOffset, visibleProjects, yearViewCells } from './core/cells';
 import {
@@ -1315,11 +1315,12 @@ export class ProjectDashboardView extends ItemView {
 		const occurrences = this.calendarOccurrences(range.from, range.to);
 		return {
 			status: calendarStatusLine(this.plugin.calendars.state),
-			lines: (weekLabel) => occurrencesForWeek(occurrences, weekLabel).map((occurrence) => ({
-				text: eventLineText(occurrence),
-				// 提示只放行事曆的顯示名稱，連結不會出現在任何畫面文字裡。
-				calendarName: occurrence.calendarName,
-			})),
+			lines: (weekLabel) => occurrencesForWeek(occurrences, weekLabel).flatMap((occurrence) => {
+				// 標籤不讀行程快取裡的名稱，改名或換色後重繪就能直接生效。
+				const label = calendarLabel(this.settings.calendars, occurrence.calendarSecretId);
+				if (!label) return [];
+				return [{ text: eventLineText(occurrence), calendarName: label.name, calendarColor: label.color }];
+			}),
 			refresh: () => {
 				void this.plugin.calendars.refresh();
 			},

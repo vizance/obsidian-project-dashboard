@@ -10,7 +10,7 @@ const LINK = 'https://calendar.example.com/private-abc/basic.ics';
 const SAVED = 'Link saved. Paste a new link to change it.';
 const ERROR = 'This is not a calendar link. It should start with https:// or webcal://.';
 
-async function setup(calendars: CalendarSetting[] = [{ name: '', secretId: '' }], stored: Record<string, string> = {}) {
+async function setup(calendars: CalendarSetting[] = [{ name: '', secretId: '', color: '' }], stored: Record<string, string> = {}) {
 	const secrets = new Map(Object.entries(stored));
 	const setSecret = vi.fn((id: string, link: string) => { secrets.set(id, link); });
 	const app = {
@@ -66,9 +66,9 @@ describe('Calendars settings', () => {
 
 	it('uses the exact description, hints and controls without exposing stored links or IDs', async () => {
 		const { rows } = await setup([
-			{ name: '', secretId: '' },
-			{ name: '範例行事曆', secretId: 'calendar-a' },
-			{ name: '', secretId: 'calendar-b' },
+			{ name: '', secretId: '', color: '' },
+			{ name: '範例行事曆', secretId: 'calendar-a', color: '' },
+			{ name: '', secretId: 'calendar-b', color: '' },
 		], { 'calendar-a': LINK });
 		const heading = Setting.instances.find((setting) => setting.name === 'Calendars')!;
 		expect(heading.descEl.textContent).toBe('Show events from your calendars at the top of the month view. The plugin only reads your calendars. It never changes them.');
@@ -89,7 +89,7 @@ describe('Calendars settings', () => {
 	});
 
 	it('reads paste after the default action, stores only the ID after 400 ms, and clears only this link', async () => {
-		const { tab, rows, store, save, setSecret } = await setup([{ name: '', secretId: '' }, { name: '', secretId: '' }]);
+		const { tab, rows, store, save, setSecret } = await setup([{ name: '', secretId: '', color: '' }, { name: '', secretId: '', color: '' }]);
 		const display = vi.spyOn(tab, 'display');
 		type(rows[0]!.texts[0]!, '家人行事曆');
 		type(rows[1]!.texts[0]!, '範例 行事曆 ');
@@ -117,7 +117,7 @@ describe('Calendars settings', () => {
 	});
 
 	it.each(['enter', 'change'])('saves webcal on %s using the existing ID without displaying the old link', async (trigger) => {
-		const { rows, setSecret, store } = await setup([{ name: '範例', secretId: 'calendar-a' }], { 'calendar-a': LINK });
+		const { rows, setSecret, store } = await setup([{ name: '範例', secretId: 'calendar-a', color: '' }], { 'calendar-a': LINK });
 		const text = rows[0]!.texts[1]!;
 		const replacement = 'webcal://calendar.example.com/new.ics';
 		type(text, ` ${replacement} `);
@@ -130,7 +130,7 @@ describe('Calendars settings', () => {
 	});
 
 	it('refreshes once when a new link is pasted for a calendar with an existing ID', async () => {
-		const { rows, setSecret, refresh, secrets, store } = await setup([{ name: '範例', secretId: 'calendar-a' }], { 'calendar-a': LINK });
+		const { rows, setSecret, refresh, secrets, store } = await setup([{ name: '範例', secretId: 'calendar-a', color: '' }], { 'calendar-a': LINK });
 		const text = rows[0]!.texts[1]!;
 		const replacement = 'https://calendar.example.com/new.ics';
 		refresh.mockImplementation(() => {
@@ -212,7 +212,7 @@ describe('Calendars settings', () => {
 		const random = vi.spyOn(Math, 'random').mockImplementation(() => Math.floor(calls++ / 8) / 36);
 		try {
 			const { rows, store, secrets } = await setup([
-				{ name: '', secretId: '' }, { name: '', secretId: 'project-dashboard-calendar-aaaaaaaa' },
+				{ name: '', secretId: '', color: '' }, { name: '', secretId: 'project-dashboard-calendar-aaaaaaaa', color: '' },
 			], { 'project-dashboard-calendar-bbbbbbbb': 'https://calendar.example.com/other.ics' });
 			type(rows[0]!.texts[1]!, LINK);
 			enter(rows[0]!.texts[1]!);
@@ -227,29 +227,64 @@ describe('Calendars settings', () => {
 		['project-dashboard-calendar-a1b2c3d4', true], ['calendar-a', false], ['', false],
 	])('deletes %j and clears only a value created by the plugin', async (id, shouldClear) => {
 		const { rows, store, setSecret, secrets } = await setup([
-			{ name: '範例', secretId: id }, { name: '其他範例', secretId: 'calendar-b' },
+			{ name: '範例', secretId: id, color: '' }, { name: '其他範例', secretId: 'calendar-b', color: '' },
 		], { [id]: LINK, 'calendar-b': 'https://calendar.example.com/other.ics' });
 		rows[0]!.extraButtons[0]!.callback();
-		expect(store.data.settings.calendars).toEqual([{ name: '其他範例', secretId: 'calendar-b' }]);
+		expect(store.data.settings.calendars).toEqual([{ name: '其他範例', secretId: 'calendar-b', color: '' }]);
 		if (shouldClear) expect(setSecret).toHaveBeenCalledExactlyOnceWith(id, '');
 		else expect(setSecret).not.toHaveBeenCalled();
 		expect(secrets.get('calendar-b')).toBe('https://calendar.example.com/other.ics');
 	});
 
 	it('discards a pending paste after the row is deleted, even if its index is reused', async () => {
-		const { rows, store, setSecret } = await setup([{ name: '', secretId: '' }, { name: '其他範例', secretId: '' }]);
+		const { rows, store, setSecret } = await setup([{ name: '', secretId: '', color: '' }, { name: '其他範例', secretId: '', color: '' }]);
 		const text = rows[0]!.texts[1]!;
 		text.inputEl.dispatchEvent(new Event('paste'));
 		type(text, LINK);
 		rows[0]!.extraButtons[0]!.callback();
 		await vi.advanceTimersByTimeAsync(0);
 		expect(setSecret).not.toHaveBeenCalled();
-		expect(store.data.settings.calendars).toEqual([{ name: '其他範例', secretId: '' }]);
+		expect(store.data.settings.calendars).toEqual([{ name: '其他範例', secretId: '', color: '' }]);
 	});
 
 	it('adds an empty calendar row', async () => {
 		const { store } = await setup([]);
 		Setting.instances.at(-1)!.buttons[0]!.callback();
-		expect(store.data.settings.calendars).toEqual([{ name: '', secretId: '' }]);
+		expect(store.data.settings.calendars).toEqual([{ name: '', secretId: '', color: '' }]);
+	});
+
+	it('shows the position default or stored color with a Color tooltip and label', async () => {
+		const { rows } = await setup([
+			{ name: '工作', secretId: 'a', color: '' },
+			{ name: '家庭', secretId: 'b', color: '' },
+			{ name: '其他', secretId: 'c', color: '#8e5bd6' },
+		]);
+		expect(rows.map((row) => row.colors[0]!.getValue())).toEqual(['#4a7fd4', '#2f9e6e', '#8e5bd6']);
+		for (const row of rows) {
+			expect(row.colors).toHaveLength(1);
+			const input = row.colors[0]!.inputEl;
+			expect(input.attributes.get('data-tooltip')).toBe('Color');
+			expect(input.attributes.get('aria-label')).toBe('Color');
+			expect(row.controlEl.children.indexOf(input)).toBeGreaterThan(row.controlEl.children.indexOf(row.texts[1]!.inputEl));
+		}
+	});
+
+	it('saves the picked color after 400 ms without redrawing or clearing unfinished text', async () => {
+		const { tab, rows, store, save, refresh } = await setup([
+			{ name: '工作', secretId: 'a', color: '' }, { name: '', secretId: '', color: '' },
+		]);
+		const display = vi.spyOn(tab, 'display');
+		type(rows[1]!.texts[0]!, '還在輸入的名稱 ');
+		type(rows[1]!.texts[1]!, 'unfinished link');
+		type(rows[0]!.colors[0]!, '#8E5BD6');
+		expect(store.data.settings.calendars[0]).toEqual({ name: '工作', secretId: 'a', color: '#8e5bd6' });
+		await vi.advanceTimersByTimeAsync(399);
+		expect(save).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(1);
+		expect(save).toHaveBeenCalledOnce();
+		expect(store.data.settings.calendars[1]!.name).toBe('還在輸入的名稱');
+		expect(rows[1]!.texts.map((text) => text.getValue())).toEqual(['還在輸入的名稱 ', 'unfinished link']);
+		expect(display).not.toHaveBeenCalled();
+		expect(refresh).not.toHaveBeenCalled();
 	});
 });

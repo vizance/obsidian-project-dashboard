@@ -11,6 +11,22 @@ export interface ClassificationRule {
 export interface CalendarSetting {
 	name: string;
 	secretId: string;
+	color: string;
+}
+
+const DEFAULT_CALENDAR_COLORS = ['#4a7fd4', '#2f9e6e', '#e08a2c', '#8e5bd6', '#1b9aaa', '#d6559e'];
+
+// 位置從 1 起算，包含還沒填連結的列，名稱與預設色才會和設定頁的位置一致。
+export function defaultCalendarColor(position: number): string {
+	return DEFAULT_CALENDAR_COLORS[(position - 1) % DEFAULT_CALENDAR_COLORS.length] ?? DEFAULT_CALENDAR_COLORS[0]!;
+}
+
+export function calendarColor(calendar: CalendarSetting, position: number): string {
+	return calendar.color || defaultCalendarColor(position);
+}
+
+export function calendarDisplayName(calendar: CalendarSetting, position: number): string {
+	return calendar.name.trim() || `行事曆 ${position}`;
 }
 
 export const CALENDAR_SECRET_PREFIX = 'project-dashboard-calendar-';
@@ -122,12 +138,13 @@ function normalizeCalendars(raw: unknown): CalendarSetting[] {
 	for (const entry of raw) {
 		// 只有物件算一列；字串、數字、`null` 之類的項目沒有名稱與鑰匙可用，丟掉。
 		if (typeof entry !== 'object' || entry === null) continue;
-		const { name, secretId } = entry as { name?: unknown; secretId?: unknown };
+		const { name, secretId, color } = entry as { name?: unknown; secretId?: unknown; color?: unknown };
 		// 名稱或鑰匙空白的一列照樣留著：剛按「Add a calendar」還沒填完的那一列，
 		// 存檔後不能消失，否則設定頁的列與存起來的清單會對不上。讀取時再跳過它。
 		calendars.push({
 			name: typeof name === 'string' ? name.trim() : '',
 			secretId: typeof secretId === 'string' ? secretId.trim() : '',
+			color: typeof color === 'string' && color.length === 7 && /^#[0-9a-f]{6}$/i.test(color) ? color.toLowerCase() : '',
 		});
 	}
 	return calendars;
@@ -195,7 +212,7 @@ export function moveClassificationRule(
 
 export function addCalendar(calendars: readonly CalendarSetting[]): CalendarSetting[] {
 	// 新增的那一列名稱與鑰匙都空白；normalize 會留著它，讀取時跳過。
-	return [...calendars.map((c) => ({ ...c })), { name: '', secretId: '' }];
+	return [...calendars.map((c) => ({ ...c })), { name: '', secretId: '', color: '' }];
 }
 
 export function removeCalendar(calendars: readonly CalendarSetting[], index: number): CalendarSetting[] {

@@ -11,11 +11,12 @@ const UNSCHEDULED_TOOLTIP = '點一下，把任務排進這個月的某一週';
 
 const REFRESH_TOOLTIP = '重新讀取行事曆';
 
-// General 列的一行行程。提示是行事曆的顯示名稱，絕不會是連結
+// General 列的一行行程。標籤是行事曆的顯示名稱，絕不會是連結
 // （dashboard-calendar-row：Calendar links are kept in Obsidian's secret storage）。
 export interface CalendarEventLine {
 	text: string;
 	calendarName: string;
+	calendarColor: string;
 }
 
 export interface CalendarRowData {
@@ -131,7 +132,10 @@ export class MonthView {
 			if (i === todayIdx) classes.push('today-col');
 			const td = tr.createEl('td', { cls: classes.join(' ') });
 			for (const line of row.lines(w.label)) {
-				td.createDiv({ cls: 'gc-line', text: line.text, attr: { title: line.calendarName } });
+				const event = td.createDiv({ cls: 'gc-line' });
+				const label = event.createSpan({ cls: 'gc-label', text: line.calendarName });
+				label.setCssProps({ '--pd-calendar-color': line.calendarColor });
+				event.createSpan({ cls: 'gc-text', text: line.text });
 			}
 		});
 		// 行程不屬於任何專案，所以「還沒排」格子永遠是空的，也打不開浮窗。

@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { isCalendarAddress } from '../src/core/calendar';
-import { calendarLinkPlaceholder, generateCalendarSecretId } from '../src/core/settings';
+import { calendarColor, calendarLinkPlaceholder, defaultCalendarColor, generateCalendarSecretId } from '../src/core/settings';
+
+describe('calendar colors', () => {
+	it.each([
+		[1, '#4a7fd4'], [2, '#2f9e6e'], [3, '#e08a2c'], [4, '#8e5bd6'],
+		[5, '#1b9aaa'], [6, '#d6559e'], [7, '#4a7fd4'], [8, '#2f9e6e'],
+	])('uses the default color %s at position %s', (position, color) => {
+		expect(defaultCalendarColor(position)).toBe(color);
+	});
+
+	it('uses a picked color instead of the position default', () => {
+		expect(calendarColor({ name: '工作', secretId: 'a', color: '#8e5bd6' }, 1)).toBe('#8e5bd6');
+	});
+});
 
 describe('calendar link settings helpers', () => {
 	it('generates eight lowercase letters and digits using the injected random source', () => {

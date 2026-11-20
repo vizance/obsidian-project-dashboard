@@ -1,4 +1,14 @@
 import { addDaysISO, mondayOfWeek } from './weeks';
+import { calendarColor, calendarDisplayName, type CalendarSetting } from './settings';
+
+// 用穩定的鑰匙對應目前設定，行程展開結果沿用快取時仍能顯示新名稱與顏色。
+export function calendarLabel(calendars: readonly CalendarSetting[], secretId: string): { name: string; color: string } | null {
+	if (secretId === '') return null;
+	const index = calendars.findIndex((calendar) => calendar.secretId === secretId);
+	const calendar = calendars[index];
+	if (!calendar) return null;
+	return { name: calendarDisplayName(calendar, index + 1), color: calendarColor(calendar, index + 1) };
+}
 
 /**
  * General 列狀態列需要的讀取狀態。形狀與 `CalendarStore` 的 `state` 相符，但這裡
