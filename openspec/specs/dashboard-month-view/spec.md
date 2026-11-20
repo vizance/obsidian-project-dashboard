@@ -134,13 +134,19 @@ Each week cell of a project row in the month view SHALL list the project's task 
 - an open line whose week ends before today's week starts (an overdue line) SHALL show its text in the warning red;
 - any other open line SHALL show its text normally.
 
-Each project cell's kind SHALL be the kind the per-week cell model gives that week when the model runs over one continuous run of weeks that covers both the project's whole range (from its start through its overflow end) and the shown month, for any month and any year the month view can show (it does not depend on which year the year view renders). A week therefore has the same kind in the month view as in a year view that shows it, even when the shown month lies entirely after the project's expected end date. The kinds are `solid`, `settled`, `overflow`, `dashed`, and `blank`; a run that the per-week model returns as one `span-dashed` bar SHALL appear as individual `dashed` cells. The cell's background and border SHALL follow its kind. The week cells of the General row are defined by `dashboard-calendar-row`; they list events, have no cell kind, and never open a popover. A project cell SHALL show no text when no task line maps to its week, and a `blank` cell SHALL show no text even when task lines map to its week, because it cannot be opened (for example a task dated before the project's start).
+Each project cell's kind SHALL be the kind the per-week cell model (`dashboard-gantt-rendering`) gives that week. That kind depends only on the week and the project, so a week has the same kind in the month view as in any year view that shows it, for any month and any year. The kinds are `solid`, `settled`, `overflow`, `dashed`, and `blank`; a run that the per-week model returns as one `span-dashed` bar SHALL appear as individual `dashed` cells. The cell's background and border SHALL follow its kind. The week cells of the General row are defined by `dashboard-calendar-row`; they list events, have no cell kind, and never open a popover. A project cell SHALL show no text when no task line maps to its week. A week with task lines is never `blank`, so every task line with a date is listed in its week, including tasks dated before the project's start or after its expected end.
 
-#### Scenario: A blank week shows no text
+#### Scenario: A task before the start date is listed
 
 - **GIVEN** a project that starts on `2026-11-02` and whose note contains `- [ ] 前置作業 📅 2026-10-28`
 - **WHEN** the month view shows `2026-10`
-- **THEN** that project's `W44` cell MUST be `blank` and MUST show no text
+- **THEN** that project's `W44` cell MUST be `solid` and MUST list `前置作業`
+
+#### Scenario: A Saturday task after the expected end is listed
+
+- **GIVEN** an open project with expected end `2026-11-06`, `Saturday tasks count for next week` turned on, and a note containing `- [ ] 追蹤款項 📅 2026-12-05`
+- **WHEN** the month view shows `2026-12`
+- **THEN** that project's `W50` cell MUST be `overflow` and MUST list `追蹤款項`
 
 #### Scenario: Overflow weeks after the expected end
 

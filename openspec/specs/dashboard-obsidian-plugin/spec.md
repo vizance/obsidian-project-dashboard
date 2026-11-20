@@ -84,7 +84,7 @@ For every scanned note, the plugin scanner SHALL produce a project record with f
 
 The plugin SHALL derive today's date from the local date, formatted as `YYYY-MM-DD` in the user's local time zone; today's date SHALL NOT be derived from a UTC conversion. The year view SHALL open on the calendar year of today's date, and the user can show other years as defined by `dashboard-month-view` ("Switching between the year view and the month view"). The week columns SHALL cover every ISO week whose Thursday falls in the shown year. A project without any end date SHALL default to December 31 of today's year, whatever year is shown, with the warning `迄日預設為 <year>-12-31`.
 
-In the year view of any year, a week's cell SHALL be what the per-week or timeline model gives that week when the project's whole range is considered, including the weeks after its expected end up to its overflow end. A project whose expected end lies in an earlier year SHALL therefore still show its overflow weeks in the shown year, and in the `timeline` view mode its bar SHALL start at the first week of the shown year and end at the week of its overflow end. For the year of today's date the cells SHALL stay as they are, apart from this rule.
+In the year view of any year, every week's cell SHALL follow the per-week model or the timeline model of `dashboard-gantt-rendering`, which depend only on the week and the project. A project whose expected end lies in an earlier year SHALL therefore still show its overflow weeks in the shown year, and in the `timeline` view mode its bar SHALL be clipped to the shown year.
 
 #### Scenario: Taipei early morning uses the local date
 
@@ -260,3 +260,32 @@ The dashboard tab SHALL behave the same whether it is in Obsidian's main window 
 - **THEN** the popover MUST be closed
 - **AND** clicking a week cell in the main window MUST open the popover there
 - **AND** clicks in the closed or emptied pop-out window MUST NOT open or close any popover
+
+---
+### Requirement: README teaches setup and everyday use
+
+The repository SHALL have two README files with the same content: `README.md` in English and `README.zh-TW.md` in Traditional Chinese, each linking to the other in its first lines. Each SHALL be written as a step-by-step tutorial in plain language, in this order: what the plugin is, with a screenshot of the dashboard; installing with BRAT and manually; first-time setup (the project folder, the frontmatter fields a project note uses, and how task dates are written); the year view, the week popover, the month view, and the `還沒排` column; the calendar General row; paused projects and changing a project's status; the settings tab; network use; bundled third-party code; further reading; and a short development section. Every screenshot SHALL be stored under `docs/images/` and SHALL show only neutral example data — no real note, person, client, or calendar. The detailed behaviour rules that do not fit a tutorial SHALL be kept in `docs/details.md` and `docs/details.zh-TW.md`, linked from the README sections they belong to.
+
+The further-reading section SHALL link to these articles on the author's website, and the English README SHALL say that they are written in Traditional Chinese:
+
+- `https://chichu.co/blog/5-levels-personal-project-management`
+- `https://chichu.co/blog/8-steps-using-google-sheet-to-design-your-monthly-plan`
+- `https://chichu.co/blog/3-steps-using-muji-vertical-planner`
+- `https://chichu.co/blog/10-steps-using-obsidian-to-build-a-personal-project-management-system`
+- `https://chichu.co/blog/obsidian-claudian-project-note`
+- `https://chichu.co/blog/how-to-use-obsidian-to-manage-personal-project`
+
+The screenshots SHALL be produced by a script under `scripts/screenshots/` that renders the plugin's own view code with built-in example projects and an example calendar, so that a maintainer can re-create every image after a UI change.
+
+#### Scenario: Both READMEs have the same sections and images
+
+- **WHEN** a reader opens `README.md` and `README.zh-TW.md`
+- **THEN** both MUST have the sections above in the same order
+- **AND** every image they reference MUST exist under `docs/images/`
+- **AND** each MUST link to the other near the top
+
+#### Scenario: Screenshots contain no private data
+
+- **WHEN** the maintainer runs the screenshot script
+- **THEN** every image MUST be created from the script's example projects and example calendar
+- **AND** no file under `docs/images/` MUST show a name from the maintainer's vault or a real calendar address
