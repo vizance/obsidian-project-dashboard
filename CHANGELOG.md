@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.0 — Unreleased
+
+You can now install Project Dashboard on a phone and see this week and the next three weeks in a list from top to bottom. The year and month views are too wide for a phone, so each week groups tasks by project instead. Tick a task done or undo it, use `◀` or `▶` to move it one week, or tap a project name to open the note. Use Obsidian's back control to return to the dashboard. Empty weeks say `這週沒有任務`. A message tells you when a task moves outside the four weeks.
+
+`之前還沒做（n）` keeps unfinished tasks from earlier weeks in a section that starts collapsed. Expand it to tick a task or press `排到本週` to give it this week's schedule date, following `Which day to write`. A task ticked here stays until you collapse the section or open the dashboard tab again, so you can undo a mistaken tick.
+
+On a phone, the plugin reads no calendars and makes no network requests. The calendar settings show a short message directing you to a computer or tablet. Tablets keep the same year and month views as computers. Dragging the legend to reorder categories or dragging the name column's edge to resize it on a tablet needs a mouse or trackpad. Installation now allows phones and tablets as well as computers.
+
+現在可以在手機安裝 Project Dashboard，由上往下查看本週與後面 3 週的清單。年視圖與月視圖太寬，手機放不下，因此每週改成照專案分組列出任務。可以勾完成或取消，用 `◀`、`▶` 移動一週，或點專案名稱打開筆記，再按 Obsidian 的返回回到儀表板。沒有任務的週寫 `這週沒有任務`，移出這 4 週時會提示任務移到哪裡。
+
+`之前還沒做（n）` 收著之前幾週還沒完成的任務，預設收起。展開後可以勾完成，或按 `排到本週` 改成本週的排程日期，寫星期幾依 `Which day to write` 設定。在這一區打勾的任務會留到收起或重新打開儀表板分頁，按錯了能當場取消。
+
+手機上不讀行事曆，也不發任何網路請求。行事曆設定只顯示一句說明，請你到電腦或平板設定。平板維持和電腦相同的年視圖與月視圖；在平板上拖拉圖例來調整分類順序，或拖拉名稱欄邊緣來調整寬度，需要滑鼠或觸控板。安裝限制也已調整，電腦、平板、手機都能安裝。
+
 ## 0.5.0 — 2026-11-20
 
 A General row at the top of the month view, listing your calendar events week by week. The month view has shown the projects since 0.4.0, but the top row of a weekly table is usually everything that is not a project — a class, a trip, a day off — and until now that row had to be copied out of Google or Apple Calendar by hand every week. The dashboard now reads the calendars you point it at and writes their events into the same weeks as the tasks: `11/6（五）13:30 讀書會`, `11/11（三）休假`, `11/7（六）–11/9（一）研習營`. Each event begins with a label showing its calendar's name in that calendar's color. An unnamed calendar uses `行事曆 1`, `行事曆 2`, … by its position in the settings list. Repeating events are expanded into single occurrences, the calendar's own exceptions and moved occurrences are respected, cancelled events are not shown, and an event over several days is listed in every week it touches. The row is read-only — its cells open no popover — and the year view shows no events. Events are read at exactly five moments: when a dashboard tab opens, when you press the `↻` in the row, when you run the new command `Refresh calendars`, when you paste a new link for a calendar that was already set up (it is read again right away), and when the list of calendars with a link, or their order, changes in the settings. This last check uses only the link settings. Renaming a calendar or changing its color updates the labels after saving, without reading events again. Moving between months never reads anything. The status line under `General` says `讀取中…` while a read is running and `更新於 15:20` afterwards, and when a calendar cannot be read it adds `・⚠ 1 個行事曆讀不到` and names the calendar and the reason in its tooltip, while every other calendar — and every project row — carries on as before.

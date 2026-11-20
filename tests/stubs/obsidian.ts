@@ -111,6 +111,14 @@ export class ItemView {
 	constructor(_leaf: unknown) {}
 }
 
+export class Scope {
+	readonly bindings: Array<{ modifiers: string[]; key: string; callback: (event: KeyboardEvent) => boolean }> = [];
+	constructor(_parent?: unknown) {}
+	register(modifiers: string[], key: string, callback: (event: KeyboardEvent) => boolean): void {
+		this.bindings.push({ modifiers, key, callback });
+	}
+}
+
 // EventTarget keeps input/paste/change ordering testable without a real browser.
 export class SettingsElement extends EventTarget {
 	children: SettingsElement[] = [];

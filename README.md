@@ -12,7 +12,7 @@ Project Dashboard reads the project notes in one folder. Each project gets one r
 
 ## Install
 
-Requires Obsidian **1.11.7 or later**. Desktop only.
+Requires Obsidian **1.11.7 or later**. Works on computers, tablets, and phones. Tablets show the same views as computers. On a tablet, dragging the legend to reorder categories or dragging the name column's edge to resize it needs a mouse or trackpad.
 
 ### With BRAT (recommended)
 
@@ -114,6 +114,8 @@ See [unscheduled-task rules](docs/details.md#unscheduled-tasks) for which week b
 
 The month view's top row, `General`, shows calendar events by week. Each event has a label with its calendar's name and color. Events are read-only. Press `↻` to read them again.
 
+Calendar events show only on computers and tablets. On a phone, the plugin does not read calendars.
+
 1. Go to **Settings → Project Dashboard → Calendars**.
 2. Press `Add a calendar`.
 3. Give it a name. Chinese names work too.
@@ -146,6 +148,21 @@ Check `編輯分類與狀態` (“edit category and status”) to show menus on 
 
 See [status and category rules](docs/details.md#status-and-categories) for name conflicts and link updates.
 
+## On a phone
+
+Open the dashboard on your phone. It shows a list from top to bottom: `本週` (this week), `下週` (next week), and two more weeks. Each week groups tasks by project. A week with no tasks says `這週沒有任務` (no tasks this week).
+
+1. Tick a task to mark it done. It stays checked and grey in its week. Untick it to undo. Recurring tasks must be ticked in the note.
+2. Use `◀` or `▶` beside an open task to move its date one week earlier or later. If it leaves these four weeks, a message tells you where it went.
+3. If you see `之前還沒做（n）` (unfinished tasks from earlier weeks) at the top of the list, tap it to expand. Tap `排到本週` (schedule into this week) beside a task to change its date to this week's schedule date. The day follows **Settings → Project Dashboard → Dates → `Which day to write`**, Friday by default. A task ticked in this section stays there until you collapse the section or open the dashboard tab again, so you can untick a mistaken tick.
+4. Tap a project name to open its note in the same tab. Use Obsidian's back control to return to the dashboard.
+
+![Phone week list with tasks grouped by project and the earlier unfinished tasks expanded](docs/images/phone-week-list.png)
+
+The phone list has no calendars, year or month view, category or status editing, or help panel. You cannot add tasks or schedule undated tasks from this list. Use the note for those task changes. Use a computer or tablet for the other views and controls.
+
+See [phone week-list rules](docs/details.md#phone-week-list) for week boundaries, date choices, messages, and how earlier unfinished tasks are kept.
+
 ## Settings
 
 Go to **Settings → Project Dashboard**. There are four sections:
@@ -158,6 +175,8 @@ Go to **Settings → Project Dashboard**. There are four sections:
 Changes save and update the dashboard on their own. See [all settings](docs/details.md#settings) for the full field list and defaults.
 
 ## Network use
+
+On a phone, the plugin makes **no network requests**, even when calendars are set up.
 
 Without a calendar set up, the plugin makes **no network requests**. With calendars set up:
 

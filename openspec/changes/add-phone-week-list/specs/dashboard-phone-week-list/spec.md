@@ -107,7 +107,7 @@ Each row in the four weeks SHALL carry its editing controls directly on the row;
 - The checkbox SHALL be enabled only for a checkbox task that is not recurring. For a recurring task the checkbox SHALL be disabled and carry the same hint as the week-popover, `重複任務請在筆記裡勾選`. Changing an enabled checkbox SHALL toggle the line done or not done through the same write path as the week-popover, writing `✅ <today>` when ticking and removing the `✅` date when unticking.
 - `◀` and `▶` SHALL appear only on a checkbox task that is not done and has a `📅` date. Pressing one SHALL move that line's first `📅` date 7 days earlier or later through the same write path as the week-popover. A done line, a line without a `📅` date, and a line without a checkbox SHALL show neither.
 - While a write for a row is running, that row's controls SHALL be disabled; they SHALL be enabled again when the write finishes.
-- When a write fails because the note is missing or the line changed since the last scan, the dashboard SHALL show the same message as the week-popover (`找不到這則筆記` or `找不到那一行，可能剛被改過`) and re-scan, and the note SHALL stay unchanged.
+- When a write fails, the dashboard SHALL show the same message as the week-popover and the note SHALL stay unchanged: `找不到這則筆記` when the note is missing; `這一行在筆記裡剛被改過，畫面已更新，請再試一次` when the line changed since the last scan, after which the dashboard re-scans; `寫入筆記失敗，請再試一次` when reading or writing the note fails.
 
 After a successful `◀` or `▶`, the dashboard SHALL find the week of the new `📅` date under the week rule. When that week is before today's week it SHALL show the message `已移到 <M/D>，在「之前還沒做」裡`; when it is after the fourth week it SHALL show `已移到 <M/D>，超出這 4 週`; when it is one of the four weeks it SHALL show no message.
 
@@ -155,7 +155,7 @@ Every checkbox, `◀`, `▶`, `排到本週` button, the `之前還沒做` headi
 - **GIVEN** the phone week list shows `準備讀書會` and the line was edited in the note after the last scan
 - **WHEN** the user presses `▶` on `準備讀書會`
 - **THEN** the note MUST stay unchanged
-- **AND** the message `找不到那一行，可能剛被改過` MUST be shown
+- **AND** the message `這一行在筆記裡剛被改過，畫面已更新，請再試一次` MUST be shown
 
 ---
 ### Requirement: Overdue tasks are kept in the 之前還沒做 section
@@ -166,7 +166,7 @@ The top of the phone week list, below `顯示暫停（<n>）`, SHALL show the he
 
 When expanded, the section SHALL list the overdue lines grouped by project in the dashboard's row order, each group starting with the category color dot and project name, and within a project sorted by `📅` date and then by line order. Each row SHALL show red text, the `📅` date as `M/D`, a checkbox following the same rules as in the four weeks, and the button `排到本週`. Rows in this section SHALL NOT show `◀` or `▶`.
 
-Pressing `排到本週` SHALL change the line's first `📅` date to the schedule date of today's week — the date the week-popover writes when scheduling a task into that week, following the `Which day to write` setting and its Saturday exception — through the same write path as the week-popover's `◀` and `▶`, so that the line keeps exactly one `📅` date. The line then SHALL appear in today's week and leave the section.
+Pressing `排到本週` SHALL change the line's first `📅` date to the schedule date of today's week — the date the week-popover writes when scheduling a task into that week, following the `Which day to write` setting and its Saturday exception — through the same write path as the week-popover's `◀` and `▶`, without adding another `📅` date to the line; any later `📅` date on the line stays as it is. The line then SHALL appear in today's week and leave the section.
 
 A row ticked inside this section SHALL stay in the section, grey and checked, until the section is collapsed or the dashboard tab is opened again, so that a mistaken tick can be undone there; unticking it SHALL make it red and open again. `<n>` SHALL count only the lines that are not done. While the section is collapsed and `<n>` is 0, the heading row SHALL NOT be shown. While the section is expanded and `<n>` becomes 0, the heading row SHALL stay, reading `之前還沒做（0）`, until the section is collapsed.
 

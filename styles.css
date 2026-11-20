@@ -539,3 +539,33 @@
 	font-size: var(--font-ui-smaller);
 }
 .pd-calendar-row .pd-calendar-error[hidden] { display: none; }
+
+/* 手機以直向閱讀與行內操作為主，所有規則只作用於手機分頁。 */
+.pd-phone { font-size: 16px; }
+.pd-phone #chart { padding: 0 12px 24px; overflow-x: visible; }
+.pd-phone .phone-paused { display: flex; align-items: center; min-height: 44px; min-width: 44px; padding: 0 12px; gap: 8px; }
+.pd-phone .phone-paused[hidden] { display: none; }
+.pd-phone .phone-check-hit { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; width: 44px; height: 44px; flex: 0 0 44px; cursor: pointer; }
+.pd-phone .phone-check,
+.pd-phone .phone-paused input { margin: 0; flex: 0 0 auto; }
+.pd-phone .phone-overdue,
+.pd-phone .phone-week { padding: 6px 0; border-bottom: 1px solid var(--grid-soft); }
+.pd-phone .phone-week-heading { font-size: 18px; margin: 0; line-height: 1.3; overflow-wrap: anywhere; }
+.pd-phone .phone-overdue-heading,
+.pd-phone .phone-project-name,
+.pd-phone .phone-action { min-width: 44px; min-height: 44px; height: auto; white-space: normal; cursor: pointer; }
+.pd-phone .phone-overdue-heading { width: 100%; text-align: left; justify-content: flex-start; padding: 8px; margin: 8px 0; }
+.pd-phone .phone-project + .phone-project { margin-top: 8px; }
+.pd-phone .phone-project-name { display: flex; align-items: center; gap: 8px; background: transparent; box-shadow: none; border: 0; color: var(--text); font-weight: 600; text-align: left; padding: 0; margin: 0; max-width: 100%; line-height: 1.25; overflow-wrap: anywhere; }
+.pd-phone .cat-dot { display: inline-block; width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--pd-cat-color); }
+.pd-phone .phone-task { display: flex; align-items: center; gap: 4px; min-height: 48px; padding: 2px 0; }
+.pd-phone .phone-task-body { flex: 1; min-width: 0; line-height: 1.25; }
+.pd-phone .phone-task-text { white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+.pd-phone .phone-date { display: block; font-size: 13px; color: var(--text-dim); }
+.pd-phone .phone-actions { display: flex; align-items: center; flex: 0 0 auto; gap: 4px; margin-left: auto; }
+.pd-phone .phone-action { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; }
+.pd-phone .phone-overdue .phone-action { width: auto; padding: 0 10px; white-space: nowrap; }
+.pd-phone .phone-empty,
+.pd-phone .phone-done { color: var(--text-dim); }
+.pd-phone .phone-late,
+.pd-phone .phone-late .phone-date { color: var(--overflow-red); }

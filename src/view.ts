@@ -1,4 +1,4 @@
-import { ItemView, MarkdownView, Scope, TFile, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, MarkdownView, Platform, Scope, TFile, type WorkspaceLeaf } from 'obsidian';
 import { CATEGORIES, CATEGORY_KEYS } from './core/config';
 import type { Cell } from './core/cells';
 import { calendarLabel, calendarStatusLine, monthEventRange } from './core/calendar-row';
@@ -37,6 +37,7 @@ import type { DashboardSettings } from './core/settings';
 import { buildWeeks, groupMonths, groupQuarters, todayLocal, todayWeekIndex, type WeekInfo } from './core/weeks';
 import type ProjectDashboardPlugin from './main';
 import { MonthView, type CalendarRowData } from './month-view';
+import { PhoneWeekList } from './phone-week-list';
 import { projectStateClass, renderProjectColHeader, renderProjectHeadCell } from './project-column';
 import { TaskWriter, type TaskEdit } from './task-writer';
 import type { VaultSource } from './vault-source';
@@ -111,6 +112,8 @@ function sameTarget(a: PopoverTarget | null, b: PopoverTarget): boolean {
 
 export class ProjectDashboardView extends ItemView {
 	private today = '';
+	private layout: 'phone' | 'full' = 'full';
+	private phoneWeekList!: PhoneWeekList;
 	private viewMode: 'per-week' | 'timeline' = 'per-week';
 	private scale: 'year' | 'month' = 'year';
 	// 顯示中的期間只放在記憶體，重開分頁才回到今天，重繪保留正在規劃的期間。
@@ -193,6 +196,7 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
+		this.layout = Platform.isPhone ? 'phone' : 'full';
 		this.today = todayLocal();
 		this.taskWriter = new TaskWriter(this.app.vault);
 		this.loadPreferences();
@@ -204,12 +208,14 @@ export class ProjectDashboardView extends ItemView {
 		// 讀取開始（狀態列要顯示「讀取中…」）與結束都重繪，但不重新掃描筆記
 		// （design.md：行事曆更新走保留狀態的重繪）。先訂閱再讀取，第一次讀取的
 		// 開始通知才不會漏掉。
-		this.unsubscribeCalendars = this.plugin.calendars.subscribe(() => {
-			this.calendarVersion += 1;
-			this.renderPreservingPopover();
-		});
-		// 分頁打開是四種讀取時機之一；沒有行事曆設鑰匙時這一次完全不連網。
-		void this.plugin.calendars.refresh();
+		if (this.layout === 'full') {
+			this.unsubscribeCalendars = this.plugin.calendars.subscribe(() => {
+				this.calendarVersion += 1;
+				this.renderPreservingPopover();
+			});
+			// 手機分頁不訂閱也不開始讀取行事曆。
+			void this.plugin.calendars.refresh();
+		}
 		this.unsubscribeVaultSource = this.vaultSource.onChange(() => {
 			void this.handleExternalChange();
 		});
@@ -280,8 +286,10 @@ export class ProjectDashboardView extends ItemView {
 	// legend, and chart only (design.md: "重繪時保留畫面狀態" keeps the controls row).
 	render(): void {
 		this.updatePausedControl();
-		this.renderMeta();
-		this.renderLegend();
+		if (this.layout === 'full') {
+			this.renderMeta();
+			this.renderLegend();
+		}
 		this.renderChart();
 	}
 
@@ -311,6 +319,7 @@ export class ProjectDashboardView extends ItemView {
 		this.pinnedCategory = parsePinnedCategory(this.readLocalStorage('dashboard.pinnedCategory'), CATEGORY_KEYS);
 		this.projColWidth = parseProjColWidth(this.readLocalStorage('dashboard.projColWidth'));
 
+		if (this.layout === 'phone') return;
 		const resolved = resolveInitialHelpPanel(
 			this.readLocalStorage('dashboard.helpFirstSeen'),
 			this.readLocalStorage('dashboard.helpPanelOpen'),
@@ -326,9 +335,15 @@ export class ProjectDashboardView extends ItemView {
 		this.contentEl.empty();
 		this.contentEl.addClass('project-dashboard');
 		this.contentEl.removeClass('editing-categories');
+		this.contentEl.toggleClass('pd-phone', this.layout === 'phone');
 		this.showClosed = false;
 		this.showPaused = false;
 		this.contentEl.setCssProps({ '--proj-col-width': `${this.projColWidth}px` });
+
+		if (this.layout === 'phone') {
+			this.buildPhoneLayout();
+			return;
+		}
 
 		const header = this.contentEl.createEl('header');
 		header.createEl('h1', { text: '專案總覽' });
@@ -456,6 +471,40 @@ export class ProjectDashboardView extends ItemView {
 		});
 
 		this.setHelpPanelVisible(this.helpPanelOpen);
+	}
+
+	private buildPhoneLayout(): void {
+		this.showPausedLabel = this.contentEl.createEl('label', { cls: 'phone-paused' });
+		const input = this.showPausedLabel.createEl('input', { attr: { type: 'checkbox' } });
+		this.showPausedText = this.showPausedLabel.createSpan();
+		this.registerDomEvent(input, 'change', () => {
+			this.showPaused = input.checked;
+			this.renderPreservingPopover();
+		});
+		this.chartEl = this.contentEl.createDiv({ attr: { id: 'chart' } });
+		this.toastEl = this.contentEl.createDiv({ attr: { id: 'toast', role: 'status', 'aria-live': 'polite' } });
+		this.toastEl.hidden = true;
+		this.phoneWeekList = new PhoneWeekList({
+			projects: () => this.visibleSortedProjects(),
+			settings: () => this.settings,
+			today: () => this.today,
+			toggle: (project, line) => this.runPhoneEdit({
+				kind: 'toggle', path: project.path, line: line.line, raw: line.raw, today: todayLocal(),
+			}),
+			shift: (project, line, days) => this.runPhoneEdit({
+				kind: 'shift', path: project.path, line: line.line, raw: line.raw, days,
+			}),
+			openNote: (path) => { void this.openProjectNote(path); },
+			showToast: (message) => this.showToast(message),
+		});
+	}
+
+	private async runPhoneEdit(edit: TaskEdit): Promise<boolean> {
+		let ok = false;
+		const result = await this.applyEdit(edit, () => { ok = true; });
+		// 手機直接重掃提供完成回饋，不必等防抖的 vault 事件；stale 已在 applyEdit 重掃。
+		if (ok || result === 'restore') await this.refreshPreservingPopover();
+		return ok;
 	}
 
 	// 控制列的「年／月」切換與期間導覽。元素只建一次，之後只改文字與顯示與否，
@@ -685,6 +734,7 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	private registerInteractions(): void {
+		if (this.layout === 'phone') return;
 		this.registerLegendDrag();
 		this.registerResizeHandle();
 		this.registerCategoryOverride();
@@ -694,6 +744,7 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	private registerShortcuts(): void {
+		if (this.layout === 'phone') return;
 		const scope = this.scope;
 		if (!scope) return;
 
@@ -942,6 +993,12 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	private async openProjectNote(path: string): Promise<void> {
+		if (this.layout === 'phone') {
+			const file = this.app.vault.getAbstractFileByPath(path);
+			if (file instanceof TFile) await this.leaf.openFile(file);
+			else this.showToast(MSG_MISSING_FILE, true);
+			return;
+		}
 		await this.openNoteInSplit(path);
 	}
 
@@ -1260,6 +1317,7 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	private closeWeekPopover(): void {
+		if (this.layout === 'phone') return;
 		this.popoverEl.hidden = true;
 		this.popoverAnchor = null;
 		this.popoverTarget = null;
@@ -1280,11 +1338,14 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	// 寫入失敗一律有 toast（Implementation Contract：寫入失敗不靜默）；成功不顯示
-	// 訊息，等 vault 事件帶來的重繪當回饋。
-	private async applyEdit(edit: TaskEdit): Promise<WeekPopoverActionResult> {
+	// 訊息；手機呼叫端用成功回呼決定是否提示移出範圍，不能把 stale 的 rerender 當成功。
+	private async applyEdit(edit: TaskEdit, onSuccess?: () => void): Promise<WeekPopoverActionResult> {
 		try {
 			const result = await this.taskWriter.apply(edit);
-			if (result.status === 'ok') return 'rerender';
+			if (result.status === 'ok') {
+				onSuccess?.();
+				return 'rerender';
+			}
 			if (result.status === 'missing-file') {
 				this.showToast(MSG_MISSING_FILE, true);
 				return 'restore';
@@ -1415,6 +1476,13 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	private renderChart(): void {
+		if (this.layout === 'phone') {
+			if (this.missingFolderMessage) {
+				this.chartEl.empty();
+				this.chartEl.createDiv({ cls: 'empty', text: this.missingFolderMessage });
+			} else this.phoneWeekList.render(this.chartEl);
+			return;
+		}
 		// 今天可能在筆記更新時跨月或跨年，返回按鈕的顯示條件也要跟著更新。
 		this.updateScaleControls();
 		// 每個錨點都會被換掉，所以先關閉浮窗；需要留著的呼叫端（重繪）會在之後
@@ -1473,7 +1541,7 @@ export class ProjectDashboardView extends ItemView {
 	// 與年視圖共用的列：篩選、排序、分組都走這一條，月視圖才會有相同的列與順序。
 	private visibleSortedProjects(): ProjectRecord[] {
 		return sortProjects(
-			visibleProjects(this.projects, this.showClosed, this.showPaused),
+			visibleProjects(this.projects, this.layout === 'phone' ? false : this.showClosed, this.showPaused),
 			this.categoryOrder,
 			this.pinnedCategory,
 		);

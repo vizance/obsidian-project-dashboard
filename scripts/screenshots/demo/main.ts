@@ -1,4 +1,4 @@
-import { App, ItemView, setCalendarResponses } from 'obsidian';
+import { App, ItemView, Platform, setCalendarResponses } from 'obsidian';
 import ProjectDashboardPlugin from '../../../src/main';
 import { DashboardSettingTab } from '../../../src/settings-tab';
 import { VIEW_TYPE_DASHBOARD } from '../../../src/view';
@@ -7,6 +7,8 @@ import { calendarResponses, calendarSecrets, demoPluginData, projects } from './
 async function main(): Promise<void> {
 	const root = document.querySelector<HTMLElement>('#screenshot-root');
 	if (!root) throw new Error('找不到展示頁容器');
+	const mode = new URLSearchParams(window.location.search).get('mode');
+	Platform.isPhone = mode === 'phone';
 	const app = new App(root);
 	app.pluginData = demoPluginData();
 	app.saveLocalStorage('dashboard.helpFirstSeen', 'true');
@@ -18,7 +20,7 @@ async function main(): Promise<void> {
 
 	const plugin = new ProjectDashboardPlugin(app);
 	await plugin.onload();
-	if (new URLSearchParams(window.location.search).get('mode') === 'settings') {
+	if (mode === 'settings') {
 		const tab = plugin.settingTabs.find((candidate) => candidate instanceof DashboardSettingTab);
 		if (!tab) throw new Error('找不到展示設定頁');
 		root.appendChild(tab.containerEl);
@@ -28,8 +30,8 @@ async function main(): Promise<void> {
 		const leaf = app.workspace.getLeaf('tab');
 		await leaf.setViewState({ type: VIEW_TYPE_DASHBOARD });
 		// Wait for both built-in calendars before the capture script sees ready.
-		await plugin.calendars.refresh();
-		root.dataset.mode = 'dashboard';
+		if (mode !== 'phone') await plugin.calendars.refresh();
+		root.dataset.mode = mode === 'phone' ? 'phone' : 'dashboard';
 		window.addEventListener('pagehide', () => {
 			if (leaf.view instanceof ItemView) { void leaf.view.onClose(); leaf.view.unload(); }
 			plugin.onunload();

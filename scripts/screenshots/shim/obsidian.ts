@@ -57,6 +57,15 @@ Object.assign(HTMLElement.prototype, {
 });
 Object.assign(globalThis, { activeDocument: document, activeWindow: window });
 
+export const Platform = {
+	isDesktop: true,
+	isDesktopApp: true,
+	isMobile: false,
+	isMobileApp: false,
+	isPhone: false,
+	isTablet: false,
+};
+
 export abstract class TAbstractFile {
 	name: string;
 	parent: TFolder | null = null;

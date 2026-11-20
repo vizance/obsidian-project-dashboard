@@ -28,6 +28,7 @@ NAMES = (
     'paused-rows.png',
     'year-2027.png',
     'settings-calendars.png',
+    'phone-week-list.png',
 )
 
 
@@ -132,6 +133,12 @@ def capture():
                 elif area == 'help':
                     page.locator('#help-panel [role=tab][aria-selected=true]').hover()
                     elements = [page.locator('#help-panel')]
+                elif area == 'phone':
+                    page.locator('.phone-overdue-heading').hover()
+                    elements = [page.locator('#chart')]
+                    paused = page.locator('.phone-paused')
+                    if paused.is_visible():
+                        elements += [paused]
                 else:
                     page.locator('.month-title').hover()
                     elements = [page.locator('#chart table')]
@@ -142,6 +149,12 @@ def capture():
 
                 # 版面太高時先擴大工作畫布；截圖仍只取內容外框。
                 clip = content_clip([el.bounding_box() for el in elements], 0 if area == 'help' else 16)
+                if area == 'phone':
+                    # README 只呈現清單開頭，避免整張長圖縮小後看不清楚。
+                    clip = {
+                        'x': 0, 'y': 0, 'width': 390,
+                        'height': min(1300, ceil(clip['y'] + clip['height'])),
+                    }
                 viewport = page.viewport_size
                 assert viewport, '找不到截圖畫布'
                 if clip['y'] + clip['height'] > viewport['height']:
@@ -149,7 +162,8 @@ def capture():
                         'width': viewport['width'],
                         'height': ceil(clip['y'] + clip['height']),
                     })
-                    clip = content_clip([el.bounding_box() for el in elements], 0 if area == 'help' else 16)
+                    if area != 'phone':
+                        clip = content_clip([el.bounding_box() for el in elements], 0 if area == 'help' else 16)
                 viewport = page.viewport_size
                 assert (
                     clip['x'] >= 0 and clip['y'] >= 0
@@ -245,6 +259,19 @@ def capture():
             assert page.locator('.pd-calendar-row').count() == 2, '行事曆設定數量不符'
             page.locator('button', has_text='Add a calendar').wait_for(state='visible')
             snapshot('settings-calendars.png', area='calendars')
+
+            step = '拍攝手機週清單'
+            page.set_viewport_size({'width': 390, 'height': 844})
+            page.goto(DEMO.as_uri() + '?mode=phone')
+            page.wait_for_selector('#screenshot-root[data-ready="true"], #screenshot-root[data-error]')
+            if page.locator('#screenshot-root[data-error]').count():
+                raise RuntimeError(page.locator('#screenshot-root').inner_text())
+            page.evaluate('document.fonts.ready')
+            assert page.locator('#screenshot-root').get_attribute('data-mode') == 'phone', '未開啟手機版面'
+            assert page.locator('.phone-week-heading').first.inner_text() == '本週 W47 11/16–11/22', '今天日期未固定'
+            page.locator('.phone-overdue-heading').click()
+            assert page.locator('.phone-overdue-heading').get_attribute('aria-expanded') == 'true', '之前還沒做未展開'
+            snapshot('phone-week-list.png', area='phone')
             browser.close()
 
         for name in NAMES:
