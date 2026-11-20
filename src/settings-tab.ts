@@ -1,8 +1,12 @@
-import { PluginSettingTab, SecretComponent, Setting, TFolder, type App } from 'obsidian';
+import { PluginSettingTab, Setting, TFolder, type App } from 'obsidian';
+import { isCalendarAddress } from './core/calendar';
 import { CATEGORIES, CATEGORY_KEYS } from './core/config';
 import {
 	addCalendar,
 	addClassificationRule,
+	CALENDAR_SECRET_PREFIX,
+	calendarLinkPlaceholder,
+	generateCalendarSecretId,
 	moveClassificationRule,
 	removeCalendar,
 	removeClassificationRule,
@@ -188,10 +192,11 @@ export class DashboardSettingTab extends PluginSettingTab {
 	private buildCalendarSection(): void {
 		const heading = new Setting(this.containerEl)
 			.setName('Calendars')
-			.setDesc(`Show events from your calendars at the top of the month view. The plugin reads your calendars over the internet. It never changes them. Each calendar's link is kept in a safe place inside Obsidian, not in this plugin's files.`)
+			.setDesc('Show events from your calendars at the top of the month view. The plugin only reads your calendars. It never changes them.')
 			.setHeading();
 		// 取得方式另起一行：使用者要照著這一步去 Google 複製連結，和上面的說明分開才好找。
-		heading.descEl.createDiv({ text: 'In Google Calendar, open the settings of a calendar and copy "Secret address in iCal format".' });
+		heading.descEl.createDiv({ text: 'Google Calendar: open the calendar\'s settings and copy "Secret address in iCal format" (iCal 格式的私密網址).' });
+		heading.descEl.createDiv({ text: 'iCloud: share the calendar as a public calendar and copy its link.' });
 
 		this.settings.calendars.forEach((calendar, index) => {
 			const row = new Setting(this.containerEl);
@@ -203,17 +208,54 @@ export class DashboardSettingTab extends PluginSettingTab {
 						this.patch({ calendars: replaceCalendar(this.settings.calendars, index, { name: value }) });
 					});
 			});
-			// 密鑰選擇器給的是鑰匙的 ID，連結本身留在 Obsidian 的密鑰儲存區；設定頁只存這個
-			// ID，從不去讀鑰匙的內容。
-			row.addComponent((el) => new SecretComponent(this.app, el)
-				.setValue(calendar.secretId)
-				.onChange((value) => {
-					this.patch({ calendars: replaceCalendar(this.settings.calendars, index, { secretId: value }) });
-				}));
+			row.addText((text) => {
+				const storedValue = calendar.secretId === '' ? null : this.app.secretStorage.getSecret(calendar.secretId);
+				text.setPlaceholder(calendarLinkPlaceholder(calendar.secretId, storedValue));
+				const errorEl = row.controlEl.createDiv({
+					cls: 'pd-calendar-error',
+					text: 'This is not a calendar link. It should start with https:// or webcal://.',
+				});
+				errorEl.setAttribute('role', 'alert');
+				errorEl.hidden = true;
+				text.onChange(() => { errorEl.hidden = true; });
+				const saveLink = (): void => {
+					// 貼上事件延後執行時，這列可能已被刪除或重畫，不能把舊列寫回清單。
+					if (!this.containerEl.contains(row.settingEl)) return;
+					const link = text.getValue().trim();
+					if (link === '') return;
+					if (!isCalendarAddress(link)) {
+						errorEl.hidden = false;
+						return;
+					}
+					const current = this.settings.calendars[index]!;
+					const id = current.secretId || generateCalendarSecretId([
+						...this.settings.calendars.map((entry) => entry.secretId),
+						...this.app.secretStorage.listSecrets(),
+					]);
+					this.app.secretStorage.setSecret(id, link);
+					this.patch({ calendars: replaceCalendar(this.settings.calendars, index, { secretId: id }) });
+					// 只更新這個欄位，其他列尚未送出的連結與正在輸入的名稱才不會被清掉。
+					text.setValue('').setPlaceholder(calendarLinkPlaceholder(id, link));
+					errorEl.hidden = true;
+				};
+				text.inputEl.addEventListener('paste', () => {
+					// paste 先於瀏覽器填入文字；等預設動作完成，才讀取貼上後的完整內容。
+					window.setTimeout(saveLink, 0);
+				});
+				text.inputEl.addEventListener('keydown', (event) => {
+					if (event.key === 'Enter' && !event.isComposing) {
+						event.preventDefault();
+						saveLink();
+					}
+				});
+				text.inputEl.addEventListener('change', saveLink);
+			});
 			row.addExtraButton((button) => {
 				button.setIcon('trash')
 					.setTooltip('Delete')
 					.onClick(() => {
+						const id = this.settings.calendars[index]!.secretId;
+						if (id.startsWith(CALENDAR_SECRET_PREFIX)) this.app.secretStorage.setSecret(id, '');
 						this.patchCalendars(removeCalendar(this.settings.calendars, index));
 					});
 			});

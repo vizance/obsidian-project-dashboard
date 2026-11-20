@@ -68,6 +68,10 @@ export function normalizeCalendarAddress(raw: string): CalendarAddress {
 	return { ok: false, reason: INVALID_ADDRESS_REASON };
 }
 
+export function isCalendarAddress(raw: string): boolean {
+	return normalizeCalendarAddress(raw).ok;
+}
+
 /**
  * 解讀 iCalendar 文字。看不懂時丟出錯誤，由上層對應成 `內容看不懂`。
  */

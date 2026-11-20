@@ -1,4 +1,4 @@
-// Minimal stand-in for the parts of the `obsidian` module that src/vault-source.ts touches.
+// Minimal stand-in for the vault and settings APIs exercised by the tests.
 // Real plugin code runs against the real API; this file only has to satisfy the vitest alias.
 
 export abstract class TAbstractFile {
@@ -94,4 +94,106 @@ export class Plugin {
 	registerEvent(_eventRef: EventRef): void {
 		// no-op: real Plugin unregisters this on unload, not needed for these tests.
 	}
+}
+
+// EventTarget keeps input/paste/change ordering testable without a real browser.
+export class SettingsElement extends EventTarget {
+	children: SettingsElement[] = [];
+	classes = new Set<string>();
+	attributes = new Map<string, string>();
+	textContent = '';
+	value = '';
+	placeholder = '';
+	hidden = false;
+
+	createDiv(options: { cls?: string; text?: string } = {}): SettingsElement {
+		const child = new SettingsElement();
+		if (options.cls) child.addClass(options.cls);
+		child.textContent = options.text ?? '';
+		this.children.push(child);
+		return child;
+	}
+
+	addClass(name: string): void { this.classes.add(name); }
+	setAttribute(name: string, value: string): void { this.attributes.set(name, value); }
+	empty(): void { this.children = []; }
+	contains(child: SettingsElement): boolean {
+		return child === this || this.children.some((entry) => entry.contains(child));
+	}
+}
+
+export class SettingsText {
+	constructor(readonly inputEl: SettingsElement) {}
+	setPlaceholder(value: string): this { this.inputEl.placeholder = value; return this; }
+	setValue(value: string): this { this.inputEl.value = value; return this; }
+	getValue(): string { return this.inputEl.value; }
+	onChange(callback: (value: string) => void): this {
+		this.inputEl.addEventListener('input', () => callback(this.getValue()));
+		return this;
+	}
+	addOption(_value: string, _label: string): this { return this; }
+}
+
+class SettingsButton {
+	label = '';
+	icon = '';
+	callback: () => void = () => {};
+	setIcon(value: string): this { this.icon = value; return this; }
+	setTooltip(value: string): this { this.label = value; return this; }
+	setButtonText(value: string): this { this.label = value; return this; }
+	setDisabled(_value: boolean): this { return this; }
+	onClick(callback: () => void): this { this.callback = callback; return this; }
+}
+
+class SettingsToggle {
+	setValue(_value: boolean): this { return this; }
+	onChange(_callback: (value: boolean) => void): this { return this; }
+}
+
+export class Setting {
+	static instances: Setting[] = [];
+	settingEl: SettingsElement;
+	controlEl: SettingsElement;
+	descEl: SettingsElement;
+	name = '';
+	texts: SettingsText[] = [];
+	buttons: SettingsButton[] = [];
+	extraButtons: SettingsButton[] = [];
+
+	constructor(container: SettingsElement) {
+		this.settingEl = container.createDiv();
+		this.descEl = this.settingEl.createDiv();
+		this.controlEl = this.settingEl.createDiv();
+		Setting.instances.push(this);
+	}
+
+	setName(value: string): this { this.name = value; return this; }
+	setDesc(value: string): this { this.descEl.textContent = value; return this; }
+	setHeading(): this { return this; }
+	addText(callback: (text: SettingsText) => void): this {
+		const text = new SettingsText(this.controlEl.createDiv());
+		this.texts.push(text);
+		callback(text);
+		return this;
+	}
+	addTextArea(callback: (text: SettingsText) => void): this { return this.addText(callback); }
+	addDropdown(callback: (text: SettingsText) => void): this { return this.addText(callback); }
+	addToggle(callback: (toggle: SettingsToggle) => void): this { callback(new SettingsToggle()); return this; }
+	addButton(callback: (button: SettingsButton) => void): this {
+		const button = new SettingsButton();
+		this.buttons.push(button);
+		callback(button);
+		return this;
+	}
+	addExtraButton(callback: (button: SettingsButton) => void): this {
+		const button = new SettingsButton();
+		this.extraButtons.push(button);
+		callback(button);
+		return this;
+	}
+}
+
+export class PluginSettingTab {
+	containerEl = new SettingsElement();
+	constructor(readonly app: unknown, _plugin: unknown) {}
 }

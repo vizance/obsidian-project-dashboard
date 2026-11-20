@@ -463,8 +463,14 @@
 .pd-rule-row .setting-item-control { justify-content: flex-start; }
 .pd-rule-row .setting-item-control input[type="text"] { flex: 1; }
 
-/* 行事曆列也沒有名稱，和分類規則列同一套排版。名稱欄用直接子選擇器放寬，
-   密鑰選擇器裡面的輸入框才不會跟著被拉寬。 */
+/* 行事曆列的欄位可換行，較窄的設定頁才不會把連結欄擠出畫面。 */
 .pd-calendar-row .setting-item-info { display: none; }
-.pd-calendar-row .setting-item-control { justify-content: flex-start; }
-.pd-calendar-row .setting-item-control > input[type="text"] { flex: 1; }
+.pd-calendar-row .setting-item-control { justify-content: flex-start; flex-wrap: wrap; }
+.pd-calendar-row .setting-item-control > input[type="text"] { flex: 1; min-width: 0; }
+.pd-calendar-row .pd-calendar-error {
+	flex-basis: 100%;
+	order: 1;
+	color: var(--text-error);
+	font-size: var(--font-ui-smaller);
+}
+.pd-calendar-row .pd-calendar-error[hidden] { display: none; }

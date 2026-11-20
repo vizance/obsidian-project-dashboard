@@ -13,6 +13,28 @@ export interface CalendarSetting {
 	secretId: string;
 }
 
+export const CALENDAR_SECRET_PREFIX = 'project-dashboard-calendar-';
+const CALENDAR_SECRET_CHARACTERS = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+export function generateCalendarSecretId(usedIds: readonly string[], random: () => number = Math.random): string {
+	const used = new Set(usedIds);
+	let id: string;
+	do {
+		id = CALENDAR_SECRET_PREFIX;
+		for (let i = 0; i < 8; i++) {
+			id += CALENDAR_SECRET_CHARACTERS.charAt(Math.floor(random() * CALENDAR_SECRET_CHARACTERS.length));
+		}
+	} while (used.has(id));
+	return id;
+}
+
+export function calendarLinkPlaceholder(secretId: string, storedValue: string | null): string {
+	if (secretId === '') return 'Paste the calendar link here';
+	return storedValue
+		? 'Link saved. Paste a new link to change it.'
+		: 'This computer has no link yet. Paste it here.';
+}
+
 export interface DashboardSettings {
 	projectFolder: string;
 	classificationRules: ClassificationRule[];
