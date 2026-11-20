@@ -160,7 +160,11 @@ def capture():
                     path=str(staging / name),
                     clip=clip,
                     animations='disabled',
-                    style='' if area == 'help' else '#help-fab { visibility: hidden !important; }',
+                    # 說明面板只拍面板本身，後面的表格先藏起來，邊緣才不會透出表格的字。
+                    style=(
+                        '#chart, .controls, .project-dashboard header { visibility: hidden !important; }'
+                        if area == 'help' else '#help-fab { visibility: hidden !important; }'
+                    ),
                 )
 
             step = '拍攝 2026 年視圖'

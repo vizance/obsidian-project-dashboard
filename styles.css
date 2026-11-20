@@ -529,7 +529,9 @@
 /* 行事曆列的欄位可換行，較窄的設定頁才不會把連結欄擠出畫面。 */
 .pd-calendar-row .setting-item-info { display: none; }
 .pd-calendar-row .setting-item-control { justify-content: flex-start; flex-wrap: wrap; }
-.pd-calendar-row .setting-item-control > input[type="text"] { flex: 1; min-width: 0; }
+/* 連結欄是密碼欄（type="password"），要另外指定寬度；不然提示字「Link saved. Paste a new link to change it.」會被切掉。 */
+.pd-calendar-row .setting-item-control > input[type="text"] { flex: 1 1 8em; min-width: 0; }
+.pd-calendar-row .setting-item-control > input[type="password"] { flex: 2 1 18em; min-width: 0; }
 .pd-calendar-row .pd-calendar-error {
 	flex-basis: 100%;
 	order: 1;
