@@ -556,99 +556,132 @@ export class ProjectDashboardView extends ItemView {
 		});
 		const closeBtn = this.helpPanelEl.createEl('button', {
 			cls: 'close-btn',
-			attr: { id: 'help-close', title: '關閉（也可按 ? 切換）' },
+			attr: { id: 'help-close', type: 'button', title: '關閉（也可按 ? 切換）', 'aria-label': '關閉說明面板' },
 			text: '×',
 		});
 		this.registerDomEvent(closeBtn, 'click', () => this.toggleHelpPanel(false));
 
-		const shortcuts = this.helpPanelEl.createEl('section', { cls: 'shortcuts' });
-		shortcuts.createEl('h3', { text: '快捷鍵' });
-		const shortcutsUl = shortcuts.createEl('ul');
-		const tLi = shortcutsUl.createEl('li');
-		tLi.createEl('kbd', { text: 'T' });
-		tLi.appendText(' 切換週視圖 / Timeline，只作用在年視圖');
-		const mLi = shortcutsUl.createEl('li');
-		mLi.createEl('kbd', { text: 'M' });
-		mLi.appendText(' 切換年 / 月');
-		const helpLi = shortcutsUl.createEl('li');
-		helpLi.createEl('kbd', { text: '?' });
-		helpLi.appendText(' 顯示 / 隱藏面板');
-
-		const legendVisual = this.helpPanelEl.createEl('section', { cls: 'legend-visual' });
-		legendVisual.createEl('h3', { text: '圖示說明' });
-		const legendUl = legendVisual.createEl('ul');
-
-		const addLegendRow = (swatchCls: string, build: (container: HTMLElement) => void, rowCls = ''): HTMLTableCellElement => {
-			const li = legendUl.createEl('li');
+		const tabList = this.helpPanelEl.createDiv({ cls: 'help-tabs', attr: { role: 'tablist', 'aria-label': '說明分類' } });
+		const tabs = [
+			{ key: 'year', label: '年視圖' },
+			{ key: 'month', label: '月視圖' },
+			{ key: 'actions', label: '操作' },
+		];
+		const panels = tabs.map(({ key, label }, index) => {
+			const selected = key === (this.scale === 'month' ? 'month' : 'year');
+			const tabId = `help-tab-${key}`;
+			const panelId = `help-content-${key}`;
+			const tab = tabList.createEl('button', {
+				text: label,
+				attr: { type: 'button', id: tabId, role: 'tab', 'aria-selected': String(selected), 'aria-controls': panelId, tabindex: selected ? '0' : '-1' },
+			});
+			const panel = this.helpPanelEl.createDiv({
+				cls: 'help-tabpanel',
+				attr: { id: panelId, role: 'tabpanel', 'aria-labelledby': tabId, tabindex: '0' },
+			});
+			panel.hidden = !selected;
+			this.registerDomEvent(tab, 'click', () => this.selectHelpTab(tabId));
+			this.registerDomEvent(tab, 'keydown', (event: KeyboardEvent) => {
+				if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+				event.preventDefault();
+				const next = (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+				this.selectHelpTab(`help-tab-${tabs[next]!.key}`, true);
+			});
+			return panel;
+		});
+		const yearPanel = panels[0]!;
+		const monthPanel = panels[1]!;
+		const actionsPanel = panels[2]!;
+		const addGroup = (panel: HTMLElement, heading: string): HTMLUListElement => {
+			const group = panel.createEl('section', { cls: 'help-group' });
+			group.createEl('h4', { text: heading });
+			return group.createEl('ul');
+		};
+		const addVisualRow = (list: HTMLElement, explanation: string): HTMLElement => {
+			const li = list.createEl('li', { cls: 'help-visual-row' });
+			const sample = li.createDiv({ cls: 'help-sample', attr: { 'aria-hidden': 'true' } });
+			li.createDiv({ cls: 'help-description', text: explanation });
+			return sample;
+		};
+		const addLegendRow = (list: HTMLElement, swatchCls: string, explanation: string, rowCls = ''): HTMLTableCellElement => {
+			const sample = addVisualRow(list, explanation).createEl('table', { cls: 'legend-sample' });
 			// 真正的列與儲存格讓暫停、今天欄與名稱標記沿用圖表樣式。
-			const sample = li.createEl('table', { cls: 'legend-sample', attr: { 'aria-hidden': 'true' } });
 			sample.setCssProps({ '--pd-cat-color': '#3B82F6' });
 			const row = sample.createEl('tbody').createEl('tr', { cls: rowCls });
 			const cell = row.createEl('td', { cls: 'proj-cell' });
 			if (swatchCls) cell.createSpan({ cls: `swatch ${swatchCls}` });
-			const div = li.createDiv();
-			build(div);
 			return cell;
 		};
 
-		addLegendRow('bar bar-solid', (div) => div.appendText('該週有任務排定（尚未完成）'));
-		addLegendRow('bar bar-solid bar-settled', (div) => div.appendText('該週任務已全部完成（settled）'));
-		addLegendRow('bar bar-dashed', (div) => div.appendText('該週無任務（仍在專案區間）'));
-		addLegendRow('bar bar-overflow', (div) => {
-			div.appendText('超出原訂結束日（scope creep）— 該回去更新 frontmatter ');
-			div.createEl('code', { text: '預計結束日期' });
-		});
-		const pausedSample = addLegendRow('bar bar-solid', (div) => div.appendText('暫停的專案（勾「顯示暫停」才會出現）'), 'status-pending');
-		pausedSample.createSpan({ cls: 'pause-badge', text: '⏳ 暫停' });
-		addLegendRow('bar bar-solid done', (div) => div.appendText('已完成或取消的專案（勾「顯示已結案」才會出現）'));
-		addLegendRow('today-sample', (div) => div.appendText('今天所在的週')).addClass('today-col');
-		const warningSample = addLegendRow('', (div) => div.appendText('日期有缺漏、是推算的，或有問題；滑過去看原因'));
-		warningSample.appendText('專案');
-		warningSample.createSpan({ cls: 'warn', text: '⚠' });
-		addLegendRow('blank', (div) => div.appendText('這週沒有任務，而且不在專案區間，或專案已結案'));
+		const tasks = addGroup(yearPanel, '每一格＝這週的任務');
+		addLegendRow(tasks, 'bar bar-solid', '有任務，還沒全部完成');
+		addLegendRow(tasks, 'bar bar-solid bar-settled', '這週的任務都完成了');
+		addLegendRow(tasks, 'bar bar-dashed', '在專案期間內，這週沒有任務');
+		addLegendRow(tasks, 'blank', '沒有任務，也不在專案期間（或專案已結案）');
 
-		// 月視圖的格子直接列任務文字，三種樣式各代表什麼要寫在這裡，面板才是一份
-		// 完整的靜態說明（dashboard-keyboard-shortcuts：Help panel content）。
-		const monthSection = this.helpPanelEl.createEl('section', { cls: 'month-view-help' });
-		monthSection.createEl('h3', { text: '月視圖' });
-		const monthUl = monthSection.createEl('ul');
+		const attention = addGroup(yearPanel, '需要注意');
+		addLegendRow(attention, 'bar bar-overflow', '超出預計結束日期還有任務；可以更新 frontmatter 的 預計結束日期');
+		const warning = addLegendRow(attention, '', '日期有缺漏、是推算的，或有問題；滑過去看原因');
+		warning.appendText('專案');
+		warning.createSpan({ cls: 'warn', text: '⚠' });
 
-		const addMonthRow = (sampleCls: string, sample: string, explanation: string): void => {
-			const li = monthUl.createEl('li');
-			li.createSpan({ cls: `mv-sample mc-${sampleCls}`, text: sample });
-			li.appendText(` ${explanation}`);
-		};
+		const status = addGroup(yearPanel, '整列＝專案狀態');
+		const paused = addLegendRow(status, 'bar bar-solid', '暫停的專案（勾「顯示暫停」才會出現）', 'status-pending');
+		paused.createSpan({ cls: 'pause-badge', text: '⏳ 暫停' });
+		addLegendRow(status, 'bar bar-solid done', '已完成或取消的專案（勾「顯示已結案」才會出現）');
 
-		addMonthRow('done', '✓ 任務', '已完成的任務');
-		addMonthRow('overdue', '任務', '週已過還沒完成的任務');
-		addMonthRow('open', '任務', '還沒完成、週還沒過的任務');
+		const columns = addGroup(yearPanel, '顏色與欄位');
+		addLegendRow(columns, '', '專案的分類，對照上方圖例').createSpan({ cls: 'cat-dot' });
+		addLegendRow(columns, 'today-sample', '今天所在的週').addClass('today-col');
 
-		// General 列不是任務文字的一種樣式，所以示範字就是列名，說明照規格的字串
-		// （dashboard-keyboard-shortcuts：Help panel content）。
-		const generalLi = monthUl.createEl('li');
-		generalLi.createSpan({ cls: 'mv-sample mv-general', text: 'General 列' });
-		generalLi.appendText('：行事曆的行程，只能看；按 ↻ 重新讀取');
+		const taskText = addGroup(monthPanel, '格子裡的任務文字');
+		for (const [cls, sample, explanation] of [
+			['mc-done', '✓ 任務', '已完成的任務'],
+			['mc-overdue', '任務', '週已過還沒完成的任務'],
+			['mc-open', '任務', '還沒完成、週還沒過的任務'],
+		] as const) addVisualRow(taskText, explanation).createSpan({ cls, text: sample });
+		addGroup(monthPanel, '格子底色').createEl('li', { text: '底色的意思和年視圖一樣（實心、淡色、虛線、紅色、斜線紋）' });
+		const calendar = addGroup(monthPanel, 'General 列（行事曆）');
+		addVisualRow(calendar, '行事曆名稱；顏色在設定頁改')
+			.createSpan({ cls: 'gc-label', text: '行事曆' }).setCssProps({ '--pd-calendar-color': '#4a7fd4' });
+		addVisualRow(calendar, '重新讀取行事曆；行程只能看，不能改').createSpan({ cls: 'general-refresh', text: '↻' });
+		const unscheduled = addGroup(monthPanel, '還沒排');
+		addVisualRow(unscheduled, '還沒排日期的任務；點一下排進這個月的某一週')
+			.createSpan({ cls: 'help-unscheduled-count', text: '3' });
 
-		const calendarLabelLi = monthUl.createEl('li');
-		calendarLabelLi.createSpan({ cls: 'gc-label', text: '行事曆' }).setCssProps({ '--pd-calendar-color': '#4a7fd4' });
-		calendarLabelLi.appendText(' 行事曆名稱；顏色在設定頁改');
-		const unscheduledLi = monthUl.createEl('li');
-		unscheduledLi.appendText('還沒排 ');
-		const unscheduledSample = unscheduledLi.createEl('table', { cls: 'month-grid help-month-sample' });
-		unscheduledSample.createEl('tbody').createEl('tr').createEl('td', { cls: 'month-unscheduled', text: '3' });
-		unscheduledLi.appendText(' 還沒排日期的任務；點一下排進這個月的某一週');
-
-		const actions = this.helpPanelEl.createEl('section', { cls: 'actions' });
-		actions.createEl('h3', { text: '操作' });
-		const actionsUl = actions.createEl('ul');
+		const editing = addGroup(actionsPanel, '編輯');
 		for (const text of [
-			'點格子 → 打開那一週的任務，可以勾完成、換週、排進或新增任務',
+			'點格子 → 打開那一週的任務：勾完成、換週、排進或新增任務',
 			'點專案名稱 → 在右側開啟筆記',
-			'◀ ▶ → 換年份或月份；今年、本月 回到現在',
-			'勾「編輯分類與狀態」 → 改專案的分類與狀態',
-			'拖拉或點圖例 → 調整分類順序，或把一類置頂',
-			'拖拉專案欄的右邊 → 調整欄寬',
-		]) actionsUl.createEl('li', { text });
+			'勾「編輯分類與狀態」 → 改專案的分類，或改成暫停、完成、取消',
+		]) editing.createEl('li', { text });
+		const switching = addGroup(actionsPanel, '切換');
+		const scale = switching.createEl('li');
+		scale.createSpan({ text: '年 / 月，或按 ' });
+		scale.createEl('kbd', { text: 'M' });
+		scale.createSpan({ text: ' → 切換年視圖與月視圖' });
+		switching.createEl('li', { text: '◀ ▶ → 換年份或月份；今年、本月 回到現在' });
+		const timeline = switching.createEl('li');
+		timeline.createEl('kbd', { text: 'T' });
+		timeline.createSpan({ text: ' → 切換逐週與 Timeline（只在年視圖）' });
+		const help = switching.createEl('li');
+		help.createEl('kbd', { text: '?' });
+		help.createSpan({ text: ' → 打開或關閉這個面板' });
+		const layout = addGroup(actionsPanel, '版面');
+		layout.createEl('li', { text: '點圖例 → 把一類置頂；拖拉圖例 → 調整分類順序' });
+		layout.createEl('li', { text: '拖拉專案欄的右邊 → 調整欄寬' });
+	}
+
+	private selectHelpTab(tabId: string, focus = false): void {
+		this.helpPanelEl.querySelectorAll<HTMLButtonElement>('[role="tab"]').forEach((tab) => {
+			const selected = tab.getAttribute('id') === tabId;
+			tab.setAttribute('aria-selected', String(selected));
+			tab.setAttribute('tabindex', selected ? '0' : '-1');
+			if (selected && focus) tab.focus();
+		});
+		this.helpPanelEl.querySelectorAll<HTMLElement>('[role="tabpanel"]').forEach((panel) => {
+			panel.hidden = panel.getAttribute('aria-labelledby') !== tabId;
+		});
 	}
 
 	private registerInteractions(): void {
@@ -723,6 +756,7 @@ export class ProjectDashboardView extends ItemView {
 	}
 
 	private setHelpPanelVisible(visible: boolean): void {
+		if (visible) this.selectHelpTab(this.scale === 'month' ? 'help-tab-month' : 'help-tab-year');
 		this.helpPanelEl.hidden = !visible;
 		this.helpFabEl.hidden = visible;
 	}

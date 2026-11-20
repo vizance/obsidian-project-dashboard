@@ -218,12 +218,13 @@
 	top: 16px;
 	right: 16px;
 	z-index: 100;
-	background: #ffffff;
-	border: 1px solid #d9d9d9;
+	background: var(--bg);
+	border: 1px solid var(--grid-soft);
 	border-radius: 6px;
 	padding: 14px 18px;
 	box-shadow: 0 4px 14px rgba(0,0,0,0.12);
-	max-width: 340px;
+	width: 340px;
+	max-width: calc(100vw - 32px);
 	max-height: calc(100vh - 32px);
 	overflow-y: auto;
 	font-size: 12px;
@@ -386,40 +387,76 @@
 }
 .project-dashboard #toast.toast-error { background: #b4231a; }
 .project-dashboard #toast[hidden] { display: none; }
-.project-dashboard #help-panel h3 { margin: 0 0 8px; font-size: 13px; }
-.project-dashboard #help-panel section + section { margin-top: 12px; }
+.project-dashboard #help-panel .help-tabs {
+	display: flex;
+	gap: 12px;
+	padding-right: 20px;
+	margin-bottom: 14px;
+	border-bottom: 1px solid var(--grid-soft);
+}
+.project-dashboard #help-panel .help-tabs [role="tab"] {
+	background: transparent;
+	box-shadow: none;
+	border: none;
+	border-bottom: 3px solid transparent;
+	border-radius: 0;
+	min-height: 44px;
+	padding: 6px 2px;
+	color: var(--text-dim);
+	font-size: 13px;
+	font-weight: 400;
+	cursor: pointer;
+}
+.project-dashboard #help-panel .help-tabs [aria-selected="true"] {
+	font-weight: 700;
+	color: var(--text);
+	border-bottom-color: var(--interactive-accent);
+}
+.project-dashboard #help-panel .help-tabs [role="tab"]:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px;
+}
+.project-dashboard #help-panel .help-tabpanel[hidden] { display: none; }
+.project-dashboard #help-panel h4 { margin: 0 0 6px; font-size: 12px; color: var(--text); }
+.project-dashboard #help-panel .help-group + .help-group { margin-top: 16px; }
 .project-dashboard #help-panel kbd {
 	display: inline-block;
 	min-width: 18px;
 	padding: 1px 6px;
-	border: 1px solid #bbb;
+	border: 1px solid var(--grid);
 	border-bottom-width: 2px;
 	border-radius: 3px;
-	background: #f6f6f6;
+	background: var(--panel);
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 11px;
 	text-align: center;
 }
-.project-dashboard #help-panel .shortcuts ul,
-.project-dashboard #help-panel .legend-visual ul,
-.project-dashboard #help-panel .month-view-help ul,
-.project-dashboard #help-panel .actions ul { list-style: none; padding: 0; margin: 0; }
-.project-dashboard #help-panel .shortcuts li,
-.project-dashboard #help-panel .month-view-help li,
-.project-dashboard #help-panel .actions li { margin-bottom: 4px; }
-/* 三種文字樣式的示範字寬度對齊，說明文字才排成一欄 */
-.project-dashboard #help-panel .mv-sample { display: inline-block; min-width: 54px; }
-/* General 列那一行的示範字是列名，不套任務文字的顏色 */
-.project-dashboard #help-panel .mv-general { font-weight: 600; }
-.project-dashboard #help-panel .help-month-sample { display: inline-table; width: 32px; margin: 0; vertical-align: middle; }
-.project-dashboard #help-panel .legend-visual li {
-	display: flex;
-	align-items: flex-start;
+.project-dashboard #help-panel ul { list-style: none; padding: 0; margin: 0; }
+.project-dashboard #help-panel li { margin-bottom: 6px; }
+.project-dashboard #help-panel .help-visual-row {
+	display: grid;
+	grid-template-columns: 64px minmax(0, 1fr);
+	align-items: start;
 	gap: 8px;
-	margin-bottom: 6px;
 }
-.project-dashboard #help-panel .legend-sample { flex: 0 0 auto; margin: 0; border-collapse: collapse; }
+.project-dashboard #help-panel .help-sample { min-width: 0; }
+.project-dashboard #help-panel .help-description { overflow-wrap: anywhere; }
+.project-dashboard #help-panel .legend-sample { margin: 0; border-collapse: collapse; }
 .project-dashboard #help-panel .legend-sample td { padding: 0; border: none; white-space: nowrap; }
+/* 色塊和標籤共用固定示範欄，縮小內距以保留右側說明的對齊。 */
+.project-dashboard #help-panel .legend-sample .status-pending td { display: flex; align-items: center; gap: 4px; }
+.project-dashboard #help-panel .legend-sample .status-pending .swatch { flex: 0 0 auto; margin-top: 0; }
+.project-dashboard #help-panel .legend-sample .pause-badge { display: inline-block; flex: 0 0 auto; margin-left: 0; padding: 1px 2px; }
+.project-dashboard #help-panel .help-unscheduled-count {
+	display: inline-block;
+	min-width: 28px;
+	padding: 0 6px;
+	border: 1px solid var(--grid-soft);
+	border-radius: 3px;
+	background: var(--panel);
+	color: var(--text-dim);
+	text-align: center;
+}
 .project-dashboard #help-panel .swatch {
 	display: inline-block;
 	width: 18px;
@@ -434,7 +471,7 @@
 	top: auto;
 	bottom: auto;
 }
-.project-dashboard #help-panel .swatch.blank { background: transparent; border: 1px dotted #ccc; }
+.project-dashboard #help-panel .swatch.blank { background: transparent; border: 1px solid var(--grid-soft); }
 .project-dashboard #help-panel .close-btn {
 	position: absolute;
 	top: 6px;
@@ -442,12 +479,12 @@
 	background: none;
 	border: none;
 	font-size: 16px;
-	color: #999;
+	color: var(--text-dim);
 	cursor: pointer;
 	padding: 2px 6px;
 	line-height: 1;
 }
-.project-dashboard #help-panel .close-btn:hover { color: #333; }
+.project-dashboard #help-panel .close-btn:hover { color: var(--text); }
 
 .project-dashboard #help-fab {
 	position: fixed;

@@ -20,7 +20,8 @@ POPOVER = '.pd-week-popover:not([hidden])'
 NAMES = (
     'year-view.png',
     'week-popover.png',
-    'help-panel.png',
+    'help-year.png',
+    'help-month.png',
     'month-view.png',
     'unscheduled-popover.png',
     'status-editing.png',
@@ -129,7 +130,7 @@ def capture():
                     elements += page.locator('.pd-calendar-row').all()
                     elements += [page.get_by_role('button', name='Add a calendar', exact=True)]
                 elif area == 'help':
-                    page.locator('#help-panel h3').first.hover()
+                    page.locator('#help-panel [role=tab][aria-selected=true]').hover()
                     elements = [page.locator('#help-panel')]
                 else:
                     page.locator('.month-title').hover()
@@ -171,10 +172,11 @@ def capture():
             fit_year()
             snapshot('year-view.png')
 
-            step = '拍攝說明面板'
+            step = '拍攝年視圖說明面板'
             page.locator('#help-fab').click()
             page.locator('#help-panel').wait_for(state='visible')
-            snapshot('help-panel.png', area='help')
+            assert page.get_by_role('tab', name='年視圖', exact=True).get_attribute('aria-selected') == 'true', '年視圖說明分頁未選中'
+            snapshot('help-year.png', area='help')
             page.locator('#help-panel .close-btn').click()
             page.locator('#help-panel').wait_for(state='hidden')
 
@@ -193,6 +195,14 @@ def capture():
             assert set(page.locator('td.general-cell .gc-label').all_text_contents()) == {'工作', '家庭'}, '缺少行事曆名稱標籤'
             assert page.locator('.mc-overdue').count() > 0, '缺少逾期任務'
             snapshot('month-view.png')
+
+            step = '拍攝月視圖說明面板'
+            page.locator('#help-fab').click()
+            page.locator('#help-panel').wait_for(state='visible')
+            assert page.get_by_role('tab', name='月視圖', exact=True).get_attribute('aria-selected') == 'true', '月視圖說明分頁未選中'
+            snapshot('help-month.png', area='help')
+            page.locator('#help-panel .close-btn').click()
+            page.locator('#help-panel').wait_for(state='hidden')
 
             step = '拍攝還沒排浮窗'
             assert page.locator(UNSCHEDULED).inner_text() == '2', '還沒排數量不符'
