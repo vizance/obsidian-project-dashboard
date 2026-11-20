@@ -47,7 +47,7 @@ The plugin SHALL listen to the vault's `modify`, `create`, `delete`, and `rename
 ---
 ### Requirement: Re-render preserves the user's view state
 
-An automatic re-render triggered by a note change, by a settings change, or by plugin data changed outside the running plugin SHALL rebuild only the header statistics, the legend, and the gantt chart. It SHALL preserve the chart's horizontal scroll position, the tab's vertical scroll position, the `顯示已結案` and `編輯分類` checkbox states, the view mode, whether the year view or the month view is shown, the month shown in the month view, the pinned category, the category order, and the project column width. When a week popover was open before the re-render, the dashboard SHALL re-open it after the re-render for the same note path and the same ISO week, with the same footer section expanded (the unscheduled-task list, the new-task input, or none), provided that week of that project is still rendered, in the view being shown, as a cell that can open a popover. Otherwise the popover SHALL be closed. When the month view's unscheduled popover was open before the re-render, it SHALL be re-opened or closed as defined by the `dashboard-month-view` capability. Text in the new-task input that was already submitted SHALL be cleared; text that was typed but not yet submitted SHALL be kept. The input SHALL regain focus only if it had focus before the re-render, so a re-render caused by typing in a note never moves focus into the dashboard. The same rule SHALL apply to the immediate re-scan that follows a stale or invalid edit.
+An automatic re-render triggered by a note change, by a settings change, by plugin data changed outside the running plugin, or by a calendar fetch starting or finishing SHALL rebuild only the header statistics, the legend, and the gantt chart. It SHALL preserve the chart's horizontal scroll position, the tab's vertical scroll position, the `顯示已結案` and `編輯分類` checkbox states, the view mode, whether the year view or the month view is shown, the year shown in the year view, the month shown in the month view, the pinned category, the category order, and the project column width. When a week popover was open before the re-render, the dashboard SHALL re-open it after the re-render for the same note path and the same ISO week, with the same footer section expanded (the unscheduled-task list, the new-task input, or none), provided that week of that project is still rendered, in the view being shown, as a cell that can open a popover. Otherwise the popover SHALL be closed. When the month view's unscheduled popover was open before the re-render, it SHALL be re-opened or closed as defined by the `dashboard-month-view` capability. Text in the new-task input that was already submitted SHALL be cleared; text that was typed but not yet submitted SHALL be kept. The input SHALL regain focus only if it had focus before the re-render, so a re-render caused by typing in a note never moves focus into the dashboard. The same rule SHALL apply to the immediate re-scan that follows a stale or invalid edit.
 
 #### Scenario: Scroll position stays put
 
@@ -89,6 +89,19 @@ An automatic re-render triggered by a note change, by a settings change, or by p
 - **WHEN** a relevant note change causes a re-render
 - **THEN** the month view MUST still show `2026 年 11 月（W45–W49）`
 - **AND** the popover for `範例專案 A` and `2026-W46` MUST be open, anchored at that project's `W46` cell in the month view
+
+#### Scenario: A calendar fetch keeps the popover open
+
+- **GIVEN** the month view shows `2026 年 11 月（W45–W49）` and the popover for `範例專案 A` and `2026-W46` is open
+- **WHEN** the user presses the General row's `↻` and the fetch finishes
+- **THEN** the month view MUST still show `2026 年 11 月（W45–W49）`
+- **AND** the popover for `範例專案 A` and `2026-W46` MUST be open
+
+#### Scenario: The year view keeps its year
+
+- **GIVEN** the year view shows `2027 年`
+- **WHEN** a relevant note change causes a re-render
+- **THEN** the year view MUST still show `2027 年`
 
 ---
 ### Requirement: Clicking a project name opens the note to the right

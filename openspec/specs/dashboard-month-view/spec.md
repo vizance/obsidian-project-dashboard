@@ -51,7 +51,11 @@ Every ISO week SHALL belong to the calendar month that contains its Monday, with
 
 The dashboard SHALL show a two-option switch `年` / `月` in its controls row, with the active option marked. Pressing `M` (case-insensitive) SHALL toggle between the two, under the same conditions as the `T` shortcut (ignored with a modifier key held, while a text-entry element has focus, or when the dashboard tab is not active). The chosen view SHALL be stored in vault-scoped local storage under `dashboard.scale` with the value `year` or `month`, and SHALL be restored when the tab opens; a missing or unknown value SHALL mean `year`.
 
-When the month view is shown, the controls row SHALL also show `◀`, the month title, `▶`, and `本月`. The title SHALL read `<year> 年 <month> 月（W<first week>–W<last week>）`, for example `2026 年 10 月（W41–W44）`. `◀` and `▶` SHALL show the previous and next month, crossing year boundaries; `本月` SHALL show the month that today's week belongs to. Week numbers in the title SHALL have no leading zero, matching the year view's week headers (`W1`, not `W01`). Changing the shown month or switching between the year view and the month view SHALL close any open week popover. Every time the dashboard switches into the month view or the tab opens in the month view, it SHALL show the month that today's week belongs to; the shown month SHALL NOT be stored.
+When the month view is shown, the controls row SHALL also show `◀`, the month title, and `▶`, followed by `本月` only while the shown month is not the month that today's week belongs to. The title SHALL read `<year> 年 <month> 月（W<first week>–W<last week>）`, for example `2026 年 10 月（W41–W44）`. `◀` and `▶` SHALL show the previous and next month, crossing year boundaries; `本月` SHALL show the month that today's week belongs to. Week numbers in the title SHALL have no leading zero, matching the year view's week headers (`W1`, not `W01`).
+
+When the year view is shown, the same place in the controls row SHALL show `◀` (tooltip `上一年`), the title `<year> 年`, for example `2026 年`, and `▶` (tooltip `下一年`), followed by `今年` (tooltip `回到今年`) only while the shown year is not the calendar year of today's local date. `◀` and `▶` SHALL show the previous and next year; `今年` SHALL show the calendar year of today's local date.
+
+When the tab opens, the year view SHALL show the calendar year of today's local date and the month view SHALL show the month that today's week belongs to. Switching from the year view to the month view SHALL show the month that today's week belongs to when the year view showed the calendar year of today's local date, and January of the shown year otherwise. Switching from the month view to the year view SHALL show the year of the shown month. Neither the shown year nor the shown month SHALL be stored. Changing the shown year or month, or switching between the year view and the month view, SHALL close any open popover.
 
 #### Scenario: Opening the month view shows the current month
 
@@ -61,6 +65,7 @@ When the month view is shown, the controls row SHALL also show `◀`, the month 
 - **AND** pressing `▶` MUST show `2026 年 11 月（W45–W49）`
 - **AND** pressing `▶` twice more MUST show `2027 年 1 月（W1–W4）`
 - **AND** pressing `本月` MUST show `2026 年 10 月（W41–W44）` again
+- **AND** `本月` MUST NOT be shown while `2026 年 10 月（W41–W44）` is shown
 
 #### Scenario: Changing the month closes the popover
 
@@ -82,10 +87,38 @@ When the month view is shown, the controls row SHALL also show `◀`, the month 
 - **THEN** the month view MUST be shown
 - **AND** `dashboard.scale` MUST be `month`
 
+#### Scenario: Moving to next year in the year view
+
+- **GIVEN** today is `2026-11-20` and the year view shows `2026 年` without a `今年` button
+- **WHEN** the user presses `▶`
+- **THEN** the year view MUST show `2027 年` with week columns `W1` through `W52`
+- **AND** `今年` MUST be shown, and pressing it MUST show `2026 年` again
+- **AND** no week column MUST be highlighted as today while `2027 年` is shown
+
+#### Scenario: Switching keeps the period being planned
+
+- **GIVEN** today is `2026-11-20` and the year view shows `2027 年`
+- **WHEN** the user picks `月`
+- **THEN** the month view MUST show `2027 年 1 月（W1–W4）`
+- **WHEN** the user presses `▶` twice and then picks `年`
+- **THEN** the year view MUST show `2027 年`
+
+#### Scenario: The current year still opens on this month
+
+- **GIVEN** today is `2026-11-20` and the year view shows `2026 年`
+- **WHEN** the user picks `月`
+- **THEN** the month view MUST show `2026 年 11 月（W45–W49）`
+
+#### Scenario: Restart returns to today
+
+- **GIVEN** the year view shows `2027 年`
+- **WHEN** the user relaunches Obsidian and opens the dashboard
+- **THEN** the year view MUST show `2026 年`
+
 ---
 ### Requirement: Month view layout
 
-The month view SHALL show the same project rows as the year view, in the same order and grouping, with the same category legend, sort controls, `顯示已結案` filter, `編輯分類` controls, project name links, and resizable project column. Its columns SHALL be: the project column; one column per week of the shown month, headed by the week number without a leading zero and its Monday–Sunday range (for example `W44` and `10/26–11/1`, or `W1` and `1/4–1/10`); and a last column headed `還沒排`. When today's week is one of the shown weeks, its column SHALL be highlighted as in the year view; otherwise no column SHALL be highlighted. The month view's week headers and cells SHALL use their own classes (`th.month-week`, `td.month-cell`), so the year view's fixed 32px week width does not apply to them. The week columns SHALL share the remaining width equally, so the month view needs no horizontal scrolling. A cell SHALL grow in height to fit its task lines; long task text SHALL wrap.
+The month view SHALL show the same project rows as the year view, in the same order and grouping, with the same category legend, sort controls, `顯示已結案` filter, `編輯分類` controls, project name links, and resizable project column. Its columns SHALL be: the project column; one column per week of the shown month, headed by the week number without a leading zero and its Monday–Sunday range (for example `W44` and `10/26–11/1`, or `W1` and `1/4–1/10`); and a last column headed `還沒排`. When today's week is one of the shown weeks, its column SHALL be highlighted as in the year view; otherwise no column SHALL be highlighted. The month view's week headers and cells SHALL use their own classes (`th.month-week`, `td.month-cell`), so the year view's fixed 32px week width does not apply to them. The week columns SHALL share the remaining width equally, so the month view needs no horizontal scrolling. A cell SHALL grow in height to fit its task lines; long task text SHALL wrap. When `dashboard-calendar-row` requires a General row (at least one calendar with a non-empty secret ID), the first body row SHALL be that General row, above the project rows; its cells grow and wrap the same way.
 
 #### Scenario: Month columns
 
@@ -95,13 +128,13 @@ The month view SHALL show the same project rows as the year view, in the same or
 ---
 ### Requirement: Month cells list the week's task lines
 
-Each week cell of the month view SHALL list the project's task lines for that week, using the same task lines, the same week mapping (including the `Saturday tasks count for next week` setting), and the same order as the week popover. Each listed line SHALL show its task text, styled by its state:
+Each week cell of a project row in the month view SHALL list the project's task lines for that week, using the same task lines, the same week mapping (including the `Saturday tasks count for next week` setting), and the same order as the week popover. Each listed line SHALL show its task text, styled by its state:
 
 - a done line SHALL show `✓` before the text, and the text SHALL be greyed;
 - an open line whose week ends before today's week starts (an overdue line) SHALL show its text in the warning red;
 - any other open line SHALL show its text normally.
 
-Each cell's kind SHALL be the kind the per-week cell model gives that week when the model runs over one continuous run of weeks that covers both the project's whole range (from its start through its overflow end) and the shown month, for any month and any year the month view can show (it does not depend on which year the year view renders). A week therefore has the same kind in the month view as in a year view that shows it, even when the shown month lies entirely after the project's expected end date. The kinds are `solid`, `settled`, `overflow`, `dashed`, and `blank`; a run that the per-week model returns as one `span-dashed` bar SHALL appear as individual `dashed` cells. The cell's background and border SHALL follow its kind. A cell SHALL show no text when no task line maps to its week, and a `blank` cell SHALL show no text even when task lines map to its week, because it cannot be opened (for example a task dated before the project's start).
+Each project cell's kind SHALL be the kind the per-week cell model gives that week when the model runs over one continuous run of weeks that covers both the project's whole range (from its start through its overflow end) and the shown month, for any month and any year the month view can show (it does not depend on which year the year view renders). A week therefore has the same kind in the month view as in a year view that shows it, even when the shown month lies entirely after the project's expected end date. The kinds are `solid`, `settled`, `overflow`, `dashed`, and `blank`; a run that the per-week model returns as one `span-dashed` bar SHALL appear as individual `dashed` cells. The cell's background and border SHALL follow its kind. The week cells of the General row are defined by `dashboard-calendar-row`; they list events, have no cell kind, and never open a popover. A project cell SHALL show no text when no task line maps to its week, and a `blank` cell SHALL show no text even when task lines map to its week, because it cannot be opened (for example a task dated before the project's start).
 
 #### Scenario: A blank week shows no text
 

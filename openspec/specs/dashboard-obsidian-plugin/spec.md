@@ -82,7 +82,9 @@ For every scanned note, the plugin scanner SHALL produce a project record with f
 ---
 ### Requirement: Calendar year follows today's local date
 
-The plugin SHALL derive the displayed calendar year and the default end date from today's local date, formatted as `YYYY-MM-DD` in the user's local time zone. The week columns SHALL cover every ISO week whose Thursday falls in that year, and a project without any end date SHALL default to December 31 of that year with the warning `迄日預設為 <year>-12-31`. Today's date SHALL NOT be derived from a UTC conversion.
+The plugin SHALL derive today's date from the local date, formatted as `YYYY-MM-DD` in the user's local time zone; today's date SHALL NOT be derived from a UTC conversion. The year view SHALL open on the calendar year of today's date, and the user can show other years as defined by `dashboard-month-view` ("Switching between the year view and the month view"). The week columns SHALL cover every ISO week whose Thursday falls in the shown year. A project without any end date SHALL default to December 31 of today's year, whatever year is shown, with the warning `迄日預設為 <year>-12-31`.
+
+In the year view of any year, a week's cell SHALL be what the per-week or timeline model gives that week when the project's whole range is considered, including the weeks after its expected end up to its overflow end. A project whose expected end lies in an earlier year SHALL therefore still show its overflow weeks in the shown year, and in the `timeline` view mode its bar SHALL start at the first week of the shown year and end at the week of its overflow end. For the year of today's date the cells SHALL stay as they are, apart from this rule.
 
 #### Scenario: Taipei early morning uses the local date
 
@@ -97,11 +99,19 @@ The plugin SHALL derive the displayed calendar year and the default end date fro
 | ------------- | ------------ | ----------- |
 | `2026-10-25` | `W1` through `W53` | `2026-12-31` |
 | `2027-01-05` | `W1` through `W52` | `2027-12-31` |
+| `2026-11-20`, year view showing `2027 年` | `W1` through `W52` | `2026-12-31` |
+
+#### Scenario: Overflow into the next year
+
+- **GIVEN** an open project that runs from `2026-10-01` to `2026-12-20` and whose note contains `- [ ] 結案報告 📅 2027-01-13`
+- **WHEN** the year view shows `2027 年`
+- **THEN** in the `per-week` view mode its `W2` cell MUST be `overflow` and its `W1` cell MUST be `blank`
+- **AND** in the `timeline` view mode its bar MUST span `W1` through `W2`
 
 ---
 ### Requirement: Dashboard follows a consistent rendering and interaction model
 
-Within the dashboard tab, the plugin SHALL implement the rendering and interaction behavior specified by the capabilities `dashboard-gantt-rendering`, `dashboard-task-derived-promise`, `dashboard-weekly-divider`, `dashboard-layout-spacing`, `dashboard-status-controls`, `dashboard-sort-modes`, `dashboard-resizable-proj-col`, `dashboard-week-popover`, `dashboard-keyboard-shortcuts`, `dashboard-month-view`, and the UI parts of `dashboard-category-override`, except where this capability or `dashboard-note-sync` defines a host-specific replacement (data source, preference storage, override storage, shortcut scope). When those capabilities disagree with each other, the most specific capability for the behaviour in question SHALL be the reference. The rendered DOM SHALL be built with Obsidian element-creation helpers and CSS classes scoped under the root class `project-dashboard`; dynamic values (category colors, multi-week bar widths, project column width) SHALL be applied through CSS custom properties. Week-cell decisions SHALL come from a pure cell model whose cell kinds are `solid`, `settled`, `overflow`, `dashed`, `span-dashed`, `span-solid`, and `blank`, and whose tooltip text matches the week's derived state.
+Within the dashboard tab, the plugin SHALL implement the rendering and interaction behavior specified by the capabilities `dashboard-gantt-rendering`, `dashboard-task-derived-promise`, `dashboard-weekly-divider`, `dashboard-layout-spacing`, `dashboard-status-controls`, `dashboard-sort-modes`, `dashboard-resizable-proj-col`, `dashboard-week-popover`, `dashboard-keyboard-shortcuts`, `dashboard-month-view`, `dashboard-calendar-row`, and the UI parts of `dashboard-category-override`, except where this capability or `dashboard-note-sync` defines a host-specific replacement (data source, preference storage, override storage, shortcut scope). When those capabilities disagree with each other, the most specific capability for the behaviour in question SHALL be the reference. The rendered DOM SHALL be built with Obsidian element-creation helpers and CSS classes scoped under the root class `project-dashboard`; dynamic values (category colors, multi-week bar widths, project column width) SHALL be applied through CSS custom properties. Week-cell decisions SHALL come from a pure cell model whose cell kinds are `solid`, `settled`, `overflow`, `dashed`, `span-dashed`, `span-solid`, and `blank`, and whose tooltip text matches the week's derived state.
 
 #### Scenario: Re-render is stable across restarts
 
@@ -224,3 +234,29 @@ The project SHALL provide `npm run build`, which type-checks and bundles the plu
 - **WHEN** the user runs `npm run deploy`
 - **THEN** the command MUST exit with a non-zero status
 - **AND** it MUST print a message explaining how to configure the vault path
+
+---
+### Requirement: Dashboard works the same in a pop-out window
+
+The dashboard tab SHALL behave the same whether it is in Obsidian's main window or in a pop-out window, and after it is moved from one window to another. Every interaction SHALL listen to the window that currently contains the dashboard tab, not to the window that was active when the tab opened: opening the week popover from a year-view cell, a month-view cell, or a `還沒排` cell; closing it by clicking the same cell again, clicking outside it, pressing `Escape`, or scrolling an element that contains its anchor; reordering the category legend by dragging; resizing the project column by dragging; and the dashboard's keyboard shortcuts. The popover SHALL be shown in the window that contains the dashboard tab. When the dashboard tab is moved to another window, an open popover SHALL be closed, and every interaction SHALL work in the new window and SHALL NOT react to clicks or scrolls in the old window.
+
+#### Scenario: Opening a popover in a pop-out window
+
+- **GIVEN** the dashboard tab has been dragged out of the main window into a pop-out window and shows the year view
+- **WHEN** the user clicks a solid week cell of `範例專案 A` in that window
+- **THEN** the week popover for that project and week MUST appear in the pop-out window, anchored at the clicked cell
+- **AND** clicking outside the popover in the pop-out window MUST close it
+
+#### Scenario: Month view in a pop-out window
+
+- **GIVEN** the dashboard tab is in a pop-out window and shows the month view
+- **WHEN** the user clicks a non-blank month cell, and later a `還沒排` cell with a count
+- **THEN** the week popover and then the unscheduled popover MUST appear in the pop-out window
+
+#### Scenario: Moving the tab back to the main window
+
+- **GIVEN** the dashboard tab is in a pop-out window with a week popover open
+- **WHEN** the user moves the tab back into the main window
+- **THEN** the popover MUST be closed
+- **AND** clicking a week cell in the main window MUST open the popover there
+- **AND** clicks in the closed or emptied pop-out window MUST NOT open or close any popover
