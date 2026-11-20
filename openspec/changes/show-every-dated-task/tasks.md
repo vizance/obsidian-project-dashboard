@@ -1,7 +1,7 @@
 ## 1. 格子模型
 
-- [ ] 1.1 每週獨立判斷（Render bars per-week based on occupied_weeks；Month cells list the week's task lines；Calendar year follows today's local date；One project's dates cannot break the dashboard；設計：每一週獨立判斷種類、timeline 色條的兩端）：src/core/cells.ts 新增每週判斷的純函式，`perWeekCells`、`yearViewCells`、`monthViewCells` 改用它、不再補連續週；`timelineCells` 依新規則決定兩端並裁在顯示的年份內。驗證：tests/cells.test.ts 涵蓋「A Saturday task after the expected end stays visible」「A task before the start date stays visible」「A closed project's task after its end stays visible」、timeline 兩端、「An expected end in the year 9999」（< 50 ms）；tests/months.test.ts 涵蓋月視圖兩個情境；既有測試依新規則更新並列出改動。
-- [ ] 1.2 單列隔離（One project's dates cannot break the dashboard；Render bar continuously in timeline view mode；設計：一列出錯不影響其他列）：src/view.ts 年視圖每列、src/month-view.ts 月視圖每列各自 try/catch，出錯的列畫名稱、空白格與 `⚠`（提示 `這個專案的日期有問題`）。驗證：測試模擬某一列計算丟出錯誤時，其他列仍畫出、該列有 `⚠`。
+- [x] 1.1 每週獨立判斷（Render bars per-week based on occupied_weeks；Month cells list the week's task lines；Calendar year follows today's local date；One project's dates cannot break the dashboard；設計：每一週獨立判斷種類、timeline 色條的兩端）：src/core/cells.ts 新增每週判斷的純函式，`perWeekCells`、`yearViewCells`、`monthViewCells` 改用它、不再補連續週；`timelineCells` 依新規則決定兩端並裁在顯示的年份內。驗證：tests/cells.test.ts 涵蓋「A Saturday task after the expected end stays visible」「A task before the start date stays visible」「A closed project's task after its end stays visible」、timeline 兩端、「An expected end in the year 9999」（< 50 ms）；tests/months.test.ts 涵蓋月視圖兩個情境；既有測試依新規則更新並列出改動。
+- [x] 1.2 單列隔離（One project's dates cannot break the dashboard；Render bar continuously in timeline view mode；設計：一列出錯不影響其他列）：src/view.ts 年視圖每列、src/month-view.ts 月視圖每列各自 try/catch，出錯的列畫名稱、空白格與 `⚠`（提示 `這個專案的日期有問題`）。驗證：測試模擬某一列計算丟出錯誤時，其他列仍畫出、該列有 `⚠`。
 
 ## 2. 文件與驗收
 

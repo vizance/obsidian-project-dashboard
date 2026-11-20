@@ -165,8 +165,8 @@ describe('monthCellLines', () => {
 });
 
 describe('monthCellTaskLines', () => {
-	// Scenario: A blank week shows no text。
-	it('shows no text in a blank cell even when a task maps to its week', () => {
+	// Scenario: A task before the start date is listed。
+	it('A task before the start date is listed', () => {
 		const p = project('- [ ] 前置作業 📅 2026-10-28', {
 			start: '2026-11-02',
 			end: '2026-11-30',
@@ -177,10 +177,28 @@ describe('monthCellTaskLines', () => {
 		const cells = monthViewCells(p, weeks, SAT_ON);
 		const w44 = weeks.findIndex((w) => w.label === '2026-W44');
 
-		expect(cells[w44]!.kind).toBe('blank');
-		// 任務真的對應到那一週，是 blank 這條規則讓格子空著。
+		expect(cells[w44]!.kind).toBe('solid');
 		expect(monthCellLines(p, '2026-W44', SAT_ON, '2026-10-30')).toHaveLength(1);
-		expect(monthCellTaskLines(p, '2026-W44', cells[w44]!.kind, SAT_ON, '2026-10-30')).toEqual([]);
+		expect(monthCellTaskLines(p, '2026-W44', cells[w44]!.kind, SAT_ON, '2026-10-30')).toEqual([
+			{ line: 0, text: '前置作業', state: 'open' },
+		]);
+	});
+
+	it('A Saturday task after the expected end is listed', () => {
+		const p = project('- [ ] 追蹤款項 📅 2026-12-05', {
+			start: '2026-06-29', end: '2026-11-06', overflow_end: '2026-12-05',
+			task_dates: ['2026-12-05'], occupied_weeks: ['2026-W50'],
+		});
+		const cells = monthViewCells(p, weeksOfMonth(2026, 12), SAT_ON);
+		expect(cells[0]!.kind).toBe('overflow');
+		expect(monthCellTaskLines(p, '2026-W50', cells[0]!.kind, SAT_ON, '2026-10-30')).toEqual([
+			{ line: 0, text: '追蹤款項', state: 'open' },
+		]);
+		expect(unscheduledWeekOptions(p, weeksOfMonth(2026, 12), SAT_ON)[0]!.enabled).toBe(true);
+	});
+
+	it('keeps explicitly blank cells empty', () => {
+		expect(monthCellTaskLines(project('- [ ] 任務 📅 2026-10-28'), '2026-W44', 'blank', SAT_ON, '2026-10-30')).toEqual([]);
 	});
 
 	it('lists the lines of a cell that is not blank', () => {

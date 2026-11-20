@@ -81,24 +81,37 @@ export class MonthView {
 
 		for (const project of projects) {
 			const tr = tbody.createEl('tr');
-			renderProjectHeadCell(tr, project, this.host.categoryOrder());
+			try {
+				renderProjectHeadCell(tr, project, this.host.categoryOrder());
 
-			const stateCls = projectStateClass(project);
-			const cells = monthViewCells(project, weeks, settings);
-			weeks.forEach((w, i) => {
-				this.renderCell(tr, cells[i]!, project, stateCls, w.label, i === todayIdx, settings, today);
-			});
+				const stateCls = projectStateClass(project);
+				const cells = monthViewCells(project, weeks, settings);
+				weeks.forEach((w, i) => {
+					this.renderCell(tr, cells[i]!, project, stateCls, w.label, i === todayIdx, settings, today);
+				});
 
-			const summary = unscheduledSummary(project);
-			const unscheduled = tr.createEl('td', {
-				cls: 'month-unscheduled',
-				text: summary.count > 0 ? String(summary.count) : '',
-			});
-			// 數量為 0 的格子既沒有提示也沒有 data-path，所以滑過去沒有提示框、
-			// 點了也打不開浮窗（和 blank 的週格同一個做法）。
-			if (summary.count > 0) {
-				unscheduled.dataset.path = project.path;
-				unscheduled.setAttribute('title', UNSCHEDULED_TOOLTIP);
+				const summary = unscheduledSummary(project);
+				const unscheduled = tr.createEl('td', {
+					cls: 'month-unscheduled',
+					text: summary.count > 0 ? String(summary.count) : '',
+				});
+				// 數量為 0 的格子既沒有提示也沒有 data-path，所以滑過去沒有提示框、
+				// 點了也打不開浮窗（和 blank 的週格同一個做法）。
+				if (summary.count > 0) {
+					unscheduled.dataset.path = project.path;
+					unscheduled.setAttribute('title', UNSCHEDULED_TOOLTIP);
+				}
+			} catch {
+				// 任務文字可能在中途才出錯，整列清空才能確保沒有殘留的可操作格子。
+				tr.empty();
+				const head = tr.createEl('td', { cls: 'proj-cell' });
+				head.createSpan({ cls: 'name', text: project.name, attr: { 'data-path': project.path } });
+				head.createSpan({ cls: 'warn', text: '⚠', attr: { title: '這個專案的日期有問題' } });
+				for (let i = 0; i < weeks.length; i++) {
+					tr.createEl('td', { cls: ['month-cell', 'mk-blank', i === todayIdx ? 'today-col' : ''].filter(Boolean).join(' ') });
+				}
+				tr.createEl('td', { cls: 'month-unscheduled' });
+				console.error(project.name);
 			}
 		}
 	}

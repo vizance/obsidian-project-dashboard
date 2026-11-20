@@ -1484,19 +1484,32 @@ export class ProjectDashboardView extends ItemView {
 		}
 
 		for (const project of visible) {
-			this.renderProjectRow(tbody, project, weeks, todayIdx);
+			const tr = tbody.createEl('tr');
+			try {
+				this.renderProjectRow(tr, project, weeks, todayIdx);
+			} catch {
+				// 清掉可能已畫出的一部分，避免失敗列仍留下能編輯的任務錨點。
+				tr.empty();
+				const head = tr.createEl('td', { cls: 'proj-cell' });
+				head.createSpan({ cls: 'name', text: project.name, attr: { 'data-path': project.path } });
+				head.createSpan({ cls: 'warn', text: '⚠', attr: { title: '這個專案的日期有問題' } });
+				for (const [i, w] of weeks.entries()) {
+					const borderCls = w.isQuarterStart ? 'q-start' : w.isMonthStart ? 'm-start' : '';
+					tr.createEl('td', { cls: ['week-cell', i === todayIdx ? 'today-col' : '', borderCls].filter(Boolean).join(' ') });
+				}
+				console.error(project.name);
+			}
 		}
 	}
 
 	private renderProjectRow(
-		tbody: HTMLTableSectionElement,
+		tr: HTMLTableRowElement,
 		project: ProjectRecord,
 		weeks: WeekInfo[],
 		todayIdx: number,
 	): void {
 		const stateCls = projectStateClass(project);
 
-		const tr = tbody.createEl('tr');
 		renderProjectHeadCell(tr, project, this.categoryOrder);
 
 		const cells = yearViewCells(project, weeks, this.settings, this.viewMode);

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { type Cell, monthViewCells, perWeekCells, sortProjects, spanWeekOffset, timelineCells, visibleProjects, yearViewCells } from '../src/core/cells';
+import { type Cell, monthViewCells, perWeekCells, sortProjects, spanWeekOffset, timelineCells, visibleProjects, weekCellKind, yearViewCells } from '../src/core/cells';
 import { monthCellTaskLines, weeksOfMonth } from '../src/core/months';
 import { scanProjectNote, type ProjectRecord } from '../src/core/scan';
+import { taskLinesForWeek } from '../src/core/task-lines';
 import { defaultSettings } from '../src/core/settings';
 import { buildWeeks, type WeekInfo } from '../src/core/weeks';
 
@@ -273,20 +274,13 @@ describe('monthViewCells', () => {
 });
 
 describe('timelineCells', () => {
-	it('spans from start to max(end, overflow_end)', () => {
+	it('uses the week containing end when overflow_end has no occupied week', () => {
 		const p = project({ start: '2026-02-02', end: '2026-06-01', overflow_end: '2026-09-15' });
 		const cells = timelineCells(p, weeks);
-		const startIdx = weeks.findIndex((w) => new Date('2026-06-01T00:00:00Z') >= w.start && new Date('2026-02-02T00:00:00Z') < w.end);
-		let rightIdx = -1;
-		for (let i = weeks.length - 1; i >= 0; i--) {
-			if (weeks[i]!.start < new Date('2026-09-15T00:00:00Z')) {
-				rightIdx = i;
-				break;
-			}
-		}
-		expect(cells[startIdx]!.kind).toBe('span-solid');
-		expect(cells[startIdx]!.spanWeeks).toBe(rightIdx - startIdx + 1);
-		expect(cells[startIdx]!.tooltip).toBe('P-測試專案\n2026-02-02 ~ 2026-09-15');
+		expect(cells[weekIndex('2026-W06')]!.kind).toBe('span-solid');
+		expect(cells[weekIndex('2026-W06')]!.spanWeeks).toBe(18);
+		expect(cells[weekIndex('2026-W06')]!.tooltip).toBe('P-測試專案\n2026-02-02 ~ 2026-09-15');
+		expect(cells.filter((c) => c.kind !== 'blank')).toHaveLength(1);
 	});
 });
 
@@ -376,7 +370,7 @@ describe('yearViewCells', () => {
 		['ends next year', project({ start: '2026-10-01', end: '2027-04-10' })],
 	] as const;
 
-	it.each(unchanged)('matches both old models for 2026: %s', (_label, p) => {
+	it.each(unchanged)('matches the direct models for 2026: %s', (_label, p) => {
 		expect(yearViewCells(p, weeks, SAT_ON, 'per-week')).toEqual(perWeekCells(p, weeks, SAT_ON));
 		expect(yearViewCells(p, weeks, SAT_ON, 'timeline')).toEqual(timelineCells(p, weeks));
 	});
@@ -385,8 +379,8 @@ describe('yearViewCells', () => {
 		const p = scanned('🚧 P-範例專案 K.md', ['- [ ] 結案報告 📅 2026-01-14'], {
 			開始日期: '2025-10-01', 預計結束日期: '2025-12-20',
 		});
-		expect(perWeekCells(p, weeks, SAT_ON).every((c) => c.kind === 'blank')).toBe(true);
-		expect(timelineCells(p, weeks).every((c) => c.kind === 'blank')).toBe(true);
+		expect(perWeekCells(p, weeks, SAT_ON)[2]!.kind).toBe('overflow');
+		expect(timelineCells(p, weeks)[0]!.spanWeeks).toBe(3);
 		const cells = yearViewCells(p, weeks, SAT_ON, 'per-week');
 		expect(cells[2]!.kind).toBe('overflow');
 		expect(cells.filter((c) => c.kind !== 'blank')).toHaveLength(1);
@@ -459,5 +453,187 @@ describe('sortProjects', () => {
 		const sorted = sortProjects([a, b, c, d], order, 'life');
 
 		expect(sorted.map((p) => p.name)).toEqual(['C', 'A', 'B', 'D']);
+	});
+});
+
+describe('show-every-dated-task rendering matrix', () => {
+	it.each([
+		['active', '2026-W43', true, false, 'solid'],
+		['active', '2026-W43', true, true, 'settled'],
+		['active', '2026-W45', true, false, 'solid'],
+		['active', '2026-W45', true, true, 'settled'],
+		['active', '2026-W46', true, false, 'overflow'],
+		['active', '2026-W46', true, true, 'overflow'],
+		['active', '2026-W43', false, false, 'blank'],
+		['active', '2026-W45', false, false, 'dashed'],
+		['active', '2026-W46', false, false, 'blank'],
+		['pending', '2026-W43', true, false, 'solid'],
+		['pending', '2026-W45', true, true, 'settled'],
+		['pending', '2026-W46', true, true, 'overflow'],
+		['pending', '2026-W45', false, false, 'dashed'],
+		['done', '2026-W43', true, true, 'solid'],
+		['done', '2026-W45', true, true, 'solid'],
+		['done', '2026-W46', true, true, 'solid'],
+		['done', '2026-W45', false, false, 'blank'],
+		['cancelled', '2026-W43', true, true, 'solid'],
+		['cancelled', '2026-W45', true, true, 'solid'],
+		['cancelled', '2026-W46', true, true, 'solid'],
+		['cancelled', '2026-W45', false, false, 'blank'],
+	] as const)('%s %s occupied=%s settled=%s gives %s', (status, label, occupied, settled, kind) => {
+		const p = project({
+			status, start: '2026-11-02', end: '2026-11-09',
+			task_dates: ['2026-11-04'],
+			occupied_weeks: occupied ? [label] : [], settled_weeks: settled ? [label] : [],
+		});
+		const week = weeks[weekIndex(label)]!;
+		expect(weekCellKind(p, week)).toBe(kind);
+		expect(perWeekCells(p, [week], SAT_ON)[0]!.kind).toBe(kind);
+		expect(yearViewCells(p, weeks, SAT_ON, 'per-week')[weekIndex(label)]!.kind).toBe(kind);
+		expect(monthViewCells(p, [week], SAT_ON)[0]!.kind).toBe(kind);
+	});
+
+	it('never merges a dashed span over an occupied week when task_dates is empty', () => {
+		const p = project({ start: '2026-01-05', end: '2026-04-30', occupied_weeks: ['2026-W03', '2026-W09'] });
+		const cells = perWeekCells(p, weeks, SAT_ON);
+		expect(cells[weekIndex('2026-W03')]!.kind).toBe('solid');
+		expect(cells[weekIndex('2026-W09')]!.kind).toBe('solid');
+		expect(cells[weekIndex('2026-W02')]!.kind).toBe('dashed');
+	});
+
+	it('uses half-open overlap at the start and end Mondays', () => {
+		const p = project({ start: '2026-11-02', end: '2026-11-09', task_dates: ['2026-11-04'] });
+		expect(['2026-W44', '2026-W45', '2026-W46'].map((label) => weekCellKind(p, weeks[weekIndex(label)]!)))
+			.toEqual(['blank', 'dashed', 'blank']);
+	});
+
+	it('renders the mixed-date scenario according to the half-open overlap matrix', () => {
+		const p = project({
+			start: '2026-01-05', end: '2026-04-30', overflow_end: null,
+			task_dates: ['2026-01-14', '2026-02-25'], occupied_weeks: ['2026-W03', '2026-W09'],
+		});
+		const cells = yearViewCells(p, weeks, SAT_ON, 'per-week');
+		expect(cells.map((c) => c.kind)).toEqual(weeks.map((w) => {
+			if (w.week === 3 || w.week === 9) return 'solid';
+			return w.week >= 2 && w.week <= 18 ? 'dashed' : 'blank';
+		}));
+	});
+
+	it('renders only the occupied overflow week in the overflow scenario', () => {
+		const p = project({
+			start: '2026-01-05', end: '2026-04-30', overflow_end: '2026-05-21',
+			task_dates: ['2026-05-21'], occupied_weeks: ['2026-W21'],
+		});
+		const cells = yearViewCells(p, weeks, SAT_ON, 'per-week');
+		expect(cells[weekIndex('2026-W21')]!.kind).toBe('overflow');
+		expect(cells[weekIndex('2026-W19')]!.kind).toBe('blank');
+		expect(cells[weekIndex('2026-W20')]!.kind).toBe('blank');
+	});
+
+	it('merges the no-task scenario from W18 through W50', () => {
+		const p = project({ start: '2026-04-30', end: '2026-12-13', promised_end: null });
+		const cells = yearViewCells(p, weeks, SAT_ON, 'per-week');
+		expect(cells[weekIndex('2026-W18')]).toMatchObject({ kind: 'span-dashed', spanWeeks: 33 });
+		expect(cells.filter((c) => c.kind !== 'blank')).toHaveLength(1);
+		const shown = weeks.slice(30, 35);
+		expect(yearViewCells(p, shown, SAT_ON, 'per-week')[0]).toMatchObject({ kind: 'span-dashed', spanWeeks: 5 });
+		expect(monthViewCells(p, shown, SAT_ON).map((c) => c.kind)).toEqual(Array<string>(5).fill('dashed'));
+	});
+
+	it('renders only W2 and W4 for the closed scenario', () => {
+		const p = project({
+			status: 'done', start: '2026-01-01', end: '2026-01-31',
+			task_dates: ['2026-01-06', '2026-01-20'], occupied_weeks: ['2026-W02', '2026-W04'],
+		});
+		const cells = yearViewCells(p, weeks, SAT_ON, 'per-week');
+		expect(cells.filter((c) => c.kind !== 'blank')).toEqual([
+			expect.objectContaining({ kind: 'solid', closed: true }),
+			expect.objectContaining({ kind: 'solid', closed: true }),
+		]);
+		expect(cells[weekIndex('2026-W02')]!.kind).toBe('solid');
+		expect(cells[weekIndex('2026-W04')]!.kind).toBe('solid');
+	});
+});
+
+describe('show-every-dated-task specification scenarios', () => {
+	it('A Saturday task after the expected end stays visible', () => {
+		const p = scanned('🚧 P-範例專案 L.md', ['- [ ] 追蹤款項 📅 2026-12-05'], {
+			開始日期: '2026-06-29', 預計結束日期: '2026-11-06',
+		});
+		const cells = yearViewCells(p, weeks, SAT_ON, 'per-week');
+		expect(cells[weekIndex('2026-W50')]!.kind).toBe('overflow');
+		expect(cells[weekIndex('2026-W50')]!.tooltip).toBe(
+			`${p.name}\n⚠ overflow 2026-W50（已超出預計結束日期 2026-11-06）\n· 追蹤款項（2026-12-05 預計 (Sat → 本週)）`,
+		);
+		for (const label of ['2026-W47', '2026-W48', '2026-W49']) expect(cells[weekIndex(label)]!.kind).toBe('blank');
+		expect(taskLinesForWeek(p.task_lines, '2026-W50', SAT_ON).map((l) => l.text)).toEqual(['追蹤款項']);
+	});
+
+	it('A task before the start date stays visible', () => {
+		const p = scanned('🚧 P-範例專案 M.md', ['- [ ] 前置作業 📅 2026-10-28'], {
+			開始日期: '2026-11-02', 預計結束日期: '2026-12-31',
+		});
+		expect(yearViewCells(p, weeks, SAT_ON, 'per-week')[weekIndex('2026-W44')]!.kind).toBe('solid');
+		expect(taskLinesForWeek(p.task_lines, '2026-W44', SAT_ON).map((l) => l.text)).toEqual(['前置作業']);
+	});
+
+	it("A closed project's task after its end stays visible", () => {
+		const p = scanned('✅ P-範例專案 N.md', ['- [x] 結案報告 📅 2026-02-10 ✅ 2026-02-10'], {
+			開始日期: '2026-01-01', 預計結束日期: '2026-01-31',
+		});
+		expect(yearViewCells(p, weeks, SAT_ON, 'per-week')[weekIndex('2026-W07')]).toMatchObject({ kind: 'solid', closed: true });
+	});
+
+	it.each(['per-week', 'timeline', 'month'] as const)('An expected end in the year 9999: %s under 50 ms', (mode) => {
+		const p = scanned('🚧 P-範例專案 O.md', [], { 開始日期: '2026-01-01', 預計結束日期: '9999-12-31' });
+		const shown = mode === 'month' ? weeksOfMonth(2026, 11) : weeks;
+		const start = performance.now();
+		const cells = mode === 'month' ? monthViewCells(p, shown, SAT_ON) : yearViewCells(p, shown, SAT_ON, mode);
+		const elapsed = performance.now() - start;
+		expect(elapsed).toBeLessThan(50);
+		expect(cells).toHaveLength(shown.length);
+		if (mode === 'month') expect(cells.every((c) => c.kind === 'dashed')).toBe(true);
+		else expect(cells[0]).toMatchObject({ kind: mode === 'timeline' ? 'span-solid' : 'span-dashed', spanWeeks: shown.length });
+	});
+});
+
+describe('timeline occupied-week endpoints', () => {
+	it('renders the basic timeline scenario from W2 through W18', () => {
+		const p = project({ start: '2026-01-05', end: '2026-04-30' });
+		const cells = timelineCells(p, weeks);
+		expect(cells[weekIndex('2026-W02')]).toMatchObject({ kind: 'span-solid', spanWeeks: 17 });
+		expect(cells.filter((c) => c.kind !== 'blank')).toHaveLength(1);
+	});
+
+	it('extends the overflow scenario to the last occupied week W21', () => {
+		const p = scanned('🚧 P-範例專案 P.md', ['- [ ] 追蹤 📅 2026-05-21'], {
+			開始日期: '2026-01-05', 預計結束日期: '2026-04-30',
+		});
+		expect(timelineCells(p, weeks)[weekIndex('2026-W02')]).toMatchObject({ kind: 'span-solid', spanWeeks: 20 });
+	});
+
+	it('extends both ends using unsorted occupied weeks, including a bumped Saturday', () => {
+		const p = scanned('🚧 P-範例專案 Q.md', ['- [ ] 追蹤款項 📅 2026-12-05', '- [ ] 前置作業 📅 2026-06-10'], {
+			開始日期: '2026-06-29', 預計結束日期: '2026-11-06',
+		});
+		p.occupied_weeks.reverse();
+		const cells = timelineCells(p, weeks);
+		expect(cells[weekIndex('2026-W24')]).toMatchObject({ kind: 'span-solid', spanWeeks: 27 });
+		expect(cells.filter((c) => c.kind !== 'blank')).toHaveLength(1);
+		const shown = weeks.slice(30, 35);
+		expect(timelineCells(p, shown)[0]).toMatchObject({ kind: 'span-solid', spanWeeks: 5 });
+	});
+
+	it('clips task weeks outside both ends to the first and last shown weeks', () => {
+		const p = project({ start: '2026-06-29', end: '2026-11-06', occupied_weeks: ['2027-W02', '2025-W49'] });
+		expect(timelineCells(p, weeks)[0]).toMatchObject({ kind: 'span-solid', spanWeeks: 53 });
+	});
+
+	it.each(['done', 'cancelled'] as const)('keeps closed styling for %s timelines', (status) => {
+		const cells = timelineCells(project({ status, start: '2026-01-01', end: '2026-01-31' }), weeks);
+		expect(cells[0]).toMatchObject({ kind: 'span-solid', spanWeeks: 5, closed: true });
+	});
+
+	it.each(['start', 'end'] as const)('skips missing %s dates', (field) => {
+		expect(timelineCells(project({ [field]: null }), weeks).every((c) => c.kind === 'blank')).toBe(true);
 	});
 });

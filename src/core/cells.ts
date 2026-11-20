@@ -1,9 +1,7 @@
 import type { ProjectRecord } from './scan';
 import {
-	addDaysISO,
 	isoWeekLabelOfDate,
 	mondayOfWeek,
-	weekInfoFor,
 	weekOfTaskDate,
 	type WeekInfo,
 	type WeekRules,
@@ -54,40 +52,22 @@ function blankCell(closed: boolean): Cell {
 	return { kind: 'blank', spanWeeks: 1, tooltip: '', closed };
 }
 
+// 任務是否顯示只由它對應的週決定；預計日期只影響樣式，不能把任務藏起來。
+export function weekCellKind(project: ProjectRecord, week: WeekInfo): CellKind {
+	if (!project.start || !project.end) return 'blank';
+	const closed = project.status === 'done' || project.status === 'cancelled';
+	const end = parseDate(project.end);
+	if (project.occupied_weeks.includes(week.label)) {
+		if (closed) return 'solid';
+		if (week.start >= end) return 'overflow';
+		return project.settled_weeks.includes(week.label) ? 'settled' : 'solid';
+	}
+	const inRange = week.start < end && week.end > parseDate(project.start);
+	return inRange && !closed ? 'dashed' : 'blank';
+}
+
 export function perWeekCells(project: ProjectRecord, weeks: WeekInfo[], rules: WeekRules): Cell[] {
 	const isClosed = project.status === 'done' || project.status === 'cancelled';
-
-	if (!project.start || !project.end) {
-		return weeks.map(() => blankCell(isClosed));
-	}
-
-	const start = parseDate(project.start);
-	const end = parseDate(project.end);
-	const overflowEnd = project.overflow_end ? parseDate(project.overflow_end) : null;
-
-	const startIdx = weeks.findIndex((w) => end >= w.start && start < w.end);
-	let endIdx = -1;
-	for (let i = weeks.length - 1; i >= 0; i--) {
-		if (weeks[i]!.start < end) {
-			endIdx = i;
-			break;
-		}
-	}
-
-	let overflowEndIdx = -1;
-	if (overflowEnd && endIdx !== -1) {
-		for (let j = weeks.length - 1; j >= 0; j--) {
-			if (weeks[j]!.start < overflowEnd) {
-				overflowEndIdx = j;
-				break;
-			}
-		}
-		if (overflowEndIdx <= endIdx) overflowEndIdx = -1;
-	}
-
-	const hasTaskDates = project.task_dates.length > 0;
-	const occupiedSet = new Set(project.occupied_weeks);
-	const settledSet = new Set(project.settled_weeks);
 	const datesByWeek = new Map<string, TaskOccurrence[]>();
 	for (const t of project.tasks) {
 		const wl = weekOfTaskDate(t.date, rules);
@@ -97,52 +77,32 @@ export function perWeekCells(project: ProjectRecord, weeks: WeekInfo[], rules: W
 		datesByWeek.set(wl.label, arr);
 	}
 
-	const useFallbackDashed = !hasTaskDates && !isClosed && startIdx !== -1;
-
-	return weeks.map((w, i) => {
-		if (useFallbackDashed) {
-			if (i === startIdx) {
-				return {
-					kind: 'span-dashed',
-					spanWeeks: endIdx - startIdx + 1,
-					tooltip: `${project.name}\n虛線 ${project.start} ~ ${project.end}（未排定任務）`,
-					closed: isClosed,
-				};
-			}
-			return blankCell(isClosed);
-		}
-
-		const inRange = startIdx !== -1 && i >= startIdx && i <= endIdx;
-		const inOverflow = overflowEndIdx !== -1 && i > endIdx && i <= overflowEndIdx;
-		const isOccupied = occupiedSet.has(w.label);
-
-		if (isOccupied && inRange) {
-			const settled = !isClosed && settledSet.has(w.label);
-			return {
-				kind: settled ? 'settled' : 'solid',
-				spanWeeks: 1,
-				tooltip: buildWeekTooltip(project.name, project.end, w.label, datesByWeek.get(w.label) ?? []),
-				closed: isClosed,
-			};
-		}
-		if (isOccupied && inOverflow) {
-			return {
-				kind: 'overflow',
-				spanWeeks: 1,
-				tooltip: buildWeekTooltip(project.name, project.end, w.label, datesByWeek.get(w.label) ?? [], true),
-				closed: isClosed,
-			};
-		}
-		if (!isOccupied && inRange && !isClosed) {
-			return {
-				kind: 'dashed',
-				spanWeeks: 1,
-				tooltip: `${project.name}\n本週無排定任務`,
-				closed: isClosed,
-			};
-		}
-		return blankCell(isClosed);
+	const cells = weeks.map((w): Cell => {
+		const kind = weekCellKind(project, w);
+		if (kind === 'blank') return blankCell(isClosed);
+		return {
+			kind,
+			spanWeeks: 1,
+			tooltip: kind === 'dashed'
+				? `${project.name}\n本週無排定任務`
+				: buildWeekTooltip(project.name, project.end, w.label, datesByWeek.get(w.label) ?? [], kind === 'overflow'),
+			closed: isClosed,
+		};
 	});
+
+	// 只合併顯示中的期間，避免為了裁切色條而列舉專案跨越的所有週。
+	if (project.task_dates.length === 0 && project.occupied_weeks.length === 0 && !isClosed) {
+		const first = cells.findIndex((cell) => cell.kind === 'dashed');
+		if (first !== -1) {
+			const spanWeeks = cells.filter((cell) => cell.kind === 'dashed').length;
+			cells[first] = {
+				kind: 'span-dashed', spanWeeks, closed: isClosed,
+				tooltip: `${project.name}\n虛線 ${project.start} ~ ${project.end}（未排定任務）`,
+			};
+			for (let i = first + 1; i < first + spanWeeks; i++) cells[i] = blankCell(isClosed);
+		}
+	}
+	return cells;
 }
 
 // 年視圖畫成一條 span-dashed 的那一段，月視圖要每週一格，所以把它攤成一個個 dashed
@@ -160,53 +120,9 @@ function expandSpanDashed(cells: Cell[]): Cell[] {
 	return cells;
 }
 
-function mondayOfDate(iso: string): string {
-	return mondayOfWeek(isoWeekLabelOfDate(new Date(`${iso}T00:00:00Z`)));
-}
-
-// 一段連續的週，同時蓋住專案的整個範圍（開始日到 overflow 結束日，沒有 overflow 就到
-// 預計結束日）與要顯示的期間。month / isMonthStart / isQuarterStart 只有表頭會用，
-// 格子模型只讀 label、start、end，所以這裡只把月份填對、兩個旗標一律 false。
-function weeksCoveringProjectAndRange(project: ProjectRecord, first: WeekInfo, last: WeekInfo): WeekInfo[] {
-	const end = project.end!;
-	// overflow_end 理論上只會晚於 end，但取大的那個才保證這段週一定蓋住整個範圍。
-	const rightEnd = project.overflow_end && project.overflow_end > end ? project.overflow_end : end;
-	const projectStart = mondayOfDate(project.start!);
-	const projectEnd = mondayOfDate(rightEnd);
-	const rangeStart = mondayOfWeek(first.label);
-	const rangeEnd = mondayOfWeek(last.label);
-	// ISO 日期字串的字典順序就是時間順序。
-	const from = projectStart < rangeStart ? projectStart : rangeStart;
-	const to = projectEnd > rangeEnd ? projectEnd : rangeEnd;
-
-	const run: WeekInfo[] = [];
-	for (let monday = from; monday <= to; monday = addDaysISO(monday, 7)) {
-		const d = new Date(`${monday}T00:00:00Z`);
-		run.push(weekInfoFor(isoWeekLabelOfDate(d), d.getUTCMonth(), false, false));
-	}
-	return run;
-}
-
-// 月視圖的格子：和年視圖同一套 perWeekCells，一週一格。
-// weeks 可以是任何年份的任何一段週，月視圖因此能顯示今年以外的月份。
-//
-// perWeekCells 的 startIdx / endIdx / overflowEndIdx 都是「傳進去的那段週」裡的索引，
-// 所以只傳當月那四五週的話，整個專案都落在當月之前時 endIdx 會是 -1，超出預計結束
-// 日期的那幾格就全變成 blank（年視圖同樣的週卻是 overflow）。因此先補出一段同時蓋住
-// 專案整個範圍與當月的連續週，在那段上算格子，最後只挑出當月的那幾格。
+// 月視圖沿用相同的逐週判斷，只將未排任務的整條虛線攤成每週一格。
 export function monthViewCells(project: ProjectRecord, weeks: WeekInfo[], rules: WeekRules): Cell[] {
-	const first = weeks[0];
-	const last = weeks[weeks.length - 1];
-	// 沒有起訖日的專案每一格都是 blank，不需要補週。
-	if (!project.start || !project.end || !first || !last) {
-		return expandSpanDashed(perWeekCells(project, weeks, rules));
-	}
-
-	const run = weeksCoveringProjectAndRange(project, first, last);
-	const cells = expandSpanDashed(perWeekCells(project, run, rules));
-	const byLabel = new Map(run.map((w, i) => [w.label, cells[i]!]));
-	const isClosed = project.status === 'done' || project.status === 'cancelled';
-	return weeks.map((w) => byLabel.get(w.label) ?? blankCell(isClosed));
+	return expandSpanDashed(perWeekCells(project, weeks, rules));
 }
 
 export function yearViewCells(
@@ -215,61 +131,35 @@ export function yearViewCells(
 	rules: WeekRules,
 	mode: 'per-week' | 'timeline',
 ): Cell[] {
-	const derive = (run: WeekInfo[]): Cell[] => mode === 'timeline'
-		? timelineCells(project, run)
-		: perWeekCells(project, run, rules);
-	const first = weeks[0];
-	const last = weeks[weeks.length - 1];
-	if (!project.start || !project.end || !first || !last) return derive(weeks);
-
-	const run = weeksCoveringProjectAndRange(project, first, last);
-	const cells = derive(run);
-	const from = run.findIndex((w) => w.label === first.label);
-	const to = from + weeks.length - 1;
-	const visible = cells.slice(from, to + 1);
-	// 色條只存在起始格，直接切陣列會丟掉從前一年延伸進來的色條；保留交集並把
-	// 起始格移到可見範圍內，renderBar 的寬度與點擊週換算才能沿用同一份資料。
-	for (const [i, cell] of cells.entries()) {
-		if (cell.kind !== 'span-dashed' && cell.kind !== 'span-solid') continue;
-		const start = Math.max(i, from);
-		const end = Math.min(i + cell.spanWeeks - 1, to);
-		if (start <= end) visible[start - from] = { ...cell, spanWeeks: end - start + 1 };
-	}
-	return visible;
+	return mode === 'timeline' ? timelineCells(project, weeks) : perWeekCells(project, weeks, rules);
 }
 
 export function timelineCells(project: ProjectRecord, weeks: WeekInfo[]): Cell[] {
 	const isClosed = project.status === 'done' || project.status === 'cancelled';
+	const cells = weeks.map(() => blankCell(isClosed));
+	if (!project.start || !project.end) return cells;
 
-	if (!project.start || !project.end) {
-		return weeks.map(() => blankCell(isClosed));
+	let left = parseDate(mondayOfWeek(isoWeekLabelOfDate(parseDate(project.start))));
+	let right = parseDate(mondayOfWeek(isoWeekLabelOfDate(parseDate(project.end))));
+	for (const label of project.occupied_weeks) {
+		const monday = parseDate(mondayOfWeek(label));
+		if (monday < left) left = monday;
+		if (monday > right) right = monday;
 	}
-
-	const start = parseDate(project.start);
-	const end = parseDate(project.end);
-	const rightEndDate = project.overflow_end && project.overflow_end > project.end ? parseDate(project.overflow_end) : end;
+	const startIdx = weeks.findIndex((w) => w.end > left && w.start <= right);
+	if (startIdx === -1) return cells;
+	let rightIdx = startIdx;
+	for (let i = startIdx + 1; i < weeks.length; i++) {
+		if (weeks[i]!.start <= right) rightIdx = i;
+	}
 	const rightEndLabel = project.overflow_end && project.overflow_end > project.end ? project.overflow_end : project.end;
-
-	const startIdx = weeks.findIndex((w) => end >= w.start && start < w.end);
-	let rightIdx = -1;
-	for (let i = weeks.length - 1; i >= 0; i--) {
-		if (weeks[i]!.start < rightEndDate) {
-			rightIdx = i;
-			break;
-		}
-	}
-
-	return weeks.map((_w, i) => {
-		if (i === startIdx && startIdx !== -1 && rightIdx >= startIdx) {
-			return {
-				kind: 'span-solid',
-				spanWeeks: rightIdx - startIdx + 1,
-				tooltip: `${project.name}\n${project.start} ~ ${rightEndLabel}`,
-				closed: isClosed,
-			};
-		}
-		return blankCell(isClosed);
-	});
+	cells[startIdx] = {
+		kind: 'span-solid',
+		spanWeeks: rightIdx - startIdx + 1,
+		tooltip: `${project.name}\n${project.start} ~ ${rightEndLabel}`,
+		closed: isClosed,
+	};
+	return cells;
 }
 
 // 整條虛線（span-dashed）只畫在起始格裡、用寬度蓋過後面的格子，所以點擊時要自己

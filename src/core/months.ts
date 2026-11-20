@@ -119,7 +119,7 @@ export function monthCellLines(
 	}));
 }
 
-// `blank` 的格子打不開浮窗，所以也不列任務文字（例如任務的日期早於專案開始日）。
+// `blank` 的格子打不開浮窗，所以也不列任務文字；有日期的任務週由格子模型保證顯示。
 // 月視圖每一格都走這個函式，那條規則才只有一處。
 export function monthCellTaskLines(
 	project: ProjectRecord,

@@ -21,7 +21,7 @@ The rendering matrix SHALL be:
 
 Every week that has a task line therefore has a drawn cell and can open the week popover, whatever the project's start and expected end dates are; the expected end date only decides whether such a week is marked as overflow.
 
-When the project's `task_dates` is empty (i.e., no `📅` or `✅` dates in the note), the bar SHALL fall back to the existing full-range dashed rendering across `[start, end]` (preserving the current behavior for un-scheduled projects).
+When the project's `task_dates` is empty (i.e., no `📅` or `✅` dates in the note), the bar SHALL fall back to the existing full-range dashed rendering across the `in_range` weeks (preserving the current behavior for un-scheduled projects).
 
 #### Scenario: Per-week rendering for mixed-date project
 
@@ -29,8 +29,8 @@ When the project's `task_dates` is empty (i.e., no `📅` or `✅` dates in the 
 - **WHEN** the frontend renders this project
 - **THEN** the W3 cell MUST display a solid block in the project's category color
 - **AND** the W9 cell MUST display a solid block in the project's category color
-- **AND** the W1, W2, W4–W8, W10–W17 cells MUST display dashed blocks in the project's category color
-- **AND** the W18 onward cells MUST be empty
+- **AND** the W2, W4–W8, W10–W18 cells MUST display dashed blocks in the project's category color
+- **AND** the W1 cell and the W19 onward cells MUST be empty
 
 #### Scenario: Overflow weeks rendered red when occupied
 
@@ -97,7 +97,7 @@ For projects whose `start` or `end` is null, no bar SHALL render in timeline vie
 #### Scenario: Timeline mode extends to overflow_end when present
 
 - **GIVEN** `viewMode = 'timeline'`
-- **AND** a project with `start = 2026-01-05`, `end = 2026-04-30`, `overflow_end = 2026-05-21`, `status = active`
+- **AND** a project with `start = 2026-01-05`, `end = 2026-04-30`, `overflow_end = 2026-05-21`, `occupied_weeks` including `2026-W21`, `status = active`
 - **WHEN** the frontend renders this project
 - **THEN** the single bar's right edge MUST align with the week containing `2026-05-21` (W21)
 - **AND** the bar MUST be entirely in the project's category color (no red segment for the W19-W21 range)
