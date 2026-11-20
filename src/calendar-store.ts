@@ -37,6 +37,8 @@ export interface CalendarStoreState {
 }
 
 export interface CalendarStoreOptions {
+	// 每次呼叫才判斷裝置，所有讀取入口（含排著的讀取）才會受同一道守門保護。
+	enabled?(): boolean;
 	// 正式環境接 Obsidian 的 requestUrl（GET、throw: false），測試用假的實作。
 	request(url: string): Promise<CalendarResponse>;
 	// 正式環境接 app.secretStorage.getSecret；沒有存值時回傳 null。
@@ -104,7 +106,7 @@ export class CalendarStore {
 	 * 用那時的設定。回傳的 promise 等到這一串讀取（含排著的那一次）都結束。
 	 */
 	refresh(): Promise<void> {
-		if (this.disposed) return Promise.resolve();
+		if (this.disposed || this.options.enabled?.() === false) return Promise.resolve();
 		if (this.chain) {
 			// 連按幾次都只多跑一次：排著的那一次還沒開始，重複的要求就併進去。
 			this.queued = true;
@@ -132,7 +134,7 @@ export class CalendarStore {
 	 * 重新載入後、存檔失敗還原後都會問一次（design.md：讀取時機只有五種）。
 	 */
 	refreshIfCalendarsChanged(): Promise<void> {
-		if (this.disposed) return Promise.resolve();
+		if (this.disposed || this.options.enabled?.() === false) return Promise.resolve();
 		if (this.hasRun && sameCalendars(this.lastUsed, this.options.calendars())) return Promise.resolve();
 		return this.refresh();
 	}
@@ -147,6 +149,7 @@ export class CalendarStore {
 	}
 
 	private async runOnce(): Promise<void> {
+		if (this.options.enabled?.() === false) return;
 		const snapshot = this.options.calendars().map((calendar) => ({ ...calendar }));
 		this.lastUsed = snapshot;
 		this.hasRun = true;

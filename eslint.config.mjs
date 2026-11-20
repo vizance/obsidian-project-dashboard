@@ -42,6 +42,13 @@ export default defineConfig(
 		},
 	},
 	{
+		// 建置腳本只在電腦上打包時執行，不會進到外掛裡；外掛開放手機後這條規則才開始檢查它。
+		files: ['esbuild.config.mjs'],
+		rules: {
+			'obsidianmd/no-nodejs-modules': 'off',
+		},
+	},
+	{
 		files: ['scripts/**/*.mjs'],
 		rules: {
 			'obsidianmd/no-nodejs-modules': 'off',

@@ -1,4 +1,4 @@
-import { Notice, Plugin, requestUrl, type WorkspaceLeaf } from 'obsidian';
+import { Notice, Platform, Plugin, requestUrl, type WorkspaceLeaf } from 'obsidian';
 import { CalendarStore } from './calendar-store';
 import { PluginDataStore } from './core/plugin-data-store';
 import type { PluginData } from './core/settings';
@@ -23,6 +23,7 @@ export default class ProjectDashboardPlugin extends Plugin {
 	// 行事曆讀取的唯一入口，所有儀表板分頁共用一次讀取與一份結果。連結只在發請求
 	// 的那一刻從密鑰儲存區拿出來，不寫進外掛資料，也不進任何紀錄。
 	readonly calendars = new CalendarStore({
+		enabled: () => !Platform.isPhone,
 		request: async (url) => {
 			// throw: false 才拿得到 4xx／5xx 的狀態碼，由 CalendarStore 對應成讀取失敗的原因。
 			const response = await requestUrl({ url, method: 'GET', throw: false });
@@ -63,13 +64,15 @@ export default class ProjectDashboardPlugin extends Plugin {
 			},
 		});
 
-		this.addCommand({
-			id: 'refresh-calendars',
-			name: 'Refresh calendars',
-			callback: () => {
-				void this.calendars.refresh();
-			},
-		});
+		if (!Platform.isPhone) {
+			this.addCommand({
+				id: 'refresh-calendars',
+				name: 'Refresh calendars',
+				callback: () => {
+					void this.calendars.refresh();
+				},
+			});
+		}
 
 		// 記憶體裡的 calendars 跟上次讀取用的不一樣時才重新讀取：存檔後、從外部重新
 		// 載入後、存檔失敗還原後各問一次（design.md：讀取時機只有四種）。設定頁打字

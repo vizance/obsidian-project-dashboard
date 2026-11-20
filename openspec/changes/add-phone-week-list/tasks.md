@@ -12,8 +12,8 @@
 
 ## 3. 行事曆、設定與 manifest
 
-- [ ] 3.1 手機上不設定也不讀行事曆（Calendars are not set up or read on a phone；When calendars are fetched；設計：手機上收起來的功能）：src/main.ts 在手機上不開始任何讀取、不註冊 `Refresh calendars`；src/settings-tab.ts 在手機上的 Calendars 區塊只顯示標題與 `Calendar events show on a computer or tablet. Add your calendars there.`，不呼叫 `app.secretStorage`；手機上存其他設定時 `calendars` 原樣保留。驗證：測試涵蓋「A phone never fetches」（沒有任何 `requestUrl` 呼叫、指令沒註冊）、「Settings on a phone」「Other settings keep the calendars」，既有行事曆測試全部通過。
-- [ ] 3.2 manifest 開放手機與平板（Build and deploy into the vault）：manifest.json 的 `isDesktopOnly` 改成 `false`，其他欄位不變。驗證：`npm run build` 之後檢查 manifest.json 含 `"isDesktopOnly": false`（情境「The manifest allows phones and tablets」）。
+- [x] 3.1 手機上不設定也不讀行事曆（Calendars are not set up or read on a phone；When calendars are fetched；設計：手機上收起來的功能）：src/main.ts 在手機上不開始任何讀取、不註冊 `Refresh calendars`；src/settings-tab.ts 在手機上的 Calendars 區塊只顯示標題與 `Calendar events show on a computer or tablet. Add your calendars there.`，不呼叫 `app.secretStorage`；手機上存其他設定時 `calendars` 原樣保留。驗證：測試涵蓋「A phone never fetches」（沒有任何 `requestUrl` 呼叫、指令沒註冊）、「Settings on a phone」「Other settings keep the calendars」，既有行事曆測試全部通過。
+- [x] 3.2 manifest 開放手機與平板（Build and deploy into the vault）：manifest.json 的 `isDesktopOnly` 改成 `false`，其他欄位不變。驗證：`npm run build` 之後檢查 manifest.json 含 `"isDesktopOnly": false`（情境「The manifest allows phones and tablets」）。
 
 ## 4. 文件與截圖
 

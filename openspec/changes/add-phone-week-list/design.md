@@ -163,7 +163,7 @@
 
 **介面與資料形狀：**
 
-- `src/core/phone-weeks.ts` 匯出 `phoneWeekLabels`、`phoneWeekGroups`、`overdueLines`、`scheduleToThisWeekDays`，輸入是 `ProjectRecord[]`、`WeekRules` 或 `ScheduleRules`、今天的 ISO 日期字串，輸出只含週標籤、專案路徑與 `TaskLine`。
+- `src/core/phone-weeks.ts` 匯出 `phoneWeekLabels`、`phoneWeekGroups`、`overdueLines`、`scheduleToThisWeekDays`，輸入是 `ProjectRecord[]`、`WeekRules` 或 `ScheduleRules`、今天的 ISO 日期字串，輸出只含週標籤、`ProjectRecord` 與 `TaskLine`（形狀為 `PhoneWeek { week, groups }` 與 `PhoneProjectLines { project, lines }`，由 tests/phone-weeks.test.ts 鎖定）。
 - `src/phone-week-list.ts` 匯出 `PhoneWeekList` 與它的 host 介面。host 提供列、設定、今天、toggle、shift、開筆記；`PhoneWeekList` 從不直接改筆記。
 - `manifest.json`：`isDesktopOnly` 是 `false`，其他欄位不變。
 

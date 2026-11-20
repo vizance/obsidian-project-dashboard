@@ -1,4 +1,4 @@
-import { PluginSettingTab, Setting, TFolder, setTooltip, type App } from 'obsidian';
+import { Platform, PluginSettingTab, Setting, TFolder, setTooltip, type App } from 'obsidian';
 import { isCalendarAddress } from './core/calendar';
 import { CATEGORIES, CATEGORY_KEYS } from './core/config';
 import {
@@ -191,6 +191,13 @@ export class DashboardSettingTab extends PluginSettingTab {
 	}
 
 	private buildCalendarSection(): void {
+		if (Platform.isPhone) {
+			new Setting(this.containerEl)
+				.setName('Calendars')
+				.setDesc('Calendar events show on a computer or tablet. Add your calendars there.')
+				.setHeading();
+			return;
+		}
 		const heading = new Setting(this.containerEl)
 			.setName('Calendars')
 			.setDesc('Show events from your calendars at the top of the month view. The plugin only reads your calendars. It never changes them.')
