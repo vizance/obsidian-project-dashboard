@@ -572,32 +572,45 @@ export class ProjectDashboardView extends ItemView {
 		mLi.appendText(' 切換年 / 月');
 		const helpLi = shortcutsUl.createEl('li');
 		helpLi.createEl('kbd', { text: '?' });
-		helpLi.appendText(' 顯示 / 隱藏這個面板');
+		helpLi.appendText(' 顯示 / 隱藏面板');
 
 		const legendVisual = this.helpPanelEl.createEl('section', { cls: 'legend-visual' });
 		legendVisual.createEl('h3', { text: '圖示說明' });
 		const legendUl = legendVisual.createEl('ul');
 
-		const addLegendRow = (swatchCls: string, build: (container: HTMLElement) => void): void => {
+		const addLegendRow = (swatchCls: string, build: (container: HTMLElement) => void, rowCls = ''): HTMLTableCellElement => {
 			const li = legendUl.createEl('li');
-			li.createSpan({ cls: `swatch ${swatchCls}` });
+			// 真正的列與儲存格讓暫停、今天欄與名稱標記沿用圖表樣式。
+			const sample = li.createEl('table', { cls: 'legend-sample', attr: { 'aria-hidden': 'true' } });
+			sample.setCssProps({ '--pd-cat-color': '#3B82F6' });
+			const row = sample.createEl('tbody').createEl('tr', { cls: rowCls });
+			const cell = row.createEl('td', { cls: 'proj-cell' });
+			if (swatchCls) cell.createSpan({ cls: `swatch ${swatchCls}` });
 			const div = li.createDiv();
 			build(div);
+			return cell;
 		};
 
-		addLegendRow('solid', (div) => div.appendText('該週有任務排定（尚未完成）'));
-		addLegendRow('settled', (div) => div.appendText('該週任務已全部完成'));
-		addLegendRow('dashed', (div) => div.appendText('該週無任務（仍在專案區間）'));
-		addLegendRow('overflow', (div) => {
+		addLegendRow('bar bar-solid', (div) => div.appendText('該週有任務排定（尚未完成）'));
+		addLegendRow('bar bar-solid bar-settled', (div) => div.appendText('該週任務已全部完成（settled）'));
+		addLegendRow('bar bar-dashed', (div) => div.appendText('該週無任務（仍在專案區間）'));
+		addLegendRow('bar bar-overflow', (div) => {
 			div.appendText('超出原訂結束日（scope creep）— 該回去更新 frontmatter ');
 			div.createEl('code', { text: '預計結束日期' });
 		});
-		addLegendRow('blank', (div) => div.appendText('不在專案區間 / 已結案專案的無任務週'));
+		const pausedSample = addLegendRow('bar bar-solid', (div) => div.appendText('暫停的專案（勾「顯示暫停」才會出現）'), 'status-pending');
+		pausedSample.createSpan({ cls: 'pause-badge', text: '⏳ 暫停' });
+		addLegendRow('bar bar-solid done', (div) => div.appendText('已完成或取消的專案（勾「顯示已結案」才會出現）'));
+		addLegendRow('today-sample', (div) => div.appendText('今天所在的週')).addClass('today-col');
+		const warningSample = addLegendRow('', (div) => div.appendText('日期有缺漏、是推算的，或有問題；滑過去看原因'));
+		warningSample.appendText('專案');
+		warningSample.createSpan({ cls: 'warn', text: '⚠' });
+		addLegendRow('blank', (div) => div.appendText('這週沒有任務，而且不在專案區間，或專案已結案'));
 
 		// 月視圖的格子直接列任務文字，三種樣式各代表什麼要寫在這裡，面板才是一份
 		// 完整的靜態說明（dashboard-keyboard-shortcuts：Help panel content）。
 		const monthSection = this.helpPanelEl.createEl('section', { cls: 'month-view-help' });
-		monthSection.createEl('h3', { text: '月視圖的任務文字' });
+		monthSection.createEl('h3', { text: '月視圖' });
 		const monthUl = monthSection.createEl('ul');
 
 		const addMonthRow = (sampleCls: string, sample: string, explanation: string): void => {
@@ -615,6 +628,27 @@ export class ProjectDashboardView extends ItemView {
 		const generalLi = monthUl.createEl('li');
 		generalLi.createSpan({ cls: 'mv-sample mv-general', text: 'General 列' });
 		generalLi.appendText('：行事曆的行程，只能看；按 ↻ 重新讀取');
+
+		const calendarLabelLi = monthUl.createEl('li');
+		calendarLabelLi.createSpan({ cls: 'gc-label', text: '行事曆' }).setCssProps({ '--pd-calendar-color': '#4a7fd4' });
+		calendarLabelLi.appendText(' 行事曆名稱；顏色在設定頁改');
+		const unscheduledLi = monthUl.createEl('li');
+		unscheduledLi.appendText('還沒排 ');
+		const unscheduledSample = unscheduledLi.createEl('table', { cls: 'month-grid help-month-sample' });
+		unscheduledSample.createEl('tbody').createEl('tr').createEl('td', { cls: 'month-unscheduled', text: '3' });
+		unscheduledLi.appendText(' 還沒排日期的任務；點一下排進這個月的某一週');
+
+		const actions = this.helpPanelEl.createEl('section', { cls: 'actions' });
+		actions.createEl('h3', { text: '操作' });
+		const actionsUl = actions.createEl('ul');
+		for (const text of [
+			'點格子 → 打開那一週的任務，可以勾完成、換週、排進或新增任務',
+			'點專案名稱 → 在右側開啟筆記',
+			'◀ ▶ → 換年份或月份；今年、本月 回到現在',
+			'勾「編輯分類與狀態」 → 改專案的分類與狀態',
+			'拖拉或點圖例 → 調整分類順序，或把一類置頂',
+			'拖拉專案欄的右邊 → 調整欄寬',
+		]) actionsUl.createEl('li', { text });
 	}
 
 	private registerInteractions(): void {
