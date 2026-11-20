@@ -38,15 +38,18 @@ A category you pick by hand on the dashboard (`編輯分類` on a project row) w
 
 **`Calendars`**
 
-The calendars whose events fill the month view's General row, described in [The General row](#the-general-row) below. The section's own description reads `Show events from your calendars at the top of the month view. The plugin reads your calendars over the internet. It never changes them. Each calendar's link is kept in a safe place inside Obsidian, not in this plugin's files.` — followed by the hint `In Google Calendar, open the settings of a calendar and copy "Secret address in iCal format".`
+The calendars whose events fill the month view's General row, described in [The General row](#the-general-row) below. The section's description reads `Show events from your calendars at the top of the month view. The plugin only reads your calendars. It never changes them.` Two hints follow: `Google Calendar: open the calendar's settings and copy "Secret address in iCal format" (iCal 格式的私密網址).` and `iCloud: share the calendar as a public calendar and copy its link.`
 
 One row per calendar, each with:
 
-- a text field (placeholder `Calendar name`) — the name used to label the calendar's events and to name it when it cannot be read. A calendar with no name is called `行事曆 1`, `行事曆 2`, … by its position in the list.
-- Obsidian's secret picker — pick the secret that holds this calendar's link, or create one there and paste the link in as its value. Only the secret's ID is stored in the plugin's data; the link itself stays in Obsidian's secret storage.
-- `Delete` — removes that calendar.
+- a name field (placeholder `Calendar name`) — accepts Chinese too. The name labels the calendar's events and identifies it when it cannot be read. A calendar with no name is called `行事曆 1`, `行事曆 2`, … by its position in the list.
+- a link field — paste the calendar link here. The plugin saves it for you and clears the field. A stored link is never shown again. The field's hint tells you its state:
+  - `Paste the calendar link here` — no link has been set up yet.
+  - `Link saved. Paste a new link to change it.` — the link is saved on this computer.
+  - `This computer has no link yet. Paste it here.` — the calendar is in the list, but its link is missing on this computer.
+- `Delete` — removes that calendar and clears the link the plugin saved for it.
 
-`Add a calendar` appends an empty row. A row with no secret picked yet is simply skipped: it is never fetched and never reported as a problem.
+`Add a calendar` appends an empty row. A row that has never had a link is skipped: it is never fetched and never reported as a problem. The link is checked when you paste it, press Enter, or leave the field. If it does not start with `https://` or `webcal://`, nothing is saved and the row shows `This is not a calendar link. It should start with https:// or webcal://.` The link is kept in Obsidian's secret storage, outside the plugin's data file; the plugin handles storage for you.
 
 Settings are saved into the vault's plugin data (`.obsidian/plugins/project-dashboard/data.json`), next to the category choices you make by hand, 400 ms after your last edit; an open dashboard then re-scans and re-renders by itself. Obsidian Sync carries that file like any other plugin data, so settings changed on one computer arrive on the others. Nothing you configure is stored in this repository.
 
@@ -56,7 +59,13 @@ Category labels and colors (`CATEGORIES` in `src/core/config.ts`) are the one th
 
 The controls row has a `年` / `月` switch, and `M` toggles between the two as well. The year view is the whole-year chart described above. The month view shows one month at a time and writes the tasks into the cells, which is what weekly planning usually needs.
 
-In the month view the controls row also shows `◀`, the month title, `▶`, and `本月`. The title reads `2026 年 10 月（W41–W44）`: the year, the month, and the weeks that month holds. `◀` and `▶` step one month back or forward, across year boundaries; `本月` returns to the month of today's week. The month view always opens on the month of today's week — when you switch into it, and when you reopen the dashboard after restarting Obsidian. Only the year-versus-month choice is remembered, never the month you were last looking at. Changing the month, or switching between the two views, closes an open popover.
+In the year view, the controls row shows `◀`, a year title such as `2026 年`, and `▶`. The arrows step one year back or forward. `今年` appears only when you are looking at another year and returns to this year. Today's week is highlighted only in this year's chart.
+
+In the month view, the same place shows `◀`, the month title, and `▶`. The title reads `2026 年 10 月（W41–W44）`: the year, the month, and the weeks that month holds. The arrows step one month back or forward, across year boundaries. `本月` appears only when you are looking at another month and returns to the month of today's week.
+
+Switching views keeps the period you are planning. From another year, such as 2027, switching to the month view opens January of that year. From this year, it opens the month of today's week. Switching from a month to the year view shows that month's year. Opening the dashboard starts on this year or the month of today's week. Only the year-versus-month choice is remembered; the shown year and month are not. Changing the year or month, or switching views, closes an open popover. A note update keeps the year or month you are looking at.
+
+If a project's expected end date was in an earlier year but its tasks extend into the shown year, the per-week view still marks its overflow weeks red. In timeline mode, the bar starts at the shown year's first week. A project with no end date still defaults to December 31 of today's year, whatever year you are looking at.
 
 A week belongs to the month its **Monday** falls in. October 2026 is therefore W41–W44 and November 2026 is W45–W49 — the same way you fill in a weekly table, by the week's Monday. The one exception is week 1, which always counts as January, even when its Monday is still in December. The year view's month and quarter headers follow the same rule, so both views say the same thing about any week.
 
@@ -74,15 +83,23 @@ The last column, `還沒排`, shows how many of the project's tasks have no date
 
 ## The General row
 
-Above every project row, the month view shows one more row, `General`: the events of your own calendars, week by week, so the things that are not projects — a class, a trip, a day off — sit in the same table as the work. The row appears as soon as one calendar in the `Calendars` section has a secret picked, and disappears again when none has. It is read-only: clicking one of its cells opens no popover (it only closes one that is open), and its `還沒排` cell stays empty.
+Above every project row, the month view shows one more row, `General`: the events of your own calendars, week by week, so the things that are not projects — a class, a trip, a day off — sit in the same table as the work. The row appears as soon as one calendar in the `Calendars` section has been given a link, and disappears again when none has been set up. It is read-only: clicking one of its cells opens no popover (it only closes one that is open), and its `還沒排` cell stays empty.
 
-**Get the link.** In Google Calendar, open **Settings**, pick the calendar in the left list, scroll to the bottom and copy **Secret address in iCal format**. That address is a password: anyone who has it can read the whole calendar. Apple iCloud has no private address — sharing a calendar there produces a public link that everyone who gets hold of it can read, so when the calendar already lives in Google and iCloud only subscribes to it, use the Google address instead. If a secret address ever leaks, open the same Google Calendar settings page and reset it; the old address stops working, and you then paste the new one into the secret.
+**Get the link.** In Google Calendar, open **Settings**, pick the calendar in the left list, scroll to the bottom and copy **Secret address in iCal format**. That address is a password: anyone who has it can read the whole calendar. For iCloud, open the Calendar app on your Mac, right-click the calendar and choose **Share Calendar…** (`共享行事曆⋯`, or `分享行事曆⋯` in some versions). Check **Public Calendar** (`公開行事曆`) and copy the link starting with `webcal://`. Anyone who gets this public link can read the calendar. If the calendar already lives in Google and iCloud only subscribes to it, use the Google address instead. If a Google secret address leaks, reset it on the same Google Calendar settings page, then paste the new address into the plugin's link field; the old address stops working.
 
-**Add the calendar.** In **Settings → Project Dashboard → Calendars**, press `Add a calendar`, type a name into the row (`工作`, `家庭` — the name is what the dashboard shows when the calendar cannot be read), then use the row's secret picker: choose a secret you already have, or create a new one inside Obsidian and paste the calendar address in as its value. The plugin's own data file only ever holds the name and the ID of the secret.
+**Add the calendar.** In **Settings → Project Dashboard → Calendars**, press `Add a calendar`, type a name into the row (`工作`, `家庭` — Chinese is fine), and paste the link into its link field. The plugin saves it and clears the field; `Link saved. Paste a new link to change it.` confirms that it is saved. The name labels the calendar's events and identifies it when it cannot be read.
 
-Secrets may not travel with Obsidian Sync the way the rest of the settings do. If a second computer has the calendar list but not the secret, the row's status says `這台裝置找不到連結` until you pick (or create) the secret there as well.
+Saved links may not travel with Obsidian Sync the way the rest of the settings do. If a second computer has the calendar list but no saved link, the link field says `This computer has no link yet. Paste it here.` and the General row reports `這台裝置找不到連結`. Paste the link into that row on the second computer too.
 
-**When the events are read.** At exactly four moments: when a dashboard tab opens, when you press the `↻` in the General row's name cell, when you run the command `Refresh calendars` (`Project Dashboard: Refresh calendars` in the command palette), and when the list of calendars in the settings changes. Nothing else reads them — no timer, and above all not `◀`, `▶`, `本月`, or the `年` / `月` switch, so moving through the months costs nothing. Pressing `↻` while a week popover is open leaves the popover where it is.
+**When the events are read.** At exactly five moments:
+
+1. When a dashboard tab opens.
+2. When you press `↻` in the General row's name cell.
+3. When you run `Refresh calendars` (`Project Dashboard: Refresh calendars` in the command palette).
+4. When you paste a new link for a calendar that was already set up; it is read again right away.
+5. When the calendar list changes: after settings are saved, settings changed outside the running plugin are loaded, or a failed save restores the last saved settings.
+
+Nothing else reads them: no timer, no year or month navigation (including `今年` and `本月`), no `年` / `月` switch, and no note update. Pressing `↻` while a week popover is open leaves the popover where it is.
 
 **What a line looks like.** Local dates as month/day with the weekday in brackets, local 24-hour times:
 
@@ -96,7 +113,7 @@ An event without a title reads `（沒有標題）`. Hovering a line shows the n
 **The status line** sits under the word `General`. Before the first read of this Obsidian session it is empty; while a read is running it says `讀取中…`; afterwards it says `更新於 15:20` with the time the last read finished. When a calendar could not be read, `・⚠ 1 個行事曆讀不到` follows, and hovering the status line lists one `<name>：<reason>` per failed calendar. The five reasons are:
 
 - `連結格式不對` — the stored address is not an `https://` or `webcal://` address.
-- `這台裝置找不到連結` — the secret has no value on this computer.
+- `這台裝置找不到連結` — no link is saved for this calendar on this computer.
 - `讀取失敗（HTTP 404）` — the server answered, but with an error status.
 - `連不上` — the request itself failed, e.g. with no internet connection.
 - `內容看不懂` — the answer was not a calendar the plugin can read.
@@ -107,8 +124,8 @@ A calendar that fails keeps the events of its last successful read in this sessi
 
 The plugin is offline unless you set up a calendar:
 
-- It makes no network request at all while the `Calendars` list is empty or no row has a secret picked.
-- The only addresses it ever requests are the calendar addresses you stored yourself, and it requests them only with `GET`, only at the four moments listed above.
+- It makes no network request at all while the `Calendars` list is empty or no row has been given a link.
+- The only addresses it ever requests are the calendar addresses you stored yourself, and it requests them only with `GET`, only at the five moments listed above.
 - It never writes to a calendar — no event is created, changed, or deleted — and it sends no note, no setting, and no other content out of your vault.
 - Fetched events are held in memory only. They are never written to disk and are gone when the plugin unloads.
 - The calendar addresses live in Obsidian's secret storage. They are not in the plugin's `data.json`, not in local storage, and never appear in a notice, a tooltip, an error message, or the dashboard's text.
@@ -186,15 +203,18 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 
 **`Calendars`（行事曆）**
 
-這裡設定的行事曆，行程會填進月視圖的 General 列，詳見下面的 [General 列](#general-列)。區塊自己的說明文字是 `Show events from your calendars at the top of the month view. The plugin reads your calendars over the internet. It never changes them. Each calendar's link is kept in a safe place inside Obsidian, not in this plugin's files.`（把你行事曆的行程顯示在月視圖最上面。外掛會透過網路讀取你的行事曆，但絕不會修改它們。每個行事曆的連結存在 Obsidian 裡安全的地方，不在這個外掛的檔案裡。），後面接一行提示 `In Google Calendar, open the settings of a calendar and copy "Secret address in iCal format".`（在 Google 日曆打開某個日曆的設定，複製「iCal 格式的私密網址」。）
+這裡設定的行事曆，行程會填進月視圖的 General 列，詳見下面的 [General 列](#general-列)。區塊的說明文字是 `Show events from your calendars at the top of the month view. The plugin only reads your calendars. It never changes them.`（把你行事曆的行程顯示在月視圖最上面。外掛只會讀取，絕不修改行事曆。）接著有兩行提示：`Google Calendar: open the calendar's settings and copy "Secret address in iCal format" (iCal 格式的私密網址).`（在 Google 日曆打開該日曆的設定，複製「iCal 格式的私密網址」。）以及 `iCloud: share the calendar as a public calendar and copy its link.`（將 iCloud 行事曆設為公開，複製它的連結。）
 
 一個行事曆一列，每列有：
 
-- 一個文字欄（placeholder `Calendar name`）— 行事曆的名稱，用來標示行程來自哪個行事曆，以及讀不到時指出是哪一個。沒取名的行事曆依它在清單裡的位置叫 `行事曆 1`、`行事曆 2`……
-- Obsidian 的密鑰選擇器 — 選一把存著這個行事曆連結的鑰匙，或在那裡新建一把，把連結貼進去當它的值。外掛資料只存鑰匙的 ID，連結本身留在 Obsidian 的密鑰儲存區。
-- `Delete`（刪除）— 把那個行事曆從清單移除。
+- 名稱欄（提示文字 `Calendar name`）— 可以打中文。行事曆的名稱用來標示行程來自哪個行事曆，以及讀不到時指出是哪一個。沒取名的行事曆依它在清單裡的位置叫 `行事曆 1`、`行事曆 2`……
+- 連結欄 — 把行事曆連結貼進去，外掛會自動儲存並清空欄位。已存的連結不會再顯示，只用提示文字說明狀態：
+  - `Paste the calendar link here` — 還沒設定過連結，請貼在這裡。
+  - `Link saved. Paste a new link to change it.` — 這台電腦已存好連結，貼新連結就能更換。
+  - `This computer has no link yet. Paste it here.` — 清單裡有這個行事曆，但這台電腦還沒有連結，請貼在這裡。
+- `Delete`（刪除）— 把那個行事曆從清單移除，也清空外掛替它存的連結。
 
-按 `Add a calendar`（新增行事曆）加一列空白。還沒選鑰匙的那一列會直接跳過：不會去讀，也不會被當成錯誤回報。
+按 `Add a calendar`（新增行事曆）加一列空白。從未設定過連結的那一列會直接跳過：不會去讀，也不會被當成錯誤回報。貼上、按 Enter 或離開連結欄時會檢查格式。如果不是 `https://` 或 `webcal://` 開頭，就不會儲存，並在該列下方顯示 `This is not a calendar link. It should start with https:// or webcal://.`（這不是行事曆連結，應以 `https://` 或 `webcal://` 開頭。）連結存在 Obsidian 的密鑰儲存區，不在外掛資料檔裡，儲存方式由外掛自動處理。
 
 設定存進 vault 裡的外掛資料（`.obsidian/plugins/project-dashboard/data.json`），和你手動指定的分類放在同一份，在最後一次修改後 400 ms 存檔；開著的儀表板接著自己重新掃描、重繪。Obsidian Sync 會像同步其他外掛資料一樣同步這個檔案，所以在一台電腦改的設定會傳到其他電腦。你的設定不會留在這個 repository 裡。
 
@@ -204,7 +224,13 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 
 控制列有一組 `年` / `月` 切換，按 `M` 也能切換。年視圖就是上面說的那張整年的圖；月視圖一次顯示一個月，格子裡直接寫出任務，這是每週規劃時通常需要的樣子。
 
-月視圖時，控制列還會出現 `◀`、月份標題、`▶`、`本月`。標題寫成 `2026 年 10 月（W41–W44）`：年、月，以及這個月有哪幾週。`◀` `▶` 往前或往後一個月，可以跨年；`本月` 回到今天這週所屬的月份。月視圖永遠從今天這週所屬的月份開始——切進月視圖時是這樣，重開 Obsidian 再打開儀表板時也是這樣。只有「年或月」這個選擇會被記住，上次看的是哪個月不會。切換月份，或在兩個視圖之間切換，都會關掉開著的浮窗。
+年視圖時，控制列顯示 `◀`、年份標題（例如 `2026 年`）、`▶`。箭頭往前或往後一年。翻到別的年份才會出現 `今年`，按下就回到今年。只有今年的圖會標示今天所在的週。
+
+月視圖時，同一個位置顯示 `◀`、月份標題、`▶`。標題寫成 `2026 年 10 月（W41–W44）`：年、月，以及這個月有哪幾週。箭頭往前或往後一個月，可以跨年。翻到別的月份才會出現 `本月`，按下就回到今天這週所屬的月份。
+
+切換視圖會沿用正在規劃的期間。在別的年份（例如 2027 年）切到月視圖，會顯示那一年的一月；在今年切到月視圖，會顯示今天這週所屬的月份。月視圖切回年視圖，會顯示那個月所在的年份。打開儀表板時，從今年或今天這週所屬的月份開始。只有「年或月」這個選擇會被記住，顯示的年份與月份都不會。換年份、換月份或切換視圖，都會關掉開著的浮窗。筆記更新時，會保留正在看的年份或月份。
+
+如果專案的預計結束日期在前一年，任務卻延伸到顯示中的這一年，逐週模式仍會把超出期限的週標紅；timeline 模式的色條會從這一年的第一週開始。沒有結束日期的專案，預設結束日仍是今天所在年份的 12/31，不會跟著顯示的年份改變。
 
 一週屬於它**星期一**落在的那個月。所以 2026 年 10 月是 W41–W44，11 月是 W45–W49，和你照著週一填週表格的方式一樣。唯一的例外是第 1 週，它永遠算一月，即使它的星期一還在去年 12 月。年視圖的月份與季度表頭用同一條規則，所以兩個視圖對任何一週的說法都相同。
 
@@ -222,15 +248,23 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 
 ### General 列
 
-月視圖在所有專案列的上面，多畫一列 `General`：你自己行事曆的行程，一週一格，讓不是專案的事情——上課、出遊、休假——和工作排在同一張表裡。`Calendars` 區塊只要有一個行事曆選了鑰匙，這一列就會出現；全部沒選時就不見。這一列只能看：點它的格子不會打開浮窗（只會把開著的浮窗關掉），`還沒排` 那一格永遠留白。
+月視圖在所有專案列的上面，多畫一列 `General`：你自己行事曆的行程，一週一格，讓不是專案的事情——上課、出遊、休假——和工作排在同一張表裡。`Calendars` 區塊只要有一個行事曆設定過連結，這一列就會出現；全部沒設定時就不見。這一列只能看：點它的格子不會打開浮窗（只會把開著的浮窗關掉），`還沒排` 那一格永遠留白。
 
-**取得連結。**在 Google 日曆打開**設定**，在左邊清單點選那個日曆，拉到最下面複製**iCal 格式的私密網址**。這個網址等於密碼：任何拿到它的人都能讀整個行事曆。Apple iCloud 沒有私密網址——在那裡分享日曆只會得到一個公開連結，誰拿到都看得到，所以當行事曆原本就在 Google、iCloud 只是訂閱它時，請改用 Google 的那個網址。私密網址萬一外洩，到同一個 Google 日曆設定頁重設它：舊網址就失效，再把新網址貼進鑰匙裡。
+**取得連結。**在 Google 日曆打開**設定**，在左邊清單點選那個日曆，拉到最下面複製 **iCal 格式的私密網址**。這個網址等於密碼：任何拿到它的人都能讀整個行事曆。使用 iCloud 時，在 Mac 的行事曆 app 對行事曆按右鍵，選「共享行事曆⋯」（有些版本寫「分享行事曆⋯」），勾選「公開行事曆」，複製 `webcal://` 開頭的網址。任何人拿到這個公開連結，都看得到行事曆。如果行事曆原本就在 Google、iCloud 只是訂閱它，請改用 Google 的網址。Google 的私密網址萬一外洩，到同一個日曆設定頁重設，再把新網址貼進外掛的連結欄；舊網址就會失效。
 
-**加入行事曆。**到**設定 → Project Dashboard → Calendars**，按 `Add a calendar`，在那一列打上名稱（`工作`、`家庭`——讀不到的時候儀表板顯示的就是這個名稱），再用那一列的密鑰選擇器：選一把已經有的鑰匙，或在 Obsidian 裡新建一把，把行事曆網址貼進去當它的值。外掛自己的資料檔從頭到尾只存名稱和鑰匙的 ID。
+**加入行事曆。**到**設定 → Project Dashboard → Calendars**，按 `Add a calendar`，在那一列打上名稱（`工作`、`家庭`，可以打中文），再把連結貼進連結欄。外掛會自動儲存並清空欄位，看到 `Link saved. Paste a new link to change it.` 就表示存好了。這個名稱用來標示行程來自哪個行事曆，也會在讀不到時指出是哪一個。
 
-鑰匙不一定會像其他設定一樣跟著 Obsidian Sync 走。如果第二台電腦有行事曆清單、卻沒有那把鑰匙，狀態列會寫 `這台裝置找不到連結`，直到你在那台也選好（或新建）鑰匙。
+已存的連結不一定會像其他設定一樣跟著 Obsidian Sync 走。如果第二台電腦有行事曆清單、卻沒有存好的連結，連結欄會顯示 `This computer has no link yet. Paste it here.`，General 列會回報 `這台裝置找不到連結`。在第二台電腦的同一列也貼上連結即可。
 
-**什麼時候讀行程。**只有四個時機：儀表板分頁打開時、按 General 列名稱格裡的 `↻` 時、執行指令 `Refresh calendars`（命令面板裡是 `Project Dashboard: Refresh calendars`）時，以及設定裡的行事曆清單有變動時。其他都不會讀——沒有定時器，尤其 `◀`、`▶`、`本月` 和 `年` / `月` 切換都不會，所以在月份之間移動完全不花成本。開著週浮窗時按 `↻`，浮窗會留在原地。
+**什麼時候讀行程。**只有五個時機：
+
+1. 儀表板分頁打開時。
+2. 按 General 列名稱格裡的 `↻` 時。
+3. 執行 `Refresh calendars` 時（命令面板裡是 `Project Dashboard: Refresh calendars`）。
+4. 在已設好的行事曆貼上新連結時，會馬上重新讀取。
+5. 行事曆清單改變時：設定存好、載入外掛執行期間由外部改動的設定，或存檔失敗而還原上次設定之後。
+
+其他情況都不會讀：沒有定時器，切換年份或月份（含 `今年`、`本月`）、切換 `年` / `月`、更新筆記都不會。開著週浮窗時按 `↻`，浮窗會留在原地。
 
 **一行長什麼樣。**日期是本地時間的月/日加星期，時間是本地的 24 小時制：
 
@@ -244,7 +278,7 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 **狀態列**在 `General` 這個字下面。這次 Obsidian 執行期間還沒讀過之前是空的；讀取中寫 `讀取中…`；讀完寫 `更新於 15:20`，也就是最後一次讀完的時間。有行事曆讀不到時，後面接 `・⚠ 1 個行事曆讀不到`，滑過狀態列會一行一個列出 `<名稱>：<原因>`。五種原因是：
 
 - `連結格式不對`——存的網址不是 `https://` 或 `webcal://` 開頭。
-- `這台裝置找不到連結`——這把鑰匙在這台電腦沒有值。
+- `這台裝置找不到連結`——這台電腦沒有存好這個行事曆的連結。
 - `讀取失敗（HTTP 404）`——伺服器有回應，但回的是錯誤狀態。
 - `連不上`——請求本身失敗，例如沒有網路。
 - `內容看不懂`——回來的內容不是外掛讀得懂的行事曆。
@@ -255,8 +289,8 @@ This project is developed spec-first with [Spectra](https://github.com/0xfdb/spe
 
 沒有設定行事曆時，這個外掛完全不連網：
 
-- `Calendars` 清單是空的，或沒有任何一列選了鑰匙時，不發出任何網路請求。
-- 它唯一會請求的網址，就是你自己存進去的行事曆網址，而且只用 `GET`，只在上面那四個時機。
+- `Calendars` 清單是空的，或沒有任何一列設定過連結時，不發出任何網路請求。
+- 它唯一會請求的網址，就是你自己存進去的行事曆網址，而且只用 `GET`，只在上面那五個時機。
 - 它絕不寫入行事曆——不新增、不修改、不刪除任何行程——也不會把筆記、設定或任何其他內容送出你的 vault。
 - 讀回來的行程只放在記憶體裡，不寫進硬碟，外掛卸載就不見了。
 - 行事曆的網址存在 Obsidian 的密鑰儲存區，不在外掛的 `data.json`、不在 local storage，也絕不出現在通知、提示、錯誤訊息或儀表板的任何文字裡。

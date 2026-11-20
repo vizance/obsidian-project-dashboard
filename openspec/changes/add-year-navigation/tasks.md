@@ -9,7 +9,7 @@
 
 ## 3. 文件與驗收
 
-- [ ] 3.1 文件（設計：文件與版本）：README 英文與中文的年視圖說明加上切換年份、`今年`／`本月` 按需出現、切換時沿用期間；CHANGELOG 0.5.0 英文與中文各加一段（含跨年格子修正的原因）；openspec/LANGUAGE.md 更新 `month-view`、`view-mode` 等提到年份固定為今年的條目。驗證：重讀差異，中英一致，與規格相同。
+- [x] 3.1 文件（設計：文件與版本）：README 英文與中文的年視圖說明加上切換年份、`今年`／`本月` 按需出現、切換時沿用期間；CHANGELOG 0.5.0 英文與中文各加一段（含跨年格子修正的原因）；openspec/LANGUAGE.md 更新 `month-view`、`view-mode` 等提到年份固定為今年的條目。驗證：重讀差異，中英一致，與規格相同。
 - [ ] 3.2 自動驗收與真實資料比對：`npm test`、`npm run lint`（0 錯誤）、`npm run build` 通過；用維護者 vault 比對今年年視圖每一格的新舊結果，差異只出現在「專案在去年就結束、今年還有超出期限任務」的專案並列出；部署到本機 vault；依 AGENTS.md 的隱私檢查確認沒有命中。驗證：貼出各指令結果、比對結果與命中數。
 - [ ] 3.3 朱騏在 Obsidian 手動驗收：年視圖按 `▶` 到 2027 年、出現 `今年`、按 `今年` 回到 2026；2027 年沒有今天欄；在 2027 年切到月視圖是 2027 年 1 月，往後翻再切回年視圖仍是 2027 年；今年切月視圖是本月；`本月` 只在別的月份才出現；重開 Obsidian 回到今年；跨到明年的專案格子正確。驗證：朱騏在對話中確認。
 - [ ] 3.4 封存順序：先封存 add-calendar-row，再封存這個改動（`Re-render preserves the user's view state` 以 add-calendar-row 的版本為底）。驗證：封存後 openspec/specs/dashboard-note-sync/spec.md 同時包含行事曆讀取的觸發條件與「the year shown in the year view」。
