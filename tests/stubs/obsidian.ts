@@ -96,6 +96,17 @@ export class Plugin {
 	}
 }
 
+// Obsidian 的 Platform。測試可以直接改 isPhone／isTablet 模擬手機或平板，
+// 改過的測試要在結束時改回來（預設是電腦）。
+export const Platform = {
+	isDesktop: true,
+	isDesktopApp: true,
+	isMobile: false,
+	isMobileApp: false,
+	isPhone: false,
+	isTablet: false,
+};
+
 export class ItemView {
 	constructor(_leaf: unknown) {}
 }
