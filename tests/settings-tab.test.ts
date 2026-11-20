@@ -29,11 +29,12 @@ async function setup(calendars: CalendarSetting[] = [{ name: '', secretId: '' }]
 		onSaveError: () => { throw new Error('Unexpected save failure'); },
 	});
 	await store.init();
-	const tab = new DashboardSettingTab(app as unknown as App, { store } as unknown as ProjectDashboardPlugin);
+	const refresh = vi.fn(() => Promise.resolve());
+	const tab = new DashboardSettingTab(app as unknown as App, { store, calendars: { refresh } } as unknown as ProjectDashboardPlugin);
 	const renderer: { display(): void } = tab;
 	renderer.display();
 	const rows = Setting.instances.filter((setting) => setting.settingEl.classes.has('pd-calendar-row'));
-	return { tab, rows, store, save, secrets, setSecret };
+	return { tab, rows, store, save, secrets, setSecret, refresh };
 }
 
 function type(text: SettingsText, value: string): void {
@@ -126,6 +127,39 @@ describe('Calendars settings', () => {
 		expect(store.data.settings.calendars[0]!.secretId).toBe('calendar-a');
 		expect(text.getValue()).toBe('');
 		expect(text.inputEl.placeholder).toBe(SAVED);
+	});
+
+	it('refreshes once when a new link is pasted for a calendar with an existing ID', async () => {
+		const { rows, setSecret, refresh, secrets, store } = await setup([{ name: '範例', secretId: 'calendar-a' }], { 'calendar-a': LINK });
+		const text = rows[0]!.texts[1]!;
+		const replacement = 'https://calendar.example.com/new.ics';
+		refresh.mockImplementation(() => {
+			expect(secrets.get('calendar-a')).toBe(replacement);
+			return Promise.resolve();
+		});
+		text.inputEl.dispatchEvent(new Event('paste'));
+		type(text, replacement);
+		await vi.advanceTimersByTimeAsync(0);
+		text.inputEl.dispatchEvent(new Event('change'));
+		await vi.advanceTimersByTimeAsync(400);
+		expect(setSecret).toHaveBeenCalledExactlyOnceWith('calendar-a', replacement);
+		expect(store.data.settings.calendars[0]!.secretId).toBe('calendar-a');
+		expect(refresh).toHaveBeenCalledOnce();
+	});
+
+	it('does not directly refresh when a link is pasted for a calendar without an ID', async () => {
+		const { rows, setSecret, refresh, store, save } = await setup();
+		const text = rows[0]!.texts[1]!;
+		text.inputEl.dispatchEvent(new Event('paste'));
+		type(text, LINK);
+		await vi.advanceTimersByTimeAsync(0);
+		text.inputEl.dispatchEvent(new Event('change'));
+		await vi.advanceTimersByTimeAsync(400);
+		const id = store.data.settings.calendars[0]!.secretId;
+		expect(id).toMatch(/^project-dashboard-calendar-[a-z0-9]{8}$/);
+		expect(setSecret).toHaveBeenCalledExactlyOnceWith(id, LINK);
+		expect(save).toHaveBeenCalledOnce();
+		expect(refresh).not.toHaveBeenCalled();
 	});
 
 	it('rejects a wrong pasted link until its text changes and leaves the existing saved link untouched', async () => {

@@ -234,6 +234,8 @@ export class DashboardSettingTab extends PluginSettingTab {
 					]);
 					this.app.secretStorage.setSecret(id, link);
 					this.patch({ calendars: replaceCalendar(this.settings.calendars, index, { secretId: id }) });
+					// 沿用 ID 時清單不會改變；新 ID 則由設定存檔觸發讀取，避免重複。
+					if (current.secretId !== '') void this.plugin.calendars.refresh();
 					// 只更新這個欄位，其他列尚未送出的連結與正在輸入的名稱才不會被清掉。
 					text.setValue('').setPlaceholder(calendarLinkPlaceholder(id, link));
 					errorEl.hidden = true;
