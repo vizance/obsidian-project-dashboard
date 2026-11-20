@@ -83,6 +83,8 @@ export default class ProjectDashboardPlugin extends Plugin {
 	onunload(): void {
 		this.unsubscribeStore?.();
 		this.unsubscribeStore = null;
+		// 取消訂閱後才送出最後一次設定存檔，避免存檔通知觸發新的行事曆讀取。
+		this.store.dispose();
 		// 讀到的行程只在記憶體裡，卸載就丟掉；還在路上的回應也不再通知任何分頁。
 		this.calendars.dispose();
 	}

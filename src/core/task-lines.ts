@@ -60,19 +60,20 @@ export function readOnlyLineFlags(lines: string[]): boolean[] {
 		}
 	}
 
-	let fence: '`' | '~' | null = null;
+	let fence: { character: string; length: number } | null = null;
 	for (; i < lines.length; i++) {
-		const trimmed = lines[i]!.trim();
-		const marker = trimmed.startsWith('```') ? '`' : trimmed.startsWith('~~~') ? '~' : null;
+		const line = lines[i]!.trimStart();
+		const marker = /^(`{3,}|~{3,})/.exec(line)?.[0];
 		if (fence === null) {
-			if (marker !== null) {
-				fence = marker;
+			if (marker !== undefined) {
+				fence = { character: marker[0]!, length: marker.length };
 				flags[i] = true;
 			}
 			continue;
 		}
 		flags[i] = true;
-		if (marker === fence) fence = null;
+		if (marker !== undefined && marker[0] === fence.character && marker.length >= fence.length
+			&& /^[ \t]*$/.test(line.slice(marker.length))) fence = null;
 	}
 	return flags;
 }
@@ -149,7 +150,17 @@ export function toggleDoneLine(raw: string, today: string): string {
 	const isDone = checkedBox || DONE_MARKER_RE.test(rest);
 
 	if (isDone) {
-		const opened = rest.replace(/\s*✅\s+\d{4}-\d{2}-\d{2}/g, '');
+		const parts: string[] = [];
+		let offset = 0;
+		for (const marker of rest.matchAll(/✅\s+\d{4}-\d{2}-\d{2}/g)) {
+			let start = marker.index;
+			// 每一段空白只往回走一次，避免從每個空白位置重新嘗試整個標記。
+			while (start > offset && /\s/.test(rest[start - 1]!)) start--;
+			parts.push(rest.slice(offset, start));
+			offset = marker.index + marker[0].length;
+		}
+		parts.push(rest.slice(offset));
+		const opened = parts.join('');
 		return `${prefix}[ ]${opened}`;
 	}
 

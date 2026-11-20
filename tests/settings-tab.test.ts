@@ -117,24 +117,24 @@ describe('Calendars settings', () => {
 	});
 
 	it.each(['enter', 'change'])('saves webcal on %s using the existing ID without displaying the old link', async (trigger) => {
-		const { rows, setSecret, store } = await setup([{ name: '範例', secretId: 'calendar-a', color: '' }], { 'calendar-a': LINK });
+		const { rows, setSecret, store } = await setup([{ name: '範例', secretId: 'project-dashboard-calendar-abcd1234', color: '' }], { 'project-dashboard-calendar-abcd1234': LINK });
 		const text = rows[0]!.texts[1]!;
 		const replacement = 'webcal://calendar.example.com/new.ics';
 		type(text, ` ${replacement} `);
 		if (trigger === 'enter') expect(enter(text).defaultPrevented).toBe(true);
 		else text.inputEl.dispatchEvent(new Event('change'));
-		expect(setSecret).toHaveBeenCalledExactlyOnceWith('calendar-a', replacement);
-		expect(store.data.settings.calendars[0]!.secretId).toBe('calendar-a');
+		expect(setSecret).toHaveBeenCalledExactlyOnceWith('project-dashboard-calendar-abcd1234', replacement);
+		expect(store.data.settings.calendars[0]!.secretId).toBe('project-dashboard-calendar-abcd1234');
 		expect(text.getValue()).toBe('');
 		expect(text.inputEl.placeholder).toBe(SAVED);
 	});
 
 	it('refreshes once when a new link is pasted for a calendar with an existing ID', async () => {
-		const { rows, setSecret, refresh, secrets, store } = await setup([{ name: '範例', secretId: 'calendar-a', color: '' }], { 'calendar-a': LINK });
+		const { rows, setSecret, refresh, secrets, store } = await setup([{ name: '範例', secretId: 'project-dashboard-calendar-abcd1234', color: '' }], { 'project-dashboard-calendar-abcd1234': LINK });
 		const text = rows[0]!.texts[1]!;
 		const replacement = 'https://calendar.example.com/new.ics';
 		refresh.mockImplementation(() => {
-			expect(secrets.get('calendar-a')).toBe(replacement);
+			expect(secrets.get('project-dashboard-calendar-abcd1234')).toBe(replacement);
 			return Promise.resolve();
 		});
 		text.inputEl.dispatchEvent(new Event('paste'));
@@ -142,8 +142,8 @@ describe('Calendars settings', () => {
 		await vi.advanceTimersByTimeAsync(0);
 		text.inputEl.dispatchEvent(new Event('change'));
 		await vi.advanceTimersByTimeAsync(400);
-		expect(setSecret).toHaveBeenCalledExactlyOnceWith('calendar-a', replacement);
-		expect(store.data.settings.calendars[0]!.secretId).toBe('calendar-a');
+		expect(setSecret).toHaveBeenCalledExactlyOnceWith('project-dashboard-calendar-abcd1234', replacement);
+		expect(store.data.settings.calendars[0]!.secretId).toBe('project-dashboard-calendar-abcd1234');
 		expect(refresh).toHaveBeenCalledOnce();
 	});
 
@@ -286,5 +286,69 @@ describe('Calendars settings', () => {
 		expect(rows[1]!.texts.map((text) => text.getValue())).toEqual(['還在輸入的名稱 ', 'unfinished link']);
 		expect(display).not.toHaveBeenCalled();
 		expect(refresh).not.toHaveBeenCalled();
+	});
+});
+
+
+describe('calendar link security', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.stubGlobal('window', { setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms) });
+		Setting.instances = [];
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it('A secret chosen with the old picker stays untouched', async () => {
+		let calls = 0;
+		vi.spyOn(Math, 'random').mockImplementation(() => Math.floor(calls++ / 8) / 36);
+		const { rows, store, secrets, refresh } = await setup([
+			{ name: '範例', secretId: 'other-plugin-credential', color: '' },
+			{ name: '', secretId: 'project-dashboard-calendar-aaaaaaaa', color: '' },
+		], { 'other-plugin-credential': 'keep-me', 'project-dashboard-calendar-bbbbbbbb': LINK });
+		const text = rows[0]!.texts[1]!;
+		type(text, 'https://calendar.example.com/new.ics');
+		enter(text);
+		expect(secrets.get('other-plugin-credential')).toBe('keep-me');
+		const id = store.data.settings.calendars[0]!.secretId;
+		expect(id).toMatch(/^project-dashboard-calendar-[a-z0-9]{8}$/);
+		expect(id).toBe('project-dashboard-calendar-cccccccc');
+		expect(secrets.get(id)).toBe('https://calendar.example.com/new.ics');
+		expect(refresh).not.toHaveBeenCalled();
+	});
+
+	it('reuses an owned ID and refreshes exactly once', async () => {
+		const id = 'project-dashboard-calendar-a1b2c3d4';
+		const { rows, store, setSecret, refresh } = await setup([{ name: '', secretId: id, color: '' }], { [id]: LINK });
+		const text = rows[0]!.texts[1]!;
+		type(text, 'https://calendar.example.com/new.ics');
+		enter(text);
+		expect(setSecret).toHaveBeenCalledExactlyOnceWith(id, 'https://calendar.example.com/new.ics');
+		expect(store.data.settings.calendars[0]!.secretId).toBe(id);
+		expect(refresh).toHaveBeenCalledOnce();
+	});
+
+	it('hides links and disables spell checking and autocomplete', async () => {
+		const { rows } = await setup();
+		const input = rows[0]!.texts[1]!.inputEl;
+		expect(input.type).toBe('password');
+		expect(input).toHaveProperty('spellcheck', false);
+		expect(input).toHaveProperty('autocomplete', 'off');
+	});
+
+	it('A rejected link does not stay on screen', async () => {
+		const { rows, setSecret } = await setup();
+		const row = rows[0]!;
+		const text = row.texts[1]!;
+		text.inputEl.dispatchEvent(new Event('paste'));
+		type(text, 'HTTPS://calendar.example.com/private-demo/basic.ics');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(text.getValue()).toBe('');
+		expect(error(row).hidden).toBe(false);
+		expect(error(row).textContent).toBe(ERROR);
+		expect(setSecret).not.toHaveBeenCalled();
 	});
 });

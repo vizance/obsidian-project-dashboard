@@ -112,6 +112,8 @@ export class SettingsElement extends EventTarget {
 	value = '';
 	placeholder = '';
 	type = '';
+	spellcheck = true;
+	autocomplete = '';
 	hidden = false;
 	checked = false;
 	disabled = false;

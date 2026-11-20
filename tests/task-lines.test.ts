@@ -379,3 +379,30 @@ describe('completion needs a ✅ date marker', () => {
 		expect(unscheduledTasks(parseTaskLines('- [ ] 回覆信件 ✅ 2026/10/20'))).toEqual([]);
 	});
 });
+
+
+describe('untrusted task text', () => {
+	it('A long run of spaces is unticked in under 50 ms without changing other text', () => {
+		const raw = '- [x] Task ' + ' '.repeat(40000) + 'x 📅 2026-11-06';
+		const started = performance.now();
+		const result = toggleDoneLine(raw, '2026-11-20');
+		expect(performance.now() - started).toBeLessThan(50);
+		expect(result).toBe(raw.replace('[x]', '[ ]'));
+	});
+
+	it('A three-backtick example inside a four-backtick block is read-only', () => {
+		const lines = ['````md', '```', '- [ ] 範例任務', '```', '````', '- [ ] 真的任務'];
+		expect(parseTaskLines(lines.join('\n')).map((task) => task.text)).toEqual(['真的任務']);
+		expect(readOnlyLineFlags(lines)).toEqual([true, true, true, true, true, false]);
+	});
+
+	it.each([
+		['~~~~md', '~~~', '~~~~'],
+		['````md', '```` trailing text', '````` \t'],
+		['~~~md', '```', '~~~~ \t'],
+	])('keeps examples protected between %s and %s until %s', (opening, inner, closing) => {
+		const lines = [opening, inner, '- [ ] 範例任務', closing, '- [ ] 真的任務'];
+		expect(readOnlyLineFlags(lines)).toEqual([true, true, true, true, false]);
+		expect(parseTaskLines(lines.join('\n')).map((task) => task.text)).toEqual(['真的任務']);
+	});
+});

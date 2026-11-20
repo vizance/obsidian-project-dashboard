@@ -316,3 +316,12 @@ describe('TaskWriter.apply', () => {
 		expect(vault.getFileContent(PATH)).toBe(`${raw} 📅 2026-11-06`);
 	});
 });
+
+
+it('never writes a three-backtick example inside a four-backtick block', async () => {
+	const content = ['````md', '```', '- [ ] 範例任務', '```', '````', '- [ ] 真的任務'].join('\n');
+	const vault = setupVault(content);
+	const writer = new TaskWriter(vault);
+	expect(await writer.apply({ kind: 'toggle', path: PATH, line: 2, raw: '- [ ] 範例任務', today: '2026-11-20' })).toEqual({ status: 'invalid' });
+	expect(vault.getFileContent(PATH)).toBe(content);
+});

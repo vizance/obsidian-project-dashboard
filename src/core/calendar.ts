@@ -52,6 +52,39 @@ const EMPTY_TITLE = '（沒有標題）';
 // 一個行程最多檢查這麼多次，從它第一次發生開始算。每天重複、從幾十年前開始的
 // 行程仍然算得到顯示中的月份，而寫壞的規則（例如每秒重複）不會讓畫面卡住。
 const MAX_OCCURRENCES = 100000;
+const MAX_RECURRENCE_CANDIDATES = 200000;
+
+class RecurrenceSearchLimitError extends Error {}
+
+type IcalRecurIterator = InstanceType<typeof ICAL.RecurIterator>;
+
+// 只在模組載入時包裝一次本外掛的 ical.js。完成次數上限攔不到「一直找不到」的
+// 規則，因此要在套件內每次檢查候選日期時另外計數。
+const recurrenceCandidates = new WeakMap<IcalRecurIterator, number>();
+const recurrencePrototype: {
+	next: (this: IcalRecurIterator, again?: boolean) => IcalTime;
+	check_contracting_rules: (this: IcalRecurIterator) => boolean;
+} = ICAL.RecurIterator.prototype;
+const originalNext = recurrencePrototype.next;
+const originalCheck = recurrencePrototype.check_contracting_rules;
+recurrencePrototype.next = function (this: IcalRecurIterator, again?: boolean): IcalTime {
+	recurrenceCandidates.set(this, 0);
+	return originalNext.call(this, again);
+};
+recurrencePrototype.check_contracting_rules = function (this: IcalRecurIterator): boolean {
+	const examined = (recurrenceCandidates.get(this) ?? 0) + 1;
+	recurrenceCandidates.set(this, examined);
+	if (examined > MAX_RECURRENCE_CANDIDATES) throw new RecurrenceSearchLimitError();
+	return originalCheck.call(this);
+};
+
+// 只清理由本外掛新加的時區，保留登記處原有的定義。
+const registeredTimezones = new Set<string>();
+
+export function removeRegisteredTimezones(): void {
+	for (const tzid of registeredTimezones) ICAL.TimezoneService.remove(tzid);
+	registeredTimezones.clear();
+}
 
 const MINUTES_PER_DAY = 1440;
 const MS_PER_DAY = 86400000;
@@ -85,7 +118,9 @@ export function parseCalendar(text: string): ParsedCalendar {
 	for (const vtimezone of root.getAllSubcomponents('vtimezone')) {
 		const tzid = stringValue(vtimezone, 'tzid');
 		if (tzid === '' || ICAL.TimezoneService.has(tzid)) continue;
-		ICAL.TimezoneService.register(new ICAL.Timezone({ component: vtimezone, tzid }));
+		const component = new ICAL.Component(vtimezone.toJSON() as unknown[]);
+		ICAL.TimezoneService.register(new ICAL.Timezone({ component, tzid }));
+		registeredTimezones.add(tzid);
 	}
 	return { root };
 }
@@ -209,17 +244,21 @@ function collectRecurring(
 	const duration = eventDuration(master, dtstart);
 	// RecurExpansion 同時處理 RRULE、RDATE 與 EXDATE，沒有重複規則的行程也會
 	// 回傳唯一的那一次，所以單次與重複共用這一條路徑。
-	const expansion = new ICAL.RecurExpansion({ component: master, dtstart });
-	let examined = 0;
-	for (;;) {
-		const next: IcalTime | null = expansion.next();
-		if (!next) return;
-		if (++examined > MAX_OCCURRENCES) return;
-		if (overridden.has(occurrenceKey(next))) continue;
-		const occurrence = buildOccurrence(master, source, next, duration);
-		// 展開的順序是由早到晚，所以超出顯示範圍就可以停下來。
-		if (wallMinutes(occurrence.start) >= rangeEnd) return;
-		add(occurrence, rangeStart, rangeEnd, seen, out);
+	try {
+		const expansion = new ICAL.RecurExpansion({ component: master, dtstart });
+		let examined = 0;
+		for (;;) {
+			const next: IcalTime | null = expansion.next();
+			if (!next) return;
+			if (++examined > MAX_OCCURRENCES) return;
+			if (overridden.has(occurrenceKey(next))) continue;
+			const occurrence = buildOccurrence(master, source, next, duration);
+			// 展開的順序是由早到晚，所以超出顯示範圍就可以停下來。
+			if (wallMinutes(occurrence.start) >= rangeEnd) return;
+			add(occurrence, rangeStart, rangeEnd, seen, out);
+		}
+	} catch (err) {
+		if (!(err instanceof RecurrenceSearchLimitError)) throw err;
 	}
 }
 

@@ -43,15 +43,20 @@ export class PluginDataStore {
 	// 每次外部變更就加一：重新載入前就送出、之後才回來的存檔結果要整個作廢，
 	// 否則被蓋掉的修改會在那個時候又變成「上次存成功的值」。
 	private generation = 0;
+	private pendingSettingsSave = false;
+	private disposed = false;
 
 	constructor(private readonly options: PluginDataStoreOptions) {
 		this.debouncer = createDebouncer(SETTINGS_SAVE_DELAY_MS, options.timers, () => {
+			this.pendingSettingsSave = false;
 			void this.flushSettings();
 		});
 	}
 
 	async init(): Promise<void> {
-		this.replaceAll(await this.options.load());
+		const raw = await this.options.load();
+		if (this.disposed) return;
+		this.replaceAll(raw);
 	}
 
 	get data(): PluginData {
@@ -60,14 +65,18 @@ export class PluginDataStore {
 
 	// 記憶體中的設定立刻換成檢查過的新值（掃描馬上就用它），存檔延後合併。
 	updateSettings(next: DashboardSettings): void {
+		if (this.disposed) return;
 		this.current = { categoryOverrides: this.current.categoryOverrides, settings: normalizeSettings(next) };
+		this.pendingSettingsSave = true;
 		this.debouncer.trigger();
 	}
 
 	// 手動分類維持立即寫入，失敗往外拋，由儀表板顯示既有的提示並復原下拉選單。
 	async saveCategoryOverrides(next: Record<string, string>): Promise<void> {
+		if (this.disposed) return;
 		const data = normalizePluginData({ categoryOverrides: next, settings: this.current.settings });
 		await this.options.save(data);
+		if (this.disposed) return;
 		this.current = { categoryOverrides: data.categoryOverrides, settings: this.current.settings };
 		this.lastSaved = copy(data);
 		this.notify('overrides-saved');
@@ -76,10 +85,26 @@ export class PluginDataStore {
 	// Obsidian 回報外掛資料被外部改掉（例如 Obsidian Sync 帶來另一台裝置的修改）：
 	// 同步過來的值優先，還沒存的修改丟掉，而且之後也不會再被寫回去。
 	async reloadFromOutside(): Promise<void> {
+		if (this.disposed) return;
 		this.debouncer.cancel();
+		this.pendingSettingsSave = false;
 		this.generation++;
-		this.replaceAll(await this.options.load());
+		const raw = await this.options.load();
+		if (this.disposed) return;
+		this.replaceAll(raw);
 		this.notify('reloaded');
+	}
+
+	// 先送出最後一次存檔，再封住所有入口；完成後不通知已卸載的畫面。
+	dispose(): void {
+		if (this.disposed) return;
+		this.debouncer.cancel();
+		if (this.pendingSettingsSave) {
+			this.pendingSettingsSave = false;
+			void this.flushSettings();
+		}
+		this.disposed = true;
+		this.listeners.clear();
 	}
 
 	subscribe(listener: PluginDataListener): () => void {
@@ -97,6 +122,7 @@ export class PluginDataStore {
 	}
 
 	private async flushSettings(): Promise<void> {
+		if (this.disposed) return;
 		const generation = this.generation;
 		// 永遠寫整份：只寫 settings 會把手動分類蓋掉，只寫 categoryOverrides 會把
 		// 設定蓋掉（design.md：外掛資料一次寫整份）。
@@ -104,7 +130,7 @@ export class PluginDataStore {
 		try {
 			await this.options.save(snapshot);
 		} catch (err) {
-			if (generation !== this.generation) return;
+			if (this.disposed || generation !== this.generation) return;
 			this.current = {
 				categoryOverrides: this.current.categoryOverrides,
 				settings: normalizeSettings(this.lastSaved.settings),
@@ -113,7 +139,7 @@ export class PluginDataStore {
 			this.notify('settings-reverted');
 			return;
 		}
-		if (generation !== this.generation) return;
+		if (this.disposed || generation !== this.generation) return;
 		this.lastSaved = copy(snapshot);
 		this.notify('settings-saved');
 	}

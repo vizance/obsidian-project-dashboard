@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import ICAL from 'ical.js';
 import {
 	CalendarStore,
 	SECRET_MISSING_REASON,
 	UNREACHABLE_REASON,
 	UNREADABLE_REASON,
+	TOO_LARGE_REASON,
+	MAX_CALENDAR_RESPONSE_LENGTH,
 	httpFailureReason,
 	type CalendarResponse,
 } from '../src/calendar-store';
@@ -405,5 +408,97 @@ describe('CalendarStore', () => {
 			await h.store.refreshIfCalendarsChanged();
 			expect(h.urls).toEqual([WORK_ADDRESS, FAMILY_ADDRESS, FAMILY_ADDRESS, WORK_ADDRESS]);
 		});
+	});
+});
+
+
+function zonedCalendar(tzid: string, description = ''): string {
+	return [
+		'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VTIMEZONE', `TZID:${tzid}`,
+		'BEGIN:STANDARD', 'DTSTART:19700101T000000', 'TZOFFSETFROM:+0300', 'TZOFFSETTO:+0300',
+		'END:STANDARD', 'END:VTIMEZONE', 'BEGIN:VEVENT', 'UID:example',
+		`DTSTART;TZID=${tzid}:20261106T100000`, `DESCRIPTION:${description}`,
+		'END:VEVENT', 'END:VCALENDAR',
+	].join('\r\n');
+}
+
+describe('calendar data lifetime and size', () => {
+	it('Nothing stays after unload', async () => {
+		const tzids = Array.from({ length: 5 }, (_, i) => `Example/Security${i}`);
+		const texts = tzids.map((id) => zonedCalendar(id, 'x'.repeat(1000000)));
+		const h = harness({
+			calendars: tzids.map((id) => ({ name: id, secretId: id, color: '' })),
+			secrets: Object.fromEntries(tzids.map((id, i) => [id, `https://calendar.example.com/${i}.ics`])),
+			respond: (url) => ({ status: 200, text: texts[Number(/(\d)\.ics$/.exec(url)![1])]! }),
+		});
+		try {
+			await h.store.refresh();
+			expect(h.store.state.sources).toHaveLength(5);
+			for (const id of tzids) {
+				const zone = ICAL.TimezoneService.get(id);
+				expect(zone).toBeDefined();
+				expect(zone.component.parent === null).toBe(true);
+				expect(JSON.stringify(zone.component.toJSON())).not.toContain('x'.repeat(1000000));
+			}
+		} finally {
+			h.store.dispose();
+		}
+		for (const id of tzids) expect(ICAL.TimezoneService.has(id)).toBe(false);
+		expect(h.store.state.sources).toEqual([]);
+	});
+
+	it('removes owned time zones on dispose', async () => {
+		const id = 'Example/Owned';
+		const h = harness({ respond: () => ({ status: 200, text: zonedCalendar(id) }) });
+		await h.store.refresh();
+		expect(ICAL.TimezoneService.has(id)).toBe(true);
+		h.store.dispose();
+		expect(ICAL.TimezoneService.has(id)).toBe(false);
+	});
+
+	it('leaves pre-existing time zones untouched on dispose', async () => {
+		const id = 'Example/Existing';
+		const component = ICAL.Component.fromString(zonedCalendar(id)).getFirstSubcomponent('vtimezone')!;
+		const zone = new ICAL.Timezone({ component, tzid: id });
+		ICAL.TimezoneService.register(zone);
+		try {
+			const h = harness({ respond: () => ({ status: 200, text: zonedCalendar(id) }) });
+			await h.store.refresh();
+			h.store.dispose();
+			expect(ICAL.TimezoneService.get(id)).toBe(zone);
+		} finally {
+			ICAL.TimezoneService.remove(id);
+		}
+	});
+
+	it('does not register time zones from a response arriving after dispose', async () => {
+		const id = 'Example/Late';
+		const h = harness({ respond: () => ({ status: 200, text: zonedCalendar(id) }) });
+		h.hold(true);
+		const done = h.store.refresh();
+		await flush();
+		h.store.dispose();
+		await h.release();
+		await done;
+		expect(ICAL.TimezoneService.has(id)).toBe(false);
+	});
+
+	it.each([20 * 1024 * 1024, 20 * 1024 * 1024 + 1])('bounds a response of %i characters before parsing', async (size) => {
+		expect(MAX_CALENDAR_RESPONSE_LENGTH).toBe(20 * 1024 * 1024);
+		expect(TOO_LARGE_REASON).toBe('行事曆太大');
+		const id = 'Example/Size';
+		const base = zonedCalendar(id);
+		const text = base.replace('DESCRIPTION:', 'DESCRIPTION:' + 'x'.repeat(size - base.length));
+		const h = harness({ respond: () => ({ status: 200, text }) });
+		await h.store.refresh();
+		if (size > 20 * 1024 * 1024) {
+			expect(h.store.state.failures).toEqual([{ displayName: '工作', reason: TOO_LARGE_REASON }]);
+			expect(ICAL.TimezoneService.has(id)).toBe(false);
+			expect(h.store.state.sources).toEqual([]);
+		} else {
+			expect(h.store.state.failures).toEqual([]);
+			expect(h.store.state.sources).toHaveLength(1);
+		}
+		h.store.dispose();
 	});
 });

@@ -1,4 +1,4 @@
-import { normalizeCalendarAddress, parseCalendar, type CalendarSource, type ParsedCalendar } from './core/calendar';
+import { normalizeCalendarAddress, parseCalendar, removeRegisteredTimezones, type CalendarSource, type ParsedCalendar } from './core/calendar';
 import { calendarDisplayName, type CalendarSetting } from './core/settings';
 
 // 讀不到行事曆的原因。全部只提到行事曆的顯示名稱，絕不提到連結：連結等同讀取
@@ -6,6 +6,8 @@ import { calendarDisplayName, type CalendarSetting } from './core/settings';
 export const SECRET_MISSING_REASON = '這台裝置找不到連結';
 export const UNREACHABLE_REASON = '連不上';
 export const UNREADABLE_REASON = '內容看不懂';
+export const TOO_LARGE_REASON = '行事曆太大';
+export const MAX_CALENDAR_RESPONSE_LENGTH = 20 * 1024 * 1024;
 
 export function httpFailureReason(status: number): string {
 	return `讀取失敗（HTTP ${status}）`;
@@ -140,6 +142,7 @@ export class CalendarStore {
 		this.disposed = true;
 		this.queued = false;
 		this.retained.clear();
+		removeRegisteredTimezones();
 		this.listeners.clear();
 	}
 
@@ -184,7 +187,11 @@ export class CalendarStore {
 			// 錯誤物件可能帶著網址，所以連它都不看，只回報原因。
 			return fail(UNREACHABLE_REASON);
 		}
+		// 晚到回應不能再解析，否則卸載後會重新登記時區。
+		if (this.disposed) return null;
 		if (response.status < 200 || response.status > 299) return fail(httpFailureReason(response.status));
+
+		if (response.text.length > MAX_CALENDAR_RESPONSE_LENGTH) return fail(TOO_LARGE_REASON);
 
 		let parsed: ParsedCalendar;
 		try {

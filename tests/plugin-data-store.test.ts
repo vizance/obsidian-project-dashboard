@@ -198,4 +198,22 @@ describe('PluginDataStore', () => {
 
 		expect(listener).not.toHaveBeenCalled();
 	});
+	it('Unloading during the save delay saves once immediately and ignores later changes', async () => {
+		const h = harness({});
+		await h.store.init();
+		h.store.updateSettings({ ...h.store.data.settings, scheduleWeekday: 1 });
+		await vi.advanceTimersByTimeAsync(100);
+		expect(h.saved).toHaveLength(0);
+		h.store.dispose();
+		expect(h.saved).toHaveLength(1);
+		expect(h.saved[0]!.settings.scheduleWeekday).toBe(1);
+		h.store.updateSettings({ ...h.store.data.settings, scheduleWeekday: 2 });
+		await h.store.saveCategoryOverrides({ example: 'life' });
+		h.store.dispose();
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(h.saved).toHaveLength(1);
+		expect(h.store.data.settings.scheduleWeekday).toBe(1);
+		expect(h.reasons).toEqual([]);
+	});
+
 });

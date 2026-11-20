@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import ICAL from 'ical.js';
 import {
 	eventLineText,
 	normalizeCalendarAddress,
@@ -436,5 +437,35 @@ describe('occurrencesInRange', () => {
 		const occurrences = occurrencesInRange(calendars, NOVEMBER_FROM, NOVEMBER_TO);
 		expect(occurrences).toHaveLength(1);
 		expect(occurrences[0]?.calendarName).toBe('工作');
+	});
+});
+
+
+describe('malformed recurrence protection', () => {
+	it('An impossible daily rule finishes within 1 second and keeps other events', () => {
+		// 舊版會永遠找下去；測試用保護讓回歸明確失敗，也不會卡住整套測試。
+		const prototype: {
+			check_contracting_rules: (this: InstanceType<typeof ICAL.RecurIterator>) => boolean;
+		} = ICAL.RecurIterator.prototype;
+		const original = prototype.check_contracting_rules;
+		let checked = 0;
+		prototype.check_contracting_rules = function (this: InstanceType<typeof ICAL.RecurIterator>): boolean {
+			const valid = original.call(this);
+			if (++checked > 200000) throw new Error('test guard: candidate limit missing');
+			return valid;
+		};
+		try {
+			const calendars = [source(ics(
+				['UID:impossible', 'DTSTART:20260101T000000Z', 'RRULE:FREQ=DAILY;BYMONTH=2;BYMONTHDAY=30;UNTIL=20261231T000000Z'],
+				['UID:reading', 'SUMMARY:讀書會', 'DTSTART:20261106T133000', 'DTEND:20261106T150000'],
+			)), source(ics(['UID:other', 'SUMMARY:其他行程', 'DTSTART:20261106T160000']), 1)];
+			const started = performance.now();
+			const occurrences = occurrencesInRange(calendars, NOVEMBER_FROM, NOVEMBER_TO);
+			expect(performance.now() - started).toBeLessThan(1000);
+			expect(occurrences.map(eventLineText)).toEqual(['11/6（五）13:30 讀書會', '11/6（五）16:00 其他行程']);
+			expect(checked).toBe(200000);
+		} finally {
+			prototype.check_contracting_rules = original;
+		}
 	});
 });

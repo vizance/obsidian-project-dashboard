@@ -212,6 +212,9 @@ export class DashboardSettingTab extends PluginSettingTab {
 			row.addText((text) => {
 				const storedValue = calendar.secretId === '' ? null : this.app.secretStorage.getSecret(calendar.secretId);
 				text.setPlaceholder(calendarLinkPlaceholder(calendar.secretId, storedValue));
+				text.inputEl.type = 'password';
+				text.inputEl.spellcheck = false;
+				text.inputEl.autocomplete = 'off';
 				const errorEl = row.controlEl.createDiv({
 					cls: 'pd-calendar-error',
 					text: 'This is not a calendar link. It should start with https:// or webcal://.',
@@ -225,18 +228,20 @@ export class DashboardSettingTab extends PluginSettingTab {
 					const link = text.getValue().trim();
 					if (link === '') return;
 					if (!isCalendarAddress(link)) {
+						text.setValue('');
 						errorEl.hidden = false;
 						return;
 					}
 					const current = this.settings.calendars[index]!;
-					const id = current.secretId || generateCalendarSecretId([
+					const reuseId = current.secretId.startsWith(CALENDAR_SECRET_PREFIX);
+					const id = reuseId ? current.secretId : generateCalendarSecretId([
 						...this.settings.calendars.map((entry) => entry.secretId),
 						...this.app.secretStorage.listSecrets(),
 					]);
 					this.app.secretStorage.setSecret(id, link);
 					this.patch({ calendars: replaceCalendar(this.settings.calendars, index, { secretId: id }) });
 					// 沿用 ID 時清單不會改變；新 ID 則由設定存檔觸發讀取，避免重複。
-					if (current.secretId !== '') void this.plugin.calendars.refresh();
+					if (reuseId) void this.plugin.calendars.refresh();
 					// 只更新這個欄位，其他列尚未送出的連結與正在輸入的名稱才不會被清掉。
 					text.setValue('').setPlaceholder(calendarLinkPlaceholder(id, link));
 					errorEl.hidden = true;
