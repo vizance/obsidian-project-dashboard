@@ -89,7 +89,7 @@ view 在手機上的版面：
 樣式全部掛在 `.pd-phone` 底下，電腦與平板沒有 `.pd-phone`，畫面不變：
 
 - 名稱欄：手機上 view 把 `--proj-col-width` 設成 `96px`，不用 `dashboard.projColWidth`；`.resize-handle` 不顯示；名稱欄的左右留白縮小，專案名稱可以換行。
-- 週欄：每週至少 120 像素。`table-layout: fixed` 底下，表格寬度會撐到「欄寬加總」與 100% 兩者較大的一個，所以做法是讓 `MonthView` 在表格上記下週數（例如 `data-weeks="5"`，不影響電腦版畫面），`.pd-phone table.month-grid[data-weeks="N"]` 設 `min-width: calc(96px + N × 120px + 48px)`；週欄本身不設寬度，表格比這個寬時由瀏覽器平均分給週欄。一個月份是 4 或 5 週，兩種都要有規則。
+- 週欄：每週至少 120 像素。`table-layout: fixed` 底下，表格寬度會撐到「欄寬加總」與 100% 兩者較大的一個，所以做法是讓 `MonthView` 在表格上記下週數（`data-weeks="5"`，不影響電腦版畫面），`.pd-phone table.month-grid[data-weeks="N"]` 設 `min-width: calc(96px + N × 120px + 48px)`；週欄本身不設寬度，表格比這個寬時由瀏覽器平均分給週欄。一個月份是 4 或 5 週，兩種都要有規則。
 - `還沒排` 欄：48 像素。
 - 捲動：`.pd-phone #chart` 改成 `overflow-x: auto`，表格在 `#chart` 裡左右捲；名稱欄的 `position: sticky; left: 0` 沿用電腦版，所以左右滑時專案名稱留在左邊。儀表板分頁本身不左右捲。
 - 控制列：左右留白縮小，月份標題放不下時可以換行，不切字。
@@ -100,7 +100,7 @@ view 在手機上的版面：
 ### 手機上的浮窗沿用電腦的浮窗，只調大小
 
 - 週浮窗與還沒排浮窗的內容、按鈕、寫入流程完全沿用電腦版。寫入成功後重繪並重新打開同一個專案、同一週的浮窗，也沿用電腦版的 `refreshPreservingPopover`。
-- 浮窗掛在 document body 上，拿不到 `.pd-phone`，所以手機上 view 在浮窗元素加一個手機專用的類別（例如 `pd-popover-phone`），樣式掛在這個類別底下：最寬 `calc(100vw - 16px)`、按鈕與核取方塊的可點範圍至少 44×44 像素。電腦與平板的浮窗不加這個類別，大小與間距不變。
+- 浮窗掛在 document body 上，拿不到 `.pd-phone`，所以手機上 view 在浮窗元素加一個手機專用的類別 `pd-popover-phone`，樣式掛在這個類別底下：最寬 `calc(100vw - 16px)`、按鈕與核取方塊的可點範圍至少 44×44 像素。電腦與平板的浮窗不加這個類別，大小與間距不變。
 - `placePopover` 加一個可以選的 `margin` 輸入，預設沿用 `POPOVER_MARGIN`（4 像素）；手機上 view 傳 8，浮窗左右邊緣離螢幕至少 8 像素。這是純函式，由 `tests/popover-position.test.ts` 鎖定。
 - 左右滑表格時，格子移動了，浮窗照電腦版的規則關閉。
 
@@ -159,7 +159,8 @@ view 在手機上的版面：
 **介面與資料形狀：**
 
 - `placePopover(input)` 的輸入多一個可以選的 `margin`（像素），沒給時等於 `POPOVER_MARGIN`；既有呼叫與測試的結果不變。
-- `MonthView.render` 在表格元素上記下週數（例如 `data-weeks`），其他輸出不變。
+- `MonthView.render` 在表格元素上記下週數 `data-weeks`（週欄的數量），其他輸出不變。
+- 手機上浮窗元素多一個類別 `pd-popover-phone`；手機上 view 把 `--proj-col-width` 設成 `96px`。
 - `src/core/phone-weeks.ts` 與 `src/phone-week-list.ts` 不存在。
 - `manifest.json`：`isDesktopOnly` 是 `false`，其他欄位不變。
 
