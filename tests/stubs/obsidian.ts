@@ -78,6 +78,12 @@ export class Vault {
 		return this.contents.get(path) ?? '';
 	}
 
+	// Obsidian 1.6.6+: every folder in the vault. The stub's root folder has the path '/'.
+	getAllFolders(includeRoot = false): TFolder[] {
+		const folders = [...this.abstractFiles.values()].filter((file): file is TFolder => file instanceof TFolder);
+		return includeRoot ? [new TFolder('/'), ...folders] : folders;
+	}
+
 	on(name: VaultEventName, callback: (...args: never[]) => unknown): EventRef {
 		this.handlers[name].push(callback);
 		return { name, callback };
@@ -109,6 +115,45 @@ export const Platform = {
 
 export class ItemView {
 	constructor(_leaf: unknown) {}
+}
+
+// 測試用的 MarkdownView：只帶 editor，`instanceof MarkdownView` 才判斷得出來。
+export class MarkdownView {
+	editor: unknown;
+	constructor(editor: unknown = null) {
+		this.editor = editor;
+	}
+}
+
+// Obsidian 的 Notice：記下每一則訊息，測試讀 Notice.messages 檢查。
+export class Notice {
+	static messages: string[] = [];
+	constructor(readonly message: string, _duration?: number) {
+		Notice.messages.push(message);
+	}
+}
+
+// Obsidian 1.4.10+ 的輸入建議。真的元件會畫清單；替身只記下欄位與狀態，
+// 測試直接呼叫 getSuggestions／selectSuggestion。
+export abstract class AbstractInputSuggest<T> {
+	limit = 100;
+	isOpen = false;
+	constructor(readonly app: unknown, readonly textInputEl: { value: string }) {}
+	setValue(value: string): void {
+		this.textInputEl.value = value;
+	}
+	getValue(): string {
+		return this.textInputEl.value;
+	}
+	open(): void {
+		this.isOpen = true;
+	}
+	close(): void {
+		this.isOpen = false;
+	}
+	protected abstract getSuggestions(query: string): T[] | Promise<T[]>;
+	abstract renderSuggestion(value: T, el: HTMLElement): void;
+	selectSuggestion(_value: T, _evt: MouseEvent | KeyboardEvent): void {}
 }
 
 export class Scope {
