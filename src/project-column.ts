@@ -20,6 +20,7 @@ export function renderProjectHeadCell(
 	tr: HTMLTableRowElement,
 	project: ProjectRecord,
 	categoryOrder: string[],
+	displayName = project.name,
 ): HTMLTableCellElement {
 	if (project.status === 'pending') tr.addClass('status-pending');
 	// 超出期限的色條原本沒有分類色，放在列上才能繼承暫停斜線紋所需的顏色。
@@ -32,7 +33,7 @@ export function renderProjectHeadCell(
 	projCell.createSpan({ cls: 'cat-dot' });
 	projCell.createSpan({
 		cls: 'name',
-		text: project.name,
+		text: displayName,
 		attr: { title: '在右側開啟筆記', 'data-path': project.path },
 	});
 	if (project.status === 'pending') {

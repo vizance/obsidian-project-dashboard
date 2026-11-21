@@ -147,14 +147,21 @@ def capture():
                 # 版面太高時先擴大工作畫布；截圖仍只取內容外框。
                 clip = content_clip([el.bounding_box() for el in elements], 0 if area == 'help' else 16)
                 if area == 'phone':
-                    # 只取控制列與表格的高度，左右範圍固定為手機畫布。
+                    # 表格可能在自己的範圍內上下捲動，手機畫布不跟著內容增高。
+                    chart_box = page.locator('#chart').bounding_box()
+                    table_box = page.locator('#chart table').bounding_box()
+                    if chart_box is None or table_box is None:
+                        raise RuntimeError('無法量測手機表格的裁切範圍')
                     clip = {
                         'x': 0, 'y': 0, 'width': 390,
-                        'height': min(1000, ceil(clip['y'] + clip['height'])),
+                        'height': min(844, ceil(min(
+                            chart_box['y'] + chart_box['height'],
+                            table_box['y'] + table_box['height'],
+                        ))),
                     }
                 viewport = page.viewport_size
                 assert viewport, '找不到截圖畫布'
-                if clip['y'] + clip['height'] > viewport['height']:
+                if area != 'phone' and clip['y'] + clip['height'] > viewport['height']:
                     page.set_viewport_size({
                         'width': viewport['width'],
                         'height': ceil(clip['y'] + clip['height']),
@@ -259,8 +266,8 @@ def capture():
 
             step = '拍攝手機月視圖'
 
-            def open_phone(width):
-                page.set_viewport_size({'width': width, 'height': 844})
+            def open_phone(width, height=844):
+                page.set_viewport_size({'width': width, 'height': height})
                 page.goto(DEMO.as_uri() + '?mode=phone')
                 page.wait_for_selector('#screenshot-root[data-ready="true"], #screenshot-root[data-error]')
                 if page.locator('#screenshot-root[data-error]').count():
@@ -274,17 +281,30 @@ def capture():
                 return page.evaluate('''() => {
                     const bounds = (element) => {
                         const rect = element.getBoundingClientRect();
-                        return {left: rect.left, right: rect.right, width: rect.width};
+                        return {
+                            left: rect.left, right: rect.right, width: rect.width,
+                            top: rect.top, bottom: rect.bottom,
+                        };
                     };
                     const chart = document.querySelector('#chart');
+                    const todayHeaders = Array.from(document.querySelectorAll('th.month-week.mw-today'));
                     return {
                         chart: bounds(chart),
                         scrollWidth: chart.scrollWidth,
                         clientWidth: chart.clientWidth,
+                        scrollTop: chart.scrollTop,
+                        scrollHeight: chart.scrollHeight,
+                        clientHeight: chart.clientHeight,
                         pageWidth: document.documentElement.scrollWidth,
                         project: bounds(document.querySelector('th.proj-col')),
                         weeks: Array.from(document.querySelectorAll('th.month-week'), bounds),
                         unscheduled: bounds(document.querySelector('th.month-unscheduled')),
+                        todayCount: todayHeaders.length,
+                        today: todayHeaders.map((header) => ({
+                            ...bounds(header),
+                            weekText: header.querySelector('.mw-week')?.textContent ?? '',
+                            tagText: header.querySelector('.mw-today-tag')?.textContent ?? '',
+                        })),
                     };
                 }''')
 
@@ -292,7 +312,39 @@ def capture():
                 if box['left'] < chart['left'] or box['right'] > chart['right']:
                     raise RuntimeError(message)
 
+            def require_this_week_alignment(geometry):
+                if geometry['todayCount'] != 1:
+                    raise RuntimeError('手機月視圖的本週欄頭不是恰好一個')
+                if abs(geometry['today'][0]['left'] - geometry['project']['right']) > 1:
+                    raise RuntimeError('本週欄頭的左緣沒有貼著名稱欄的右緣')
+
             open_phone(390)
+            geometry = phone_geometry()
+            require_this_week_alignment(geometry)
+            if not geometry['today'][0]['weekText'].strip().startswith('W47'):
+                raise RuntimeError('本週欄頭的週數不是 W47')
+            if geometry['today'][0]['tagText'] != '本週':
+                raise RuntimeError('本週欄頭沒有標示本週')
+            next_week = page.locator('th.month-week.mw-today + th.month-week')
+            if next_week.count() != 1 or not next_week.evaluate(
+                "(header) => (header.querySelector('.mw-week')?.textContent ?? '').trim().startsWith('W48')"
+            ):
+                raise RuntimeError('本週的下一欄不是 W48')
+            require_inside(
+                next_week.evaluate('''(header) => {
+                    const rect = header.getBoundingClientRect();
+                    return {left: rect.left, right: rect.right};
+                }'''), geometry['chart'],
+                '390 像素寬時，打開後 W48 沒有完整顯示',
+            )
+            if geometry['scrollTop'] != 0:
+                raise RuntimeError('打開手機月視圖後，表格沒有停在最上面')
+            names = page.locator('td.proj-cell .name')
+            if names.count() == 0:
+                raise RuntimeError('手機名稱欄沒有可檢查的專案名稱')
+            if names.evaluate_all(r'(names) => names.some((name) => /^P-\d/.test(name.textContent.trim()))'):
+                raise RuntimeError('手機名稱欄仍顯示 P-日期 代碼')
+
             page.locator('#chart').evaluate('(el) => { el.scrollLeft = 0; }')
             geometry = phone_geometry()
             if abs(geometry['project']['width'] - 96) > 1:
@@ -352,6 +404,49 @@ def capture():
             popover.wait_for(state='hidden')
             page.evaluate("document.querySelector('#chart').scrollLeft = 0")
 
+            open_phone(390, 360)
+            page.locator('#show-paused').check()
+            geometry = phone_geometry()
+            if geometry['scrollHeight'] <= geometry['clientHeight'] + 40:
+                raise RuntimeError('表格不夠高，量不到表頭固定')
+            page.locator('#chart').evaluate('(el) => { el.scrollTop = 120; }')
+            page.wait_for_timeout(100)
+            geometry = phone_geometry()
+            if geometry['scrollTop'] <= 0:
+                raise RuntimeError('表格沒有往下捲，量不到表頭固定')
+            sticky = page.evaluate('''() => {
+                const chart = document.querySelector('#chart').getBoundingClientRect();
+                const controls = document.querySelector('.controls').getBoundingClientRect();
+                const dashboard = document.querySelector('.project-dashboard');
+                const isOnTop = (header) => {
+                    const rect = header.getBoundingClientRect();
+                    return document.elementFromPoint(
+                        (rect.left + rect.right) / 2, (rect.top + rect.bottom) / 2,
+                    )?.closest('th') === header;
+                };
+                return {
+                    chartTop: chart.top,
+                    headerTops: Array.from(document.querySelectorAll('table.month-grid thead th'),
+                        (header) => header.getBoundingClientRect().top),
+                    controlsTop: controls.top,
+                    controlsBottom: controls.bottom,
+                    todayOnTop: isOnTop(document.querySelector('th.month-week.mw-today')),
+                    projectOnTop: isOnTop(document.querySelector('th.proj-col')),
+                    dashboardScrollTop: dashboard.scrollTop,
+                    dashboardScrollHeight: dashboard.scrollHeight,
+                    dashboardClientHeight: dashboard.clientHeight,
+                };
+            }''')
+            if not sticky['headerTops'] or any(abs(top - sticky['chartTop']) > 1 for top in sticky['headerTops']):
+                raise RuntimeError('往下捲後，有表頭沒有固定在表格最上面')
+            if sticky['controlsBottom'] > sticky['chartTop'] + 1 or sticky['controlsTop'] < 0:
+                raise RuntimeError('往下捲後，月份控制列沒有留在表格上方')
+            if not sticky['todayOnTop'] or not sticky['projectOnTop']:
+                raise RuntimeError('往下捲後，本週或名稱欄的表頭沒有蓋在資料列上面')
+            if sticky['dashboardScrollTop'] != 0 or sticky['dashboardScrollHeight'] > sticky['dashboardClientHeight'] + 1:
+                raise RuntimeError('手機儀表板分頁本身會上下捲動')
+            open_phone(390)
+
             open_phone(800)
             geometry = phone_geometry()
             if geometry['scrollWidth'] > geometry['clientWidth'] + 1:
@@ -366,7 +461,9 @@ def capture():
                 raise RuntimeError('800 像素寬時，每週欄寬相差超過 1 像素')
 
             open_phone(390)
-            page.locator('#chart').evaluate('(el) => { el.scrollLeft = 0; }')
+            require_this_week_alignment(phone_geometry())
+            if page.locator(POPOVER).count():
+                raise RuntimeError('手機截圖前浮窗尚未關閉')
             snapshot('phone-month-view.png', area='phone')
             browser.close()
 

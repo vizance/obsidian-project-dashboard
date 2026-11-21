@@ -206,6 +206,30 @@ The phone uses the same month table as a computer: one row per project, one colu
 
 The name column is 96 pixels wide. Names and the column heading stay fixed on the left. Each week is at least 120 pixels wide. `還沒排` is 48 pixels wide. An upright phone shows about two weeks at once. Swipe the table left or right to see other weeks and `還沒排`; project names stay in place. The dashboard tab itself does not scroll sideways. Turn the phone sideways to see the whole month when there is enough room. Extra space is shared equally by the weeks. Long names, task text, and week headings wrap onto more lines.
 
+### Scroll position
+
+Opening the tab or changing months with `◀`, `▶`, or `本月` scrolls the table to the top. If the month has today's week, the table also scrolls sideways to put that week's left edge against the name column's right edge. If it cannot scroll that far, it stops at the far right. If the month does not have today's week, it starts at the far left and top.
+
+Today's week heading reads like `W47 本週`. `本週` (this week) is bold and red, with a light red background on the heading. No other week has this label. A month without today's week has no `本週` label.
+
+Other table updates keep both scroll positions. This includes ticking or unticking a task, moving it to another week, changes to a note or settings, and checking or unchecking `顯示暫停（n）`.
+
+### Fixed headings
+
+The table scrolls up, down, left, and right inside its own area. The dashboard tab itself does not scroll in either direction. As you scroll down, the heading row (`專案`, the weeks, and `還沒排`) stays at the top of the table area and covers the rows passing under it. The month controls and `顯示暫停（n）` stay above the table.
+
+### The name column's `P-date` code
+
+On a phone, the name column hides a leading date code when the name starts with `P-`, then a date code, one or more spaces, and more text. That text must not start with `~`, `～`, or `&`. A date code has one or more date parts joined by `~`, `～`, or `&`. Spaces around these signs are allowed. The first part starts with four digits. Each later part starts with a digit. Each part uses only digits, `.`, and `-`, and may end with `Q1`, `Q2`, `Q3`, or `Q4`.
+
+For example:
+
+- `P-20260302 範例企業內訓規劃` shows `範例企業內訓規劃`.
+- `P-20261102 ~ 1218 範例專案` and `P-2026Q1 範例專案` both show `範例專案`.
+- `P-範例專案`, `P-20260302`, and `範例專案` stay unchanged, as does any name that does not fit the rule.
+
+The pop-up title always shows the full name. Name columns on computers and tablets stay unchanged.
+
 ### Month and projects
 
 Each time the tab opens, it starts on the month of today's week. A title such as `2026 年 11 月（W45–W49）` shows the month and weeks. `◀` and `▶` go to the previous and next month. `本月` (this month) appears only in another month and brings back the month of today's week. This row holds only the month controls and `顯示暫停（n）` (show paused).
@@ -222,7 +246,7 @@ A phone pop-up stays at least 8 pixels from each side of the screen. Checkboxes 
 
 ### Opening notes and going back
 
-Tap a project name in the name column or a pop-up's title, or tap `↗` beside a task. The pop-up closes and the note opens in the dashboard's own tab. `↗` also selects the task's line. Use Obsidian's back control to return to the dashboard. It opens on the month of today's week again. Computers and tablets keep opening notes in the right-hand pane.
+Tap a project name in the name column or a pop-up's title, or tap `↗` beside a task. The pop-up closes and the note opens in the dashboard's own tab. `↗` also selects the task's line. Use Obsidian's back control to return to the dashboard. It opens on the month of today's week again, with the table at the top and scrolled to this week. Computers and tablets keep opening notes in the right-hand pane.
 
 If the note is gone, the dashboard stays open and says `找不到這則筆記` (note not found). If the note opens but the task's line cannot be found, it says `找不到那一行，可能剛被改過` (line not found; it may have changed).
 

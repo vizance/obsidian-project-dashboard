@@ -150,15 +150,15 @@ See [status and category rules](docs/details.md#status-and-categories) for name 
 
 ## On a phone
 
-1. Open the dashboard. It starts on the month of today's week. Each project has one row. Each week has one column, with its tasks in the cells, just like the month view on a computer.
-2. Hold your phone upright to see about two weeks at a time. Swipe the table left or right to see other weeks and `還沒排` (not scheduled yet). Project names stay fixed on the left in a 96-pixel column. Each week is at least 120 pixels wide; `還沒排` is 48 pixels wide.
+1. Open the dashboard. It shows the month of today's week, with the table scrolled to this week. The week heading says `本週` (this week). Each project has one row. Each week has one column, with its tasks in the cells, just like the month view on a computer.
+2. Hold your phone upright to see about two weeks at a time: this week and next week. Swipe right to see earlier weeks. Swipe left to see later weeks and `還沒排` (not scheduled yet). Project names stay fixed on the left in a 96-pixel column. Each week is at least 120 pixels wide; `還沒排` is 48 pixels wide. As you scroll down, the week headings and month controls stay at the top, so you can always see which week each column shows. The name column hides a leading `P-date` code. For example, `P-20260302 範例企業內訓規劃` shows as `範例企業內訓規劃`. The pop-up title still shows the full name.
 3. Turn your phone sideways. If there is enough room, you can see the whole month at once.
-4. Use `◀` and `▶` beside a title like `2026 年 11 月（W45–W49）` to change months. Tap `本月` (this month) to return to the month of today's week; it appears when you view another month. The top row has only these month controls and `顯示暫停（n）` (show paused), when there are paused projects to show.
+4. Use `◀` and `▶` beside a title like `2026 年 11 月（W45–W49）` to change months. Each month change scrolls the table to the top. Other months start at their first week. Tap `本月` (this month) to return to this week; it appears when you view another month. The top row has only these month controls and `顯示暫停（n）` (show paused), when there are paused projects to show.
 5. Tap a week cell with tasks or a dashed border to open the same week pop-up as on a computer. Tick or untick a task. Use `◀` or `▶` beside an open task to move it one week. Use `＋ 從還沒排日期的任務挑一個` to pick an undated task, or `＋ 新增任務` to add one. Changes save straight to the note.
 6. Swipe to `還沒排` and tap a number. In the pop-up, tap a week button beside a task to put it in that week.
-7. Tap a project name in the left column or at the top of a pop-up to open its note. Tap `↗` beside a task to jump to its line. The note opens in the dashboard's own tab. Use Obsidian's back control to return to the dashboard, which opens on this month again.
+7. Tap a project name in the left column or at the top of a pop-up to open its note. Tap `↗` beside a task to jump to its line. The note opens in the dashboard's own tab. Use Obsidian's back control to return to the dashboard, which opens on this month again with the table scrolled to this week.
 
-![Phone month view with the name column fixed on the left and two weeks visible](docs/images/phone-month-view.png)
+![Phone month view with the name column fixed on the left and the table scrolled to this week](docs/images/phone-month-view.png)
 
 Phones have no year view, year/month switch, Timeline, General calendar row, help panel or `?`, `顯示已結案` (show closed), category or status editing, `⚠` date warnings, or keyboard shortcuts. You cannot drag the legend or resize the name column. Use a computer or tablet for these controls. On a phone, the plugin reads no calendars and makes no network requests.
 

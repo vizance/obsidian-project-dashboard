@@ -115,6 +115,8 @@ view 在手機上的版面：
 - `placePopover` 加一個可以選的 `margin` 輸入，預設沿用 `POPOVER_MARGIN`（4 像素）；手機上 view 傳 8，浮窗左右邊緣離螢幕至少 8 像素。這是純函式，由 `tests/popover-position.test.ts` 鎖定。
 - 左右滑表格時，格子移動了，浮窗照電腦版的規則關閉。
 - 手機轉向時（視窗大小改變），浮窗留著，照同一套規則重新定位，才不會轉成直放後超出螢幕。不在這時關閉浮窗：Android 上跳出鍵盤也會改變視窗大小，`＋ 新增任務` 打字到一半浮窗不能消失。只在手機上監聽，電腦與平板照舊。
+- 打開時捲到本週之後，手機轉成橫放、表格不再需要左右捲時，瀏覽器會自己把 `#chart.scrollLeft` 調回 0，產生 scroll 事件；原本的「捲動就關浮窗」會把浮窗關掉。所以手機上 `resize` 之後的一小段時間（`PHONE_RESIZE_GRACE_MS`，500 毫秒，每次 `resize` 重新計時）裡發生的 scroll 不關浮窗，改成照同一套規則重新定位；過了這段時間，使用者自己滑表格仍會關閉浮窗。電腦與平板不監聽 `resize`，行為不變。
+- `placePopover` 的上下位置一律夾在視窗裡：`top` 夾在 `margin` 到 `viewport.height − margin − size.height` 之間（空間不夠時以 `margin` 為準）。原本格子已經被捲出視窗上方時（例如重繪後上面的列變矮），算出來的 `top` 會是負數，浮窗上半部看不到，違反既有測試名稱「never returns a negative coordinate」的原意。格子在視窗內時結果不變，所以電腦版截圖不受影響；電腦上只有格子已經捲出視窗時位置才會不同，而那時原本就看不到浮窗上半部。
 - 手機上按鈕的 44×44 規則要寫成 `.pd-week-popover.pd-popover-phone button`，權重才蓋得過電腦版的 `.pd-week-popover .wp-week-btn`（`min-width: 26px`）。
 
 替代方案：手機上把浮窗改成從底部滑上來的面板。要另外寫一套開關與動畫，而且跟電腦的操作不一樣，所以這一版不做。
@@ -211,7 +213,7 @@ view 在手機上的版面：
 
 **介面與資料形狀：**
 
-- `placePopover(input)` 的輸入多一個可以選的 `margin`（像素），沒給時等於 `POPOVER_MARGIN`；既有呼叫與測試的結果不變。
+- `placePopover(input)` 的輸入多一個可以選的 `margin`（像素），沒給時等於 `POPOVER_MARGIN`；既有呼叫與測試的結果不變。回傳的 `top` 夾在 `margin` 到 `viewport.height − margin − size.height` 之間（空間不夠時取 `margin`）。
 - `MonthView.render` 在表格元素上記下週數 `data-weeks`（週欄的數量），其他輸出不變。
 - `new MonthView(host, { phone?: boolean })`：`phone` 是 true 時，本週欄頭多類別 `mw-today`，`div.mw-week` 裡多子元素 `span.mw-today-tag`（`本週`），名稱欄文字用 `shortProjectName`；沒給或 false 時輸出跟現在完全相同。
 - `renderProjectHeadCell(tr, project, categoryOrder, displayName?)`：沒給 `displayName` 時用 `project.name`。

@@ -92,3 +92,34 @@ describe('week popover placement', () => {
 		expect(placePopover(input)).toEqual(placePopover(explicit));
 	});
 });
+
+describe('popover stays inside the screen vertically', () => {
+	const PHONE_PANE: PopoverRect = { left: 0, top: 0, right: 390, bottom: 844 };
+	const PHONE_VIEWPORT = { width: 390, height: 844 };
+	const TALL = { width: 300, height: 300 };
+
+	it('A popover whose cell moved out of view stays readable: cell above the screen', () => {
+		// 重繪後上面的列變矮，格子跑到視窗上方；浮窗不能跟著跑出去。
+		const result = placePopover({
+			anchor: { left: 100, top: -400, right: 220, bottom: -100 },
+			size: TALL, pane: PHONE_PANE, viewport: PHONE_VIEWPORT, margin: 8,
+		});
+		expect(result.top).toBe(8);
+	});
+
+	it('A popover whose cell moved out of view stays readable: cell below the screen', () => {
+		const result = placePopover({
+			anchor: { left: 100, top: 1000, right: 220, bottom: 1044 },
+			size: TALL, pane: PHONE_PANE, viewport: PHONE_VIEWPORT, margin: 8,
+		});
+		expect(result.top).toBe(844 - 8 - 300);
+	});
+
+	it('A popover whose cell moved out of view stays readable: default margin', () => {
+		const result = placePopover({
+			anchor: { left: 100, top: -400, right: 220, bottom: -100 },
+			size: TALL, pane: PHONE_PANE, viewport: PHONE_VIEWPORT,
+		});
+		expect(result.top).toBe(4);
+	});
+});

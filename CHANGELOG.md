@@ -2,13 +2,13 @@
 
 ## 0.6.0 — Unreleased
 
-You can now install Project Dashboard on a phone and plan with the same month table as on a computer. Each project has a row, so you can compare projects across weeks. Open the dashboard to see the month of today's week. Hold the phone upright and swipe to see more weeks, with project names fixed on the left. Turn it sideways to see the whole month when there is enough room. Change months, show paused projects, tap cells to tick or move tasks, pick undated tasks, or add new ones. Tap a `還沒排` count to put a task into a week. Project names and `↗` open the note in the same tab; Obsidian's back control returns to this month's dashboard.
+You can now install Project Dashboard on a phone and plan with the same month table as on a computer. Each project has a row, so you can compare projects across weeks. Open the dashboard to see the month of today's week, with the table scrolled to this week and its heading marked `本週` (this week). Hold the phone upright and swipe to see more weeks, with project names fixed on the left. Week headings and month controls stay at the top as you scroll down. The name column hides a leading `P-date` code; pop-up titles keep the full name. Turn it sideways to see the whole month when there is enough room. Change months, show paused projects, tap cells to tick or move tasks, pick undated tasks, or add new ones. Tap a `還沒排` count to put a task into a week. Project names and `↗` open the note in the same tab; Obsidian's back control returns to this month's dashboard, scrolled to this week.
 
 On a phone, the plugin reads no calendars and makes no network requests. Set up calendars on a computer or tablet. Tablets keep the same year and month views as computers. On a tablet, dragging the legend to reorder categories or dragging the name column's edge to resize it needs a mouse or trackpad.
 
 - Tap or click `Project folder` to pick a folder from a list. Type to narrow the list, or keep typing the path yourself. This works on computers, tablets, and phones.
 
-現在可以在手機安裝 Project Dashboard，用和電腦相同的月表規劃任務。一列一個專案，方便對照每個專案在各週要做的事。打開就顯示今天這週所在的月份；手機直放時左右滑看其他週，專案名稱固定在左邊，橫放且寬度夠時一次看完整個月。可以換月份、顯示暫停專案、點格子勾完成或移一週、挑還沒排日期的任務，或新增任務。點 `還沒排` 數字可以把任務排進某一週。點專案名稱或 `↗`，筆記開在同一個分頁，按 Obsidian 的返回就回到本月的儀表板。
+現在可以在手機安裝 Project Dashboard，用和電腦相同的月表規劃任務。一列一個專案，方便對照每個專案在各週要做的事。打開就顯示今天這週所在的月份，表格停在本週，欄頭標示 `本週`。手機直放時左右滑看其他週，專案名稱固定在左邊；往下滑時，週數與月份控制留在上面。名稱欄藏起開頭的 `P-日期` 代碼，浮窗標題保留完整名稱。橫放且寬度夠時一次看完整個月。可以換月份、顯示暫停專案、點格子勾完成或移一週、挑還沒排日期的任務，或新增任務。點 `還沒排` 數字可以把任務排進某一週。點專案名稱或 `↗`，筆記開在同一個分頁，按 Obsidian 的返回就回到本月的儀表板並停在本週。
 
 手機上不讀行事曆，也不發任何網路請求；行事曆請在電腦或平板設定。平板維持和電腦相同的年視圖與月視圖。在平板上拖拉圖例來調整分類順序，或拖拉名稱欄邊緣來調整寬度，需要滑鼠或觸控板。
 

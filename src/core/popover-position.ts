@@ -62,6 +62,8 @@ export function placePopover(input: PopoverPlacementInput): PopoverPlacement {
 	if (top + size.height > viewport.height - margin) {
 		top = Math.max(margin, anchor.top - POPOVER_GAP - size.height);
 	}
+	// 格子被捲出視窗上方時，原本會算出負數，讓浮窗上半部看不到。
+	top = clamp(top, margin, viewport.height - margin - size.height);
 
 	return { left, top };
 }

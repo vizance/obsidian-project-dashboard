@@ -57,6 +57,7 @@ const MONTH_NAMES = [
 const LEGEND_DRAG_THRESHOLD = 5;
 // Long enough to cover the frame in which programmatic scroll events arrive.
 const SCROLL_RESTORE_GRACE_MS = 250;
+const PHONE_RESIZE_GRACE_MS = 500;
 
 const MSG_STALE = '這一行在筆記裡剛被改過，畫面已更新，請再試一次';
 const MSG_MISSING_FILE = '找不到這則筆記';
@@ -99,6 +100,7 @@ type PopoverTarget = WeekTarget | UnscheduledTarget;
 interface PreservedViewState {
 	scrollLeft: number;
 	scrollTop: number;
+	chartScrollTop: number;
 	popover: (PopoverTarget & { state: PopoverViewState }) | null;
 }
 
@@ -203,6 +205,7 @@ export class ProjectDashboardView extends ItemView {
 		this.buildLayout();
 		this.registerInteractions();
 		await this.rescanAndRender();
+		this.scrollPhoneTableToThisWeek();
 		// 讀取開始（狀態列要顯示「讀取中…」）與結束都重繪，但不重新掃描筆記
 		// （design.md：行事曆更新走保留狀態的重繪）。先訂閱再讀取，第一次讀取的
 		// 開始通知才不會漏掉。
@@ -268,6 +271,7 @@ export class ProjectDashboardView extends ItemView {
 		return {
 			scrollLeft: this.chartEl.scrollLeft,
 			scrollTop: this.contentEl.scrollTop,
+			chartScrollTop: this.chartEl.scrollTop,
 			popover: this.popoverTarget ? { ...this.popoverTarget, state: this.popover.captureState() } : null,
 		};
 	}
@@ -275,6 +279,7 @@ export class ProjectDashboardView extends ItemView {
 	private restorePreservedState(preserved: PreservedViewState): void {
 		this.chartEl.scrollLeft = preserved.scrollLeft;
 		this.contentEl.scrollTop = preserved.scrollTop;
+		this.chartEl.scrollTop = preserved.chartScrollTop;
 		if (!preserved.popover) return;
 		this.suppressScrollCloseUntil = Date.now() + SCROLL_RESTORE_GRACE_MS;
 		this.reopenPopover(preserved.popover);
@@ -471,7 +476,7 @@ export class ProjectDashboardView extends ItemView {
 			today: () => this.today,
 			categoryOrder: () => this.categoryOrder,
 			calendarRow: () => this.calendarRowData(),
-		});
+		}, { phone: this.layout === 'phone' });
 
 		if (this.layout === 'full') this.setHelpPanelVisible(this.helpPanelOpen);
 	}
@@ -538,6 +543,18 @@ export class ProjectDashboardView extends ItemView {
 	private showMonth(ref: MonthRef): void {
 		this.shownMonth = ref;
 		this.renderChart();
+		this.scrollPhoneTableToThisWeek();
+	}
+
+	private scrollPhoneTableToThisWeek(): void {
+		if (this.layout !== 'phone' || this.scale !== 'month') return;
+		this.chartEl.scrollTop = 0;
+		const thisWeek = this.chartEl.querySelector<HTMLElement>('th.month-week.mw-today');
+		const projectHeader = this.chartEl.querySelector<HTMLElement>('th.proj-col');
+		// 表頭是 sticky，offsetLeft 的基準會變；用兩個欄頭的邊界差距才能對齊。
+		this.chartEl.scrollLeft = thisWeek && projectHeader
+			? Math.max(0, this.chartEl.scrollLeft + thisWeek.getBoundingClientRect().left - projectHeader.getBoundingClientRect().right)
+			: 0;
 	}
 
 	private showYear(year: number): void {
@@ -1059,7 +1076,10 @@ export class ProjectDashboardView extends ItemView {
 		};
 		const onScroll = (e: Event): void => {
 			if (this.popoverEl.hidden || !this.popoverAnchor) return;
-			if (Date.now() < this.suppressScrollCloseUntil) return;
+			if (Date.now() < this.suppressScrollCloseUntil) {
+				if (this.layout === 'phone') this.positionWeekPopover(this.popoverAnchor);
+				return;
+			}
 			// Only a scroll that moves the anchor detaches the fixed-position popover
 			// from its cell. Scrolling inside the popover, or in another pane such as
 			// the note beside the dashboard (which Obsidian may scroll by itself when
@@ -1073,6 +1093,9 @@ export class ProjectDashboardView extends ItemView {
 		};
 		const onResize = (): void => {
 			if (this.popoverEl.hidden || !this.popoverAnchor) return;
+			// 轉成橫放後表格不再需要左右捲，瀏覽器會把 scrollLeft 調回 0 並發出
+			// scroll 事件；先保留浮窗，讓格子移動後的事件能重新定位。
+			this.suppressScrollCloseUntil = Math.max(this.suppressScrollCloseUntil, Date.now() + PHONE_RESIZE_GRACE_MS);
 			// The phone keyboard also resizes the window, so preserve any task being typed.
 			this.positionWeekPopover(this.popoverAnchor);
 		};

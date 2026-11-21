@@ -2,6 +2,7 @@ import type { Cell } from './core/cells';
 import type { CalendarStatusLine } from './core/calendar-row';
 import { monthViewCells } from './core/cells';
 import { monthCellTaskLines, unscheduledSummary } from './core/months';
+import { shortProjectName } from './core/project-name';
 import type { ProjectRecord } from './core/scan';
 import { todayWeekIndex, weekRangeShort, type WeekInfo, type WeekRules } from './core/weeks';
 import { projectStateClass, renderProjectColHeader, renderProjectHeadCell } from './project-column';
@@ -45,7 +46,7 @@ export interface MonthViewHost {
 // 月視圖和週浮窗一樣是獨立元件：只負責把表格畫進容器，從不改筆記，也不自己
 // 處理點擊 — 格子帶著 data-path／data-week／data-kind，由 view.ts 的委派事件開浮窗。
 export class MonthView {
-	constructor(private readonly host: MonthViewHost) {}
+	constructor(private readonly host: MonthViewHost, private readonly options: { phone?: boolean } = {}) {}
 
 	render(container: HTMLElement): void {
 		const weeks = this.host.weeks();
@@ -61,11 +62,15 @@ export class MonthView {
 		const thead = table.createEl('thead');
 		const headRow = thead.createEl('tr');
 		renderProjectColHeader(headRow, 1);
-		for (const w of weeks) {
+		weeks.forEach((w, i) => {
 			const th = headRow.createEl('th', { cls: 'month-week' });
-			th.createDiv({ cls: 'mw-week', text: `W${w.week}` });
+			const week = th.createDiv({ cls: 'mw-week', text: `W${w.week}` });
+			if (this.options.phone && i === todayIdx) {
+				th.addClass('mw-today');
+				week.createSpan({ cls: 'mw-today-tag', text: '本週' });
+			}
 			th.createDiv({ cls: 'mw-range', text: weekRangeShort(w.label) });
-		}
+		});
 		headRow.createEl('th', { cls: 'month-unscheduled', text: '還沒排' });
 
 		const tbody = table.createEl('tbody');
@@ -82,8 +87,9 @@ export class MonthView {
 
 		for (const project of projects) {
 			const tr = tbody.createEl('tr');
+			const displayName = this.options.phone ? shortProjectName(project.name) : project.name;
 			try {
-				renderProjectHeadCell(tr, project, this.host.categoryOrder());
+				renderProjectHeadCell(tr, project, this.host.categoryOrder(), displayName);
 
 				const stateCls = projectStateClass(project);
 				const cells = monthViewCells(project, weeks, settings);
@@ -106,7 +112,7 @@ export class MonthView {
 				// 任務文字可能在中途才出錯，整列清空才能確保沒有殘留的可操作格子。
 				tr.empty();
 				const head = tr.createEl('td', { cls: 'proj-cell' });
-				head.createSpan({ cls: 'name', text: project.name, attr: { 'data-path': project.path } });
+				head.createSpan({ cls: 'name', text: displayName, attr: { 'data-path': project.path } });
 				head.createSpan({ cls: 'warn', text: '⚠', attr: { title: '這個專案的日期有問題' } });
 				for (let i = 0; i < weeks.length; i++) {
 					tr.createEl('td', { cls: ['month-cell', 'mk-blank', i === todayIdx ? 'today-col' : ''].filter(Boolean).join(' ') });

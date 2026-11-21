@@ -540,9 +540,13 @@
 }
 .pd-calendar-row .pd-calendar-error[hidden] { display: none; }
 
-/* 手機沿用月視圖，表格在自己的容器內捲動，分頁保留固定寬度。 */
-.pd-phone { overflow-x: hidden; }
-.pd-phone #chart { overflow-x: auto; cursor: pointer; }
+/* 表格自己上下左右捲，控制列才能一直留在分頁上方。 */
+.project-dashboard.pd-phone { display: flex; flex-direction: column; overflow: hidden; }
+.pd-phone #chart { flex: 1 1 auto; min-height: 0; overflow: auto; cursor: pointer; }
+.pd-phone table.month-grid thead th { position: sticky; top: 0; z-index: 5; }
+.pd-phone table.month-grid thead th.proj-col { left: 0; z-index: 6; }
+.pd-phone table.month-grid th.month-week.mw-today { background: linear-gradient(rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.12)), var(--panel); }
+.pd-phone table.month-grid .mw-today-tag { margin-left: 4px; color: var(--today); font-weight: 700; }
 .pd-phone table.month-grid[data-weeks="4"] { min-width: calc(96px + 4 * 120px + 48px); }
 .pd-phone table.month-grid[data-weeks="5"] { min-width: calc(96px + 5 * 120px + 48px); }
 .pd-phone table.month-grid[data-weeks="6"] { min-width: calc(96px + 6 * 120px + 48px); }
@@ -557,7 +561,7 @@
 .pd-phone .mc-line,
 .pd-phone .controls .month-title { white-space: normal; overflow-wrap: anywhere; word-break: normal; }
 .pd-phone table.month-grid th.month-week .mw-range { white-space: normal; overflow-wrap: anywhere; }
-.pd-phone .controls { padding: 4px 8px; flex-wrap: wrap; gap: 4px 8px; }
+.pd-phone .controls { padding: 4px 8px; flex: 0 0 auto; flex-wrap: wrap; gap: 4px 8px; }
 .pd-phone .controls .month-nav { flex-wrap: wrap; min-width: 0; }
 .pd-phone .controls label { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; }
 .pd-phone .controls label[hidden] { display: none; }
