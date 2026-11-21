@@ -28,7 +28,7 @@ NAMES = (
     'paused-rows.png',
     'year-2027.png',
     'settings-calendars.png',
-    'phone-week-list.png',
+    'phone-month-view.png',
 )
 
 
@@ -134,11 +134,8 @@ def capture():
                     page.locator('#help-panel [role=tab][aria-selected=true]').hover()
                     elements = [page.locator('#help-panel')]
                 elif area == 'phone':
-                    page.locator('.phone-overdue-heading').hover()
-                    elements = [page.locator('#chart')]
-                    paused = page.locator('.phone-paused')
-                    if paused.is_visible():
-                        elements += [paused]
+                    page.locator('.month-title').hover()
+                    elements = [page.locator('.controls'), page.locator('#chart table')]
                 else:
                     page.locator('.month-title').hover()
                     elements = [page.locator('#chart table')]
@@ -150,10 +147,10 @@ def capture():
                 # 版面太高時先擴大工作畫布；截圖仍只取內容外框。
                 clip = content_clip([el.bounding_box() for el in elements], 0 if area == 'help' else 16)
                 if area == 'phone':
-                    # README 只呈現清單開頭，避免整張長圖縮小後看不清楚。
+                    # 只取控制列與表格的高度，左右範圍固定為手機畫布。
                     clip = {
                         'x': 0, 'y': 0, 'width': 390,
-                        'height': min(1300, ceil(clip['y'] + clip['height'])),
+                        'height': min(1000, ceil(clip['y'] + clip['height'])),
                     }
                 viewport = page.viewport_size
                 assert viewport, '找不到截圖畫布'
@@ -260,18 +257,100 @@ def capture():
             page.locator('button', has_text='Add a calendar').wait_for(state='visible')
             snapshot('settings-calendars.png', area='calendars')
 
-            step = '拍攝手機週清單'
-            page.set_viewport_size({'width': 390, 'height': 844})
-            page.goto(DEMO.as_uri() + '?mode=phone')
-            page.wait_for_selector('#screenshot-root[data-ready="true"], #screenshot-root[data-error]')
-            if page.locator('#screenshot-root[data-error]').count():
-                raise RuntimeError(page.locator('#screenshot-root').inner_text())
-            page.evaluate('document.fonts.ready')
-            assert page.locator('#screenshot-root').get_attribute('data-mode') == 'phone', '未開啟手機版面'
-            assert page.locator('.phone-week-heading').first.inner_text() == '本週 W47 11/16–11/22', '今天日期未固定'
-            page.locator('.phone-overdue-heading').click()
-            assert page.locator('.phone-overdue-heading').get_attribute('aria-expanded') == 'true', '之前還沒做未展開'
-            snapshot('phone-week-list.png', area='phone')
+            step = '拍攝手機月視圖'
+
+            def open_phone(width):
+                page.set_viewport_size({'width': width, 'height': 844})
+                page.goto(DEMO.as_uri() + '?mode=phone')
+                page.wait_for_selector('#screenshot-root[data-ready="true"], #screenshot-root[data-error]')
+                if page.locator('#screenshot-root[data-error]').count():
+                    raise RuntimeError(page.locator('#screenshot-root').inner_text())
+                page.evaluate('document.fonts.ready')
+                assert page.locator('#screenshot-root').get_attribute('data-mode') == 'phone', '未開啟手機版面'
+                assert page.locator('.month-title').inner_text() == '2026 年 11 月（W45–W49）', '手機月份或今天日期不符'
+                assert page.locator('table.month-grid').get_attribute('data-weeks') == '5', '手機月份週數不符'
+
+            def phone_geometry():
+                return page.evaluate('''() => {
+                    const bounds = (element) => {
+                        const rect = element.getBoundingClientRect();
+                        return {left: rect.left, right: rect.right, width: rect.width};
+                    };
+                    const chart = document.querySelector('#chart');
+                    return {
+                        chart: bounds(chart),
+                        scrollWidth: chart.scrollWidth,
+                        clientWidth: chart.clientWidth,
+                        pageWidth: document.documentElement.scrollWidth,
+                        project: bounds(document.querySelector('th.proj-col')),
+                        weeks: Array.from(document.querySelectorAll('th.month-week'), bounds),
+                        unscheduled: bounds(document.querySelector('th.month-unscheduled')),
+                    };
+                }''')
+
+            def require_inside(box, chart, message):
+                if box['left'] < chart['left'] or box['right'] > chart['right']:
+                    raise RuntimeError(message)
+
+            open_phone(390)
+            page.locator('#chart').evaluate('(el) => { el.scrollLeft = 0; }')
+            geometry = phone_geometry()
+            if abs(geometry['project']['width'] - 96) > 1:
+                raise RuntimeError('390 像素寬時，名稱欄寬度不是 96 像素')
+            if len(geometry['weeks']) != 5:
+                raise RuntimeError('手機月視圖沒有 5 個週欄')
+            for week, box in zip(('W45', 'W46'), geometry['weeks'][:2]):
+                require_inside(box, geometry['chart'], f'390 像素寬時，{week} 沒有完整顯示')
+            if geometry['pageWidth'] > 390:
+                raise RuntimeError('390 像素寬時，儀表板分頁本身會左右捲動')
+            if geometry['scrollWidth'] <= geometry['clientWidth']:
+                raise RuntimeError('390 像素寬時，表格無法左右滑動')
+
+            page.locator('#chart').evaluate('(el) => { el.scrollLeft = el.scrollWidth; }')
+            geometry = phone_geometry()
+            require_inside(geometry['weeks'][-1], geometry['chart'], '捲到最右後，最後一週沒有完整顯示')
+            require_inside(geometry['unscheduled'], geometry['chart'], '捲到最右後，還沒排欄沒有完整顯示')
+            if abs(geometry['project']['left'] - geometry['chart']['left']) > 1:
+                raise RuntimeError('捲到最右後，名稱欄沒有固定在左邊')
+            page.locator('#chart').evaluate('(el) => { el.scrollLeft = 0; }')
+
+            cells = page.locator('td.month-cell[data-path]')
+            cell_index = cells.evaluate_all('''(cells) => {
+                const chart = document.querySelector('#chart').getBoundingClientRect();
+                const visible = cells.map((cell, index) => ({
+                    index, rect: cell.getBoundingClientRect(),
+                })).filter(({rect}) => rect.left >= chart.left && rect.right <= chart.right);
+                visible.sort((a, b) => b.rect.right - a.rect.right);
+                return visible.length ? visible[0].index : -1;
+            }''')
+            if cell_index < 0:
+                raise RuntimeError('找不到完整顯示、可開啟浮窗的手機週格子')
+            cells.nth(cell_index).click()
+            popover = page.locator(POPOVER)
+            popover.wait_for(state='visible')
+            assert 'pd-popover-phone' in (popover.get_attribute('class') or '').split(), '浮窗未套用手機版面'
+            box = popover.bounding_box()
+            if box is None or box['x'] < 8 or box['x'] + box['width'] > 382:
+                raise RuntimeError('手機浮窗的左右邊緣沒有各留至少 8 像素')
+            page.locator('.month-title').click()
+            popover.wait_for(state='hidden')
+
+            open_phone(800)
+            geometry = phone_geometry()
+            if geometry['scrollWidth'] > geometry['clientWidth'] + 1:
+                raise RuntimeError('800 像素寬時，整個月仍需要左右滑動')
+            if len(geometry['weeks']) != 5:
+                raise RuntimeError('800 像素寬時，手機月視圖沒有 5 個週欄')
+            for index, box in enumerate(geometry['weeks'], start=45):
+                require_inside(box, geometry['chart'], f'800 像素寬時，W{index} 沒有完整顯示')
+            require_inside(geometry['unscheduled'], geometry['chart'], '800 像素寬時，還沒排欄沒有完整顯示')
+            widths = [box['width'] for box in geometry['weeks']]
+            if max(widths) - min(widths) > 1:
+                raise RuntimeError('800 像素寬時，每週欄寬相差超過 1 像素')
+
+            open_phone(390)
+            page.locator('#chart').evaluate('(el) => { el.scrollLeft = 0; }')
+            snapshot('phone-month-view.png', area='phone')
             browser.close()
 
         for name in NAMES:

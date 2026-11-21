@@ -252,6 +252,19 @@ export class Notice {
 }
 
 let calendarResponses: Readonly<Record<string, string>> = {};
+// 截圖不拍資料夾清單，只要讓設定頁建得起來：記下欄位，不畫任何清單。
+export abstract class AbstractInputSuggest<T> {
+	limit = 100;
+	constructor(readonly app: App, readonly textInputEl: HTMLInputElement) {}
+	setValue(value: string): void { this.textInputEl.value = value; }
+	getValue(): string { return this.textInputEl.value; }
+	open(): void {}
+	close(): void {}
+	protected abstract getSuggestions(query: string): T[] | Promise<T[]>;
+	abstract renderSuggestion(value: T, el: HTMLElement): void;
+	selectSuggestion(_value: T, _evt?: MouseEvent | KeyboardEvent): void {}
+}
+
 export function setCalendarResponses(responses: Readonly<Record<string, string>>): void { calendarResponses = responses; }
 export async function requestUrl(options: { url: string; method?: string; throw?: boolean }): Promise<{ status: number; text: string }> {
 	// Never fall back to fetch: a changed demo URL must fail locally.

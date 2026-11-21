@@ -8,7 +8,7 @@
 
 ## 3. 文件
 
-- [ ] 3.1 README、details 與更新紀錄（Settings tab）：README.md 與 README.zh-TW.md 的第一次設定步驟改成「點 `Project folder`，從清單選放專案筆記的資料夾，也可以自己打」；docs/details.md 與 docs/details.zh-TW.md 的設定段落補上清單的規則（點下去看全部、打字篩選、不列最上層）；CHANGELOG.md 的 0.6.0 段落加一條英文與中文說明。驗證：重讀差異，兩份 README 的段落與圖片仍一致，設定頁文字與規格相同。
+- [x] 3.1 README、details 與更新紀錄（Settings tab）：README.md 與 README.zh-TW.md 的第一次設定步驟改成「點 `Project folder`，從清單選放專案筆記的資料夾，也可以自己打」；docs/details.md 與 docs/details.zh-TW.md 的設定段落補上清單的規則（點下去看全部、打字篩選、不列最上層）；CHANGELOG.md 的 0.6.0 段落加一條英文與中文說明。驗證：重讀差異，兩份 README 的段落與圖片仍一致，設定頁文字與規格相同。
 
 ## 4. 驗收
 

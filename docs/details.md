@@ -196,74 +196,39 @@ A failed calendar keeps its last successful events in this plugin session. If it
 
 See the README for [network use](../README.md#network-use) and [third-party code](../README.md#third-party-code).
 
-## Phone week list
+## Phone month view
 
-Obsidian decides whether the device is a phone when a dashboard tab opens. Phones get the week list. Computers and tablets keep the year and month views. Rotating the device, resizing a window, or narrowing a pane does not switch layouts while the tab stays open. The layout is checked again the next time a dashboard tab opens.
+Obsidian decides whether the device is a phone when a dashboard tab opens. Phones get the month view. Computers and tablets keep the year and month views. Rotating the device, resizing a window, or narrowing a pane does not switch layouts while the tab stays open. The layout is checked again the next time a dashboard tab opens.
 
-### Which four weeks appear
+### Table and sideways scrolling
 
-The first week is the Monday–Sunday ISO week containing today's local date. The next three weeks follow it, across a year boundary when needed. Finding today's week does not use the Saturday rule, even on a Saturday. For example, on `2026-11-20` the headings are:
+The phone uses the same month table as a computer: one row per project, one column per week, and task text in the cells. Weeks, project order, cell colors, task text and order, today's week mark, and `還沒排` counts follow the same rules. Done tasks are grey with `✓`. Open tasks in past weeks are red. See [month view](#month-view) and [task dates](#task-dates) for week and Saturday rules. Phones have no General row.
 
-- `本週 W47 11/16–11/22`
-- `下週 W48 11/23–11/29`
-- `W49 11/30–12/6`
-- `W50 12/7–12/13`
+The name column is 96 pixels wide. Names and the column heading stay fixed on the left. Each week is at least 120 pixels wide. `還沒排` is 48 pixels wide. An upright phone shows about two weeks at once. Swipe the table left or right to see other weeks and `還沒排`; project names stay in place. The dashboard tab itself does not scroll sideways. Turn the phone sideways to see the whole month when there is enough room. Extra space is shared equally by the weeks. Long names, task text, and week headings wrap onto more lines.
 
-On `2026-12-30`, they are `本週 W53 12/28–1/3`, `下週 W1 1/4–1/10`, `W2 1/11–1/17`, and `W3 1/18–1/24`. You cannot browse other weeks or change the number of weeks.
+### Month and projects
 
-Tasks belong to the same weeks as in the month view, including the Saturday rule. With it on, a task dated `2026-11-28` belongs to `W49 11/30–12/6`. Task order within a project is the same as in the week popover. A task with dates in different weeks can appear in each matching week, once per week. Each row shows a checkbox, task text, and its planned date as `M/D` when it has one. Long text wraps.
+Each time the tab opens, it starts on the month of today's week. A title such as `2026 年 11 月（W45–W49）` shows the month and weeks. `◀` and `▶` go to the previous and next month. `本月` (this month) appears only in another month and brings back the month of today's week. This row holds only the month controls and `顯示暫停（n）` (show paused).
 
 Projects use the dashboard's row order and filters. Notes outside the project folder or matching `Projects to skip` are skipped. A project needs both a start and an end date after the usual date fallbacks. Done and cancelled projects never appear on a phone. Paused projects appear only when `顯示暫停（n）` is checked. That control appears only when there are paused projects to show and starts unchecked each time the tab opens.
 
-Each project group starts with its category color dot and name. A project with no task in a week has no group there. If no shown project has tasks in a week, it says `這週沒有任務` in grey. Tasks dated only after the fourth week do not appear.
+### Pop-ups and task edits
 
-With today set to `2026-11-20` and the Saturday rule off, these unfinished tasks in `範例專案 A` appear as follows:
+Tap a week cell with tasks or a dashed border to open the same week pop-up as on a computer. Tick or untick a task. Use `◀` and `▶` to move an open task one week. Use `＋ 從還沒排日期的任務挑一個` to pick an undated task, or `＋ 新增任務` to add one. Tap a `還沒排` number to open its pop-up, then use a week button beside a task to put it in that week. Blank cells, `還沒排` cells with no count, and table headings do not open a pop-up.
 
-| Task | Planned date | Where it appears |
-| --- | --- | --- |
-| `寄出邀請` | `2026-11-06` | In `之前還沒做`, when expanded |
-| `準備讀書會` | `2026-11-20` | In `本週 W47`, with `11/20` |
-| `訂場地` | `2026-12-11` | In `W50`, with `12/11` |
-| `寄成果報告` | `2026-12-18` | Outside these four weeks; not listed |
+Dates written, editing limits such as recurring tasks, line checks before saving, and error messages follow the same rules as on a computer. See [week popover and editing](#week-popover-and-editing) and [unscheduled tasks](#unscheduled-tasks). New and picked tasks use Friday by default, set by `Which day to write`. After a saved edit, the table updates and the pop-up follows the computer's rules for staying on the same project and week. The undated-task pop-up closes after its last task is scheduled.
 
-If these are the only tasks, `下週 W48` and `W49` each say `這週沒有任務`.
+A phone pop-up stays at least 8 pixels from each side of the screen. Checkboxes and buttons have a tap area of at least 44 × 44 pixels. Tap outside the pop-up or swipe the table sideways to close it.
 
-### Done and overdue tasks
+### Opening notes and going back
 
-A task is done when its checkbox is `[x]` or `[X]`, or it has a completion-date marker, as described under [task dates](#task-dates). Done tasks show a checked box and grey text and stay in their matching weeks.
+Tap a project name in the name column or a pop-up's title, or tap `↗` beside a task. The pop-up closes and the note opens in the dashboard's own tab. `↗` also selects the task's line. Use Obsidian's back control to return to the dashboard. It opens on the month of today's week again. Computers and tablets keep opening notes in the right-hand pane.
 
-An overdue task has a checkbox, is not done, and has a planned date whose week, after applying the Saturday rule, starts before today's week. Only shown projects count. A date earlier than today but still in this week is not overdue. On `2026-11-20`, for example, an open task dated `2026-11-16` stays in `本週 W47` in normal text. The four week sections cover this week and later; red overdue text appears only in `之前還沒做`.
+If the note is gone, the dashboard stays open and says `找不到這則筆記` (note not found). If the note opens but the task's line cannot be found, it says `找不到那一行，可能剛被改過` (line not found; it may have changed).
 
-### Tick tasks and move dates
+### Other phone controls and calendars
 
-Controls sit on each task row; tapping does not open a week popover. Every row has a checkbox. It can be used only for a checkbox task that is not recurring, with the same editing limits as the week popover. A recurring task's checkbox is disabled with `重複任務請在筆記裡勾選`. Dated text without a checkbox cannot be ticked.
-
-Ticking marks the task done and writes today's completion date; unticking removes the completion-date marker. `◀` and `▶` appear only on an unfinished checkbox task with a planned date. They move its first planned date by 7 days, keeping the weekday. Recurring tasks can still use these arrows when they meet those conditions. Done tasks and lines without a planned date or checkbox have no arrows.
-
-After a successful move, a task still within the four weeks appears in its new week without a message. A task moved outside them gets one of these messages, with `<M/D>` replaced by its new date:
-
-- Before this week: `已移到 <M/D>，在「之前還沒做」裡`. Moving `2026-11-16` back one week shows `已移到 11/9，在「之前還沒做」裡`.
-- After the fourth week: `已移到 <M/D>，超出這 4 週`. Moving `2026-12-11` forward one week shows `已移到 12/18，超出這 4 週`.
-
-Changes save straight to the note, with the same line checks as the week popover. The row's controls are disabled while saving. A missing note shows `找不到這則筆記`; a changed line shows `這一行在筆記裡剛被改過，畫面已更新，請再試一次`. The dashboard refreshes and leaves the note unchanged.
-
-### Earlier unfinished tasks
-
-Above the weeks, below `顯示暫停（n）` when present, `之前還沒做（n）` counts overdue tasks. It starts collapsed with `▸` each time the dashboard tab opens. Tap the whole heading row to expand it to `▾`; tap again to collapse. Note updates keep the expanded or collapsed state and your scroll position.
-
-Expanded tasks are grouped in the dashboard's project order. Within each project they sort by planned date, then by line order. Each row shows red text, its planned date as `M/D`, a checkbox, and `排到本週`. This section has no `◀` or `▶`.
-
-Tap `排到本週` to replace the first planned date with this week's schedule date. It uses `Which day to write`, Friday by default, just like scheduling into a week from the week popover. It changes the existing date instead of adding a second one. The task leaves this section and appears in `本週`.
-
-For today `2026-11-20`, Friday writes `2026-11-20`. If you choose Saturday with the Saturday rule off, it writes `2026-11-21`. If you choose Saturday with the rule on, it writes the Saturday before this week's Monday: `2026-11-14`. The task then still belongs to `本週 W47`.
-
-If you tick a task in this section, it stays in place, checked and grey, until you collapse the section or open the dashboard tab again. You can untick it there to undo a mistaken tick; it becomes red and unfinished again. The count includes only unfinished tasks. When collapsed with no overdue tasks, the heading is hidden. When expanded and the count reaches zero, `之前還沒做（0）` stays until you collapse the section. Ticked tasks are removed from this section when you collapse it.
-
-### Notes, settings, and other controls
-
-Tap a project name in either the weeks or `之前還沒做` to open its note in the dashboard's own tab. Obsidian's back control returns to the dashboard. Computers and tablets keep opening notes in the right-hand pane.
-
-Phones have no year, month, or Timeline view, view or period navigation, `顯示已結案`, category or status editing, legend, date-warning markers, or help panel. The shortcuts `M`, `T`, and `?` do nothing, even with an external keyboard. You cannot add tasks or schedule undated tasks from the phone list; edit the note for those changes. Missing folders and empty project lists use the same messages as on a computer, such as `找不到專案資料夾：<folder>`.
+Phones have no `專案總覽` title, project counts, legend, year view, year/month switch, Timeline, `顯示已結案`, category or status editing, `⚠` date warnings, help panel, or `?` button. You cannot drag the legend or resize the name column. Keyboard shortcuts do nothing, even with an external keyboard. Missing folders and empty project lists use the same messages as on a computer, such as `找不到專案資料夾：<folder>`.
 
 On a phone, the plugin reads no calendars, shows no calendar events, and makes no network requests, even with calendars already set up. `Project Dashboard: Refresh calendars` is absent from the command palette. In settings, `Calendars` shows only its heading and `Calendar events show on a computer or tablet. Add your calendars there.` There are no calendar fields or buttons. The plugin does not access secret storage on a phone. Saving other settings keeps the saved calendar list unchanged.
 
@@ -285,7 +250,11 @@ Open **Settings → Project Dashboard**. Settings apply without a rebuild.
 
 ### Project notes
 
-- `Project folder`: vault-relative folder, default `Projects`. Leading/trailing spaces and `/` are removed. Empty falls back to `Projects`. Missing folders show `Can't find this folder.` using that final value.
+- `Project folder`: the folder path inside your vault, default `Projects`. Leading/trailing spaces and `/` are removed. Empty falls back to `Projects`. Missing folders show `Can't find this folder.` using that final value.
+
+  Tap or click the box to see all folders, even when it already holds a path. The list leaves out the top level (`/`) and sorts paths in alphabetical order, ignoring case. Type or delete text to filter it. A path matches when it contains that text anywhere, ignoring case and spaces at the text's ends. Empty text shows all folders. Leave the box and tap or click it again to see all folders again.
+
+  Pick a folder to fill in its path and close the list. It works just like typing the path: saves after a 400 ms pause, updates open dashboards, and updates the `Can't find this folder.` hint. You can still type a path yourself, even if it is not in the list. This works the same on computers, tablets, and phones. The field's help text includes: `Tap or click the box to pick a folder from a list.`
 - `Projects to skip`: one filename fragment per line, default empty. Spaces at the ends and empty lines are ignored. Any matching fragment skips a project.
 
 ### Categories

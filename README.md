@@ -33,7 +33,7 @@ To open it, run `Project Dashboard: Open dashboard` from the command palette. Or
 ## First-time setup
 
 1. Go to **Settings → Project Dashboard → Project notes**.
-2. Set `Project folder` to the folder that holds your project notes. It starts as `Projects`. Only notes right inside that folder are read; notes in subfolders are skipped.
+2. Tap or click `Project folder`. Pick the folder that holds your project notes from the list, or type its path yourself. It starts as `Projects`. Only notes right inside that folder are read; notes in subfolders are skipped.
 3. Create a Markdown note there. A name such as `🚧 P-20261102 範例專案.md` works well. `P-` is a naming habit, not a required prefix. The leading symbol sets the status: `🚧 進行中` (active), `⏳ 暫停` (paused), `✅ 完成` (done), or `❌ 取消` (cancelled). No symbol means active.
 4. Put the dates in the properties block at the top of the note (frontmatter). Use `開始日期` for the start and `預計結束日期` for the expected end. `實際結束日期` is used as the end only when there is no expected end. Write dates as `YYYY-MM-DD`.
 5. Give tasks a date with `📅 YYYY-MM-DD`. A checked box or `✅ YYYY-MM-DD` marks a task as done. Leave an open task without a date to plan it later.
@@ -150,18 +150,19 @@ See [status and category rules](docs/details.md#status-and-categories) for name 
 
 ## On a phone
 
-Open the dashboard on your phone. It shows a list from top to bottom: `本週` (this week), `下週` (next week), and two more weeks. Each week groups tasks by project. A week with no tasks says `這週沒有任務` (no tasks this week).
+1. Open the dashboard. It starts on the month of today's week. Each project has one row. Each week has one column, with its tasks in the cells, just like the month view on a computer.
+2. Hold your phone upright to see about two weeks at a time. Swipe the table left or right to see other weeks and `還沒排` (not scheduled yet). Project names stay fixed on the left in a 96-pixel column. Each week is at least 120 pixels wide; `還沒排` is 48 pixels wide.
+3. Turn your phone sideways. If there is enough room, you can see the whole month at once.
+4. Use `◀` and `▶` beside a title like `2026 年 11 月（W45–W49）` to change months. Tap `本月` (this month) to return to the month of today's week; it appears when you view another month. The top row has only these month controls and `顯示暫停（n）` (show paused), when there are paused projects to show.
+5. Tap a week cell with tasks or a dashed border to open the same week pop-up as on a computer. Tick or untick a task. Use `◀` or `▶` beside an open task to move it one week. Use `＋ 從還沒排日期的任務挑一個` to pick an undated task, or `＋ 新增任務` to add one. Changes save straight to the note.
+6. Swipe to `還沒排` and tap a number. In the pop-up, tap a week button beside a task to put it in that week.
+7. Tap a project name in the left column or at the top of a pop-up to open its note. Tap `↗` beside a task to jump to its line. The note opens in the dashboard's own tab. Use Obsidian's back control to return to the dashboard, which opens on this month again.
 
-1. Tick a task to mark it done. It stays checked and grey in its week. Untick it to undo. Recurring tasks must be ticked in the note.
-2. Use `◀` or `▶` beside an open task to move its date one week earlier or later. If it leaves these four weeks, a message tells you where it went.
-3. If you see `之前還沒做（n）` (unfinished tasks from earlier weeks) at the top of the list, tap it to expand. Tap `排到本週` (schedule into this week) beside a task to change its date to this week's schedule date. The day follows **Settings → Project Dashboard → Dates → `Which day to write`**, Friday by default. A task ticked in this section stays there until you collapse the section or open the dashboard tab again, so you can untick a mistaken tick.
-4. Tap a project name to open its note in the same tab. Use Obsidian's back control to return to the dashboard.
+![Phone month view with the name column fixed on the left and two weeks visible](docs/images/phone-month-view.png)
 
-![Phone week list with tasks grouped by project and the earlier unfinished tasks expanded](docs/images/phone-week-list.png)
+Phones have no year view, year/month switch, Timeline, General calendar row, help panel or `?`, `顯示已結案` (show closed), category or status editing, `⚠` date warnings, or keyboard shortcuts. You cannot drag the legend or resize the name column. Use a computer or tablet for these controls. On a phone, the plugin reads no calendars and makes no network requests.
 
-The phone list has no calendars, year or month view, category or status editing, or help panel. You cannot add tasks or schedule undated tasks from this list. Use the note for those task changes. Use a computer or tablet for the other views and controls.
-
-See [phone week-list rules](docs/details.md#phone-week-list) for week boundaries, date choices, messages, and how earlier unfinished tasks are kept.
+See [phone month-view rules](docs/details.md#phone-month-view) for the table, task edits, and opening notes.
 
 ## Settings
 
