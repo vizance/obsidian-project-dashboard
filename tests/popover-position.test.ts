@@ -57,4 +57,38 @@ describe('week popover placement', () => {
 		expect(result.left).toBeGreaterThanOrEqual(0);
 		expect(result.top).toBeGreaterThanOrEqual(0);
 	});
+
+	it('A popover fits a phone screen: margin 8 at the right edge', () => {
+		// 先鎖定新增的可選欄位；用交集型別讓舊程式仍可通過型別檢查。
+		const input: PopoverPlacementInput & { margin: number } = {
+			anchor: { left: 300, top: 200, right: 390, bottom: 244 },
+			size: { width: 300, height: 200 },
+			pane: { left: 0, top: 0, right: 390, bottom: 844 },
+			viewport: { width: 390, height: 844 },
+			margin: 8,
+		};
+		const result = placePopover(input);
+		expect(result.left).toBeGreaterThanOrEqual(8);
+		expect(result.left + 300).toBeLessThanOrEqual(382);
+	});
+
+	it('A popover fits a phone screen: margin 8 at the left edge', () => {
+		const input: PopoverPlacementInput & { margin: number } = {
+			anchor: { left: 0, top: 200, right: 90, bottom: 244 },
+			size: { width: 300, height: 200 },
+			pane: { left: 0, top: 0, right: 390, bottom: 844 },
+			viewport: { width: 390, height: 844 },
+			margin: 8,
+		};
+		expect(placePopover(input).left).toBeGreaterThanOrEqual(8);
+	});
+
+	it('A popover fits a phone screen: omitted margin keeps the default placement', async () => {
+		const { POPOVER_MARGIN } = await import('../src/core/popover-position');
+		const input: PopoverPlacementInput & { margin?: number } = {
+			anchor: cell(1190, 300), size: SIZE, pane: PANE, viewport: VIEWPORT,
+		};
+		const explicit: PopoverPlacementInput & { margin: number } = { ...input, margin: POPOVER_MARGIN };
+		expect(placePopover(input)).toEqual(placePopover(explicit));
+	});
 });
