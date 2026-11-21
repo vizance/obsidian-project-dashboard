@@ -52,6 +52,22 @@ function error(row: Setting): SettingsElement {
 	return row.controlEl.children.find((el) => el.classes.has('pd-calendar-error'))!;
 }
 
+describe('Project folder settings', () => {
+	beforeEach(() => {
+		Setting.instances = [];
+	});
+
+	it('describes how to tap or click Project folder to pick from a list', async () => {
+		const { tab } = await setup([]);
+		try {
+			const folder = Setting.instances.find((setting) => setting.name === 'Project folder')!;
+			expect(folder.descEl.textContent).toBe('The folder where your project notes live. Only notes right inside this folder are used. Notes in folders inside it are skipped. Tap or click the box to pick a folder from a list.');
+		} finally {
+			tab.hide();
+		}
+	});
+});
+
 describe('Calendars settings', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
