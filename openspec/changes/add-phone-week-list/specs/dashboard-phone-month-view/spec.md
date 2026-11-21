@@ -89,7 +89,7 @@ When the table area is wider than the sum of these widths, the week columns SHAL
 
 On a phone, tapping a week cell that is not blank SHALL open the week-popover for that project and week, and tapping a `還沒排` count greater than 0 SHALL open the unscheduled-popover for that project. Both popovers SHALL have the same content, actions, write rules, and messages as on a computer: ticking and unticking a task, `◀` and `▶` moving an open dated task one week, `＋ 從還沒排日期的任務挑一個`, `＋ 新增任務`, and the week buttons of the unscheduled-popover. When a write fails, the dashboard SHALL show the same message as on a computer and leave the note unchanged: `找不到這則筆記`, `這一行在筆記裡剛被改過，畫面已更新，請再試一次` (after which the dashboard re-scans), or `寫入筆記失敗，請再試一次`. After a successful write the table SHALL be drawn again and the popover SHALL stay open on the same project and week, as on a computer. Tapping a blank cell, a `還沒排` cell without a count, or the table heading SHALL NOT open a popover. Tapping outside an open popover SHALL close it.
 
-On a phone each popover SHALL fit inside the screen: it SHALL be at most the screen width minus 16 CSS pixels wide, its left edge SHALL be at least 8 CSS pixels from the left of the screen, and its right edge SHALL be at least 8 CSS pixels from the right of the screen. Every checkbox and button inside a popover on a phone — including `◀`, `▶`, `↗`, the week buttons, the project name in the title, `＋ 從還沒排日期的任務挑一個`, and `＋ 新增任務` — SHALL have a tap area at least 44 × 44 CSS pixels. On a computer and on a tablet the popovers SHALL keep their current size and spacing.
+On a phone each popover SHALL fit inside the screen: it SHALL be at most the screen width minus 16 CSS pixels wide, its left edge SHALL be at least 8 CSS pixels from the left of the screen, and its right edge SHALL be at least 8 CSS pixels from the right of the screen. When the screen size changes while a popover is open on a phone, for example when the user turns the phone, the popover SHALL stay open and SHALL be placed again by the same rules, so that it still fits inside the screen. Every checkbox and button inside a popover on a phone — including `◀`, `▶`, `↗`, the week buttons, the project name in the title, `＋ 從還沒排日期的任務挑一個`, and `＋ 新增任務` — SHALL have a tap area at least 44 × 44 CSS pixels. On a computer and on a tablet the popovers SHALL keep their current size and spacing.
 
 #### Scenario: Ticking a task from a phone
 
@@ -118,6 +118,19 @@ On a phone each popover SHALL fit inside the screen: it SHALL be at most the scr
 - **WHEN** the user taps a cell in the right-most column that is visible
 - **THEN** the popover's left edge MUST be at least 8 CSS pixels from the left of the screen
 - **AND** its right edge MUST be at most 382 CSS pixels from the left of the screen
+
+#### Scenario: Turning the phone keeps the popover on the screen
+
+- **GIVEN** the phone is held sideways with a screen 800 CSS pixels wide, and the popover of a cell at the right edge is open
+- **WHEN** the user turns the phone upright, so the screen becomes 390 CSS pixels wide
+- **THEN** the popover MUST stay open
+- **AND** its left edge MUST be at least 8 CSS pixels from the left of the screen and its right edge at most 382 CSS pixels from the left of the screen
+
+#### Scenario: Week buttons are easy to tap on a phone
+
+- **GIVEN** the unscheduled-popover of `範例專案 A` is open on a phone
+- **WHEN** the user looks at the week buttons such as `W48`
+- **THEN** each week button MUST be at least 44 CSS pixels wide and 44 CSS pixels tall
 
 #### Scenario: A changed line is not overwritten from a phone
 

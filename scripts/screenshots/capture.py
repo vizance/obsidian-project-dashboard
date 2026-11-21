@@ -335,6 +335,23 @@ def capture():
             page.locator('.month-title').click()
             popover.wait_for(state='hidden')
 
+            # 還沒排浮窗的週按鈕在手機上也要好按。先把表格捲到最右再點，避免點擊時
+            # 自動捲動把剛打開的浮窗關掉。
+            page.evaluate("(() => { const chart = document.querySelector('#chart'); chart.scrollLeft = chart.scrollWidth; })()")
+            page.wait_for_timeout(200)
+            page.locator(UNSCHEDULED).click()
+            popover.wait_for(state='visible')
+            week_buttons = popover.locator('.wp-week-btn').all()
+            if not week_buttons:
+                raise RuntimeError('手機的還沒排浮窗沒有週按鈕')
+            for week_button in week_buttons:
+                button_box = week_button.bounding_box()
+                if button_box is None or button_box['width'] < 44 or button_box['height'] < 44:
+                    raise RuntimeError('手機的還沒排浮窗有週按鈕小於 44×44 像素')
+            page.locator('.month-title').click()
+            popover.wait_for(state='hidden')
+            page.evaluate("document.querySelector('#chart').scrollLeft = 0")
+
             open_phone(800)
             geometry = phone_geometry()
             if geometry['scrollWidth'] > geometry['clientWidth'] + 1:

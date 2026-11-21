@@ -469,6 +469,27 @@ describe('phone month popovers and writes', () => {
 	});
 });
 
+describe('phone popover after turning the phone', () => {
+	it('Turning the phone keeps the popover on the screen', async () => {
+		const c = await setup(undefined, { width: 800 });
+		const cell = c.cell() as Element;
+		cell.rect = { left: 700, right: 800, top: 200, bottom: 244 };
+		await click(cell);
+		expect(c.popover().hidden).toBe(false);
+		// 轉成直放：視窗、儀表板與格子的位置都跟著變，再發出 resize。
+		c.doc.defaultView.innerWidth = 390;
+		c.root.clientWidth = 390;
+		c.root.rect.right = 390;
+		cell.rect = { left: 300, right: 390, top: 200, bottom: 244 };
+		c.doc.defaultView.dispatchEvent(new Event('resize'));
+		await vi.advanceTimersByTimeAsync(0);
+		expect(c.popover().hidden).toBe(false);
+		const left = Number.parseFloat(required(c.popover().cssProps['--pd-popover-left'], '浮窗左緣'));
+		expect(left).toBeGreaterThanOrEqual(8);
+		expect(left + (c.popover() as Element).offsetWidth).toBeLessThanOrEqual(382);
+	});
+});
+
 describe('phone note navigation', () => {
 	it('Opening a note and going back', async () => {
 		const c = await setup();
