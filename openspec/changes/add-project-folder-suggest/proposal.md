@@ -1,6 +1,6 @@
 ## Why
 
-設定頁的 `Project folder` 現在只能手打資料夾路徑，例如 `Spaces/1. 🔥 Project (On)`。路徑長、有符號，打錯一個字就顯示 `Can't find this folder.`，在手機上更難打。朱騏回饋：不管電腦版還是手機版，點一下就要能抓到 Obsidian 裡的資料夾路徑。
+設定頁的 `Project folder` 現在只能手打資料夾路徑，例如 `Work/Projects/2026 進行中`。路徑長、有符號，打錯一個字就顯示 `Can't find this folder.`，在手機上更難打。朱騏回饋：不管電腦版還是手機版，點一下就要能抓到 Obsidian 裡的資料夾路徑。
 
 ## What Changes
 
