@@ -44,17 +44,31 @@ The table SHALL be the same month view as on a computer, drawn by the same code:
 - There is no General row, whatever `calendars` holds.
 - Closed projects (done or cancelled) are never shown. Paused projects are shown only while `顯示暫停（<n>）` is checked.
 - The project column shows the category color dot, the project name, and `⏳ 暫停` for a paused project, but no `⚠` and no category or status menu.
+- The project column shows each project name without its leading date code, as described below. The project name in a popover's title stays the full name.
+- The heading of today's week shows `本週` after its week number, for example `W47 本週`. No other heading shows `本週`, and a shown month without today's week has no heading with `本週`.
 - The project column is 96 CSS pixels wide and has no resize handle; the width saved in `dashboard.projColWidth` is not used.
 - Each week column is at least 120 CSS pixels wide, and the `還沒排` column is 48 CSS pixels wide.
 
-When the table area is wider than the sum of these widths, the week columns SHALL share the extra width equally. When it is narrower, the table SHALL scroll sideways inside the dashboard while the project column and its header stay fixed at the left edge; the dashboard tab itself SHALL NOT scroll sideways. Project names, task text, and the week headings SHALL wrap onto more lines when needed and SHALL NOT be cut off or overlap the next column.
+A project name has a leading date code when it starts with `P-`, then a date code, then one or more spaces, then more text that does not start with `~`, `～`, or `&`. A date code is one or more date parts joined by `~`, `～`, or `&` with optional spaces around the joining sign. The first date part starts with four digits, every later date part starts with a digit, and each date part is made only of digits, `.`, and `-`, optionally followed by `Q1`, `Q2`, `Q3`, or `Q4`. The phone project column SHALL show the text after the date code and its spaces. Every other name SHALL be shown unchanged. For example, `P-20260302 範例企業內訓規劃` shows `範例企業內訓規劃`, `P-20261102 ~ 1218 範例專案` and `P-2026Q1 範例專案` show `範例專案`, and `P-範例專案`, `P-20260302`, and `範例專案` are shown unchanged.
 
-#### Scenario: A phone held upright shows two weeks at a time
+When the table area is wider than the sum of the column widths, the week columns SHALL share the extra width equally. When it is narrower, the table SHALL scroll sideways inside the dashboard while the project column and its header stay fixed at the left edge. When the table is taller than the table area, the table SHALL scroll up and down inside the dashboard while its heading row, holding `專案`, the week headings, and `還沒排`, stays fixed at the top edge of the table area and is drawn on top of the rows that scroll beneath it. The dashboard tab itself SHALL NOT scroll sideways or up and down, so the controls row always stays shown above the table. Project names, task text, and the week headings SHALL wrap onto more lines when needed and SHALL NOT be cut off or overlap the next column.
+
+When a dashboard tab opens on a phone, and each time `◀`, `▶`, or `本月` changes the shown month, the table SHALL scroll to its top. When the shown month contains today's week, the table SHALL also scroll sideways so that the left edge of today's week column meets the right edge of the project column, or as far as the table can scroll when it cannot go that far. When the shown month does not contain today's week, the table SHALL scroll to its left edge. Drawing the table again for any other reason SHALL keep the table's sideways and up-and-down scroll positions. These other reasons include a write from a popover, a change to a project note, a settings change, and checking or unchecking `顯示暫停（<n>）`.
+
+#### Scenario: The phone opens on this week
 
 - **GIVEN** today is 2026-11-20, the phone shows November 2026 (W45–W49), and the table area is 390 CSS pixels wide
 - **WHEN** the user opens the dashboard
-- **THEN** the project column and the W45 and W46 columns MUST be fully visible without scrolling
-- **AND** after the user swipes the table to the left, W49 and `還沒排` MUST become visible while the project names stay in place at the left edge
+- **THEN** the left edge of the W47 column MUST meet the right edge of the project column
+- **AND** the W47 and W48 columns MUST be fully visible
+- **AND** the W47 heading MUST read `W47 本週`, and no other heading MUST show `本週`
+
+#### Scenario: A phone held upright shows two weeks at a time
+
+- **GIVEN** the phone shows November 2026 (W45–W49) on W47, and the table area is 390 CSS pixels wide
+- **WHEN** the user swipes the table to the right as far as it goes
+- **THEN** the W45 and W46 columns MUST be fully visible
+- **AND** after the user swipes the table to the left as far as it goes, W49 and `還沒排` MUST become visible while the project names stay in place at the left edge
 
 #### Scenario: A phone held sideways shows the whole month
 
@@ -62,6 +76,33 @@ When the table area is wider than the sum of these widths, the week columns SHAL
 - **WHEN** the user opens the dashboard
 - **THEN** all five week columns and the `還沒排` column MUST be visible without scrolling
 - **AND** the week columns MUST all have the same width
+
+#### Scenario: The week headings stay at the top
+
+- **GIVEN** the phone month view shows more project rows than fit in the table area
+- **WHEN** the user scrolls the table down
+- **THEN** the heading row with `專案`, the week headings, and `還沒排` MUST stay at the top edge of the table area, drawn on top of the rows beneath it
+- **AND** the controls row with the month title MUST stay shown above the table
+
+#### Scenario: Drawing again keeps the scroll position
+
+- **GIVEN** the user has scrolled the phone table sideways to W45 and down past the first rows
+- **WHEN** the user ticks a task in a popover and the table is drawn again
+- **THEN** the table MUST keep the same sideways and up-and-down scroll positions
+
+#### Scenario: A project name drops its date code on a phone
+
+- **GIVEN** the project note `🚧 P-20260302 範例企業內訓規劃.md` is in the project folder
+- **WHEN** the user opens the dashboard on a phone
+- **THEN** the project column MUST show `範例企業內訓規劃`
+- **AND** the popover title of that project MUST show `P-20260302 範例企業內訓規劃`
+- **AND** on a computer the project column MUST still show `P-20260302 範例企業內訓規劃`
+
+#### Scenario: A name without a date code is shown unchanged
+
+- **GIVEN** the project notes `🚧 P-範例專案.md` and `🚧 範例專案 B.md` are in the project folder
+- **WHEN** the user opens the dashboard on a phone
+- **THEN** the project column MUST show `P-範例專案` and `範例專案 B`
 
 #### Scenario: The phone always opens on this month
 
@@ -72,10 +113,11 @@ When the table area is wider than the sum of these widths, the week columns SHAL
 
 #### Scenario: Changing the month on a phone
 
-- **GIVEN** the phone shows November 2026
+- **GIVEN** today is 2026-11-20 and the phone shows November 2026 on W47
 - **WHEN** the user presses `▶`
 - **THEN** the month title MUST read `2026 年 12 月（W50–W53）`
-- **AND** `本月` MUST be shown, and pressing it MUST show November 2026 again
+- **AND** the table MUST be scrolled to its left and top edges, and no heading MUST show `本週`
+- **AND** `本月` MUST be shown, and pressing it MUST show November 2026 again with the left edge of the W47 column meeting the right edge of the project column
 
 #### Scenario: A closed project never shows on a phone
 
