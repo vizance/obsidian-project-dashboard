@@ -2,25 +2,21 @@
 
 外掛目前標成只能在電腦上用（`isDesktopOnly: true`）。朱騏出門時想用手機看「這週和接下來幾週要做什麼」，順手打勾或改日期。可是現在的年視圖約 1,950 像素寬，月視圖的名稱欄就有 280 像素，手機大約 390 像素寬，兩種畫面都放不下。拖拉排序、拖拉欄寬只能用滑鼠，⚠ 的原因要靠滑鼠停在上面才看得到，筆記也開在手機沒有的右側分割畫面。
 
+第一版（0.6.0-beta.1）在手機上改成由上往下的 4 週清單。朱騏在手機上實際用過後回饋：「使用上其實好像還是不太好」「有一點沒有太大的意義」。他每週五規劃下週時用的是自己的「月平行互見表」：一列一個專案、一欄一週，格子裡直接寫任務，一眼看出每個專案在動什麼、哪一週會爆。週清單把這張表拆成一長條，正好失去了「平行」這件事。所以手機改用月視圖，拿掉週清單。
+
 ## What Changes
 
 - 外掛開放手機與平板安裝：`manifest.json` 的 `isDesktopOnly` 改成 `false`。
-- 只有手機（由 Obsidian 判斷是不是手機，不看視窗寬度）換成新的「手機週清單」。平板與電腦維持現在的年視圖、月視圖。
-- 手機週清單由上往下列出本週與後面 3 週，共 4 週。每週照專案分組列出那週的任務：
-  - 週的分法、星期六規則、任務歸週，沿用月視圖同一套計算。專案順序跟儀表板的列順序相同。
-  - 完成的任務打勾、變灰；週已經過了還沒做的標紅。沒有任務的週寫一行灰字 `這週沒有任務`。
-  - 第 5 週以後的任務不顯示。
-- 手機上能做三件事，按鈕直接放在每一行，不彈出週浮窗：
-  - 打勾或取消。
-  - 用 `◀` `▶` 把任務移一週。
-  - 點專案名稱打開筆記，按 Obsidian 的返回回到儀表板。
-
-  寫回筆記沿用電腦版同一套寫入方式與保護規則。
-- 最上面一列 `之前還沒做（n）`，收著週已經過了、還沒完成的任務，點一下才展開：
-  - 只算畫面上顯示的專案。
-  - 這一區的任務不放 `◀` `▶`，改放 `排到本週`。按一下就把日期改成本週的排程日期，寫星期幾照 `Which day to write` 設定，預設週五。
-  - n 是 0 時，整列不出現。
-- 手機上不讀行事曆、不連網路。設定頁的 Calendars 區塊在手機上只顯示一句說明。
+- 只有手機（由 Obsidian 判斷是不是手機，不看視窗寬度）換成「手機月視圖」。平板與電腦維持現在的年視圖、月視圖。
+- 手機月視圖就是電腦上的月視圖，用同一套程式畫：
+  - 一列一個專案、一欄一週，格子裡寫任務文字。完成的灰色加 `✓`，週已經過了還沒做的標紅，今天那週有標示，最右邊是 `還沒排`。
+  - 專案名稱欄縮成 96 像素，固定在左邊。每週一欄至少 120 像素，`還沒排` 欄 48 像素。
+  - 手機直放（約 390 像素寬）一次看到約 2 週，左右滑看其他週與 `還沒排`；手機橫放、寬度夠時一次看到整個月，每週欄寬平均分。
+  - 上面一列只放 `顯示暫停（n）` 與月份導覽 `◀ 月份 ▶ 本月`。分頁打開時一律從今天這週所在的月份開始。
+- 手機上的編輯跟電腦一樣：點格子打開週浮窗，可以打勾、`◀` `▶` 移一週、從還沒排挑任務、新增任務；點 `還沒排` 的數字，可以把任務排進某一週。寫回筆記、失敗提示與保護規則都沿用電腦版。浮窗在手機上不超出螢幕，按鈕的可點範圍至少 44×44 像素。
+- 手機上點專案名稱（名稱欄或浮窗標題）或 `↗`，筆記開在儀表板自己的分頁，按 Obsidian 的返回回到儀表板。
+- 拿掉第一版的 4 週清單與 `之前還沒做` 區塊，連同它們的程式、測試、樣式與截圖。
+- 手機上不讀行事曆、不連網路，月視圖沒有 General 列。設定頁的 Calendars 區塊在手機上只顯示一句說明。
 - README 兩種語言都加上手機版的說明與截圖，並刪掉「Desktop only」。
 
 ## Non-Goals
@@ -31,7 +27,7 @@
 
 ### New Capabilities
 
-- `dashboard-phone-week-list`: 手機上的儀表板。涵蓋手機版面的判斷、4 週清單、`之前還沒做` 區塊、每一行的編輯動作、在手機上開啟筆記，以及手機上收起來的功能（行事曆、說明面板、快捷鍵、設定頁的 Calendars 區塊）。
+- `dashboard-phone-month-view`: 手機上的儀表板。涵蓋手機版面的判斷、手機月視圖的欄寬與左右捲動、在手機上用週浮窗與還沒排浮窗編輯、在手機上開啟筆記，以及手機上收起來的功能（年視圖、行事曆、說明面板、快捷鍵、改分類與狀態、設定頁的 Calendars 區塊）。
 
 ### Modified Capabilities
 
@@ -40,7 +36,8 @@
 
 ## Impact
 
-- Affected specs: dashboard-phone-week-list（新增）、dashboard-obsidian-plugin、dashboard-calendar-row
+- Affected specs: dashboard-phone-month-view（新增）、dashboard-obsidian-plugin、dashboard-calendar-row
 - Affected code:
-  - New: src/core/phone-weeks.ts, src/phone-week-list.ts, tests/phone-weeks.test.ts, tests/phone-week-list.test.ts, docs/images/phone-week-list.png
-  - Modified: manifest.json, src/view.ts, src/main.ts, src/settings-tab.ts, styles.css, tests/stubs/obsidian.ts, scripts/screenshots/capture.py, scripts/screenshots/shim/obsidian.ts, scripts/screenshots/demo/main.ts, README.md, README.zh-TW.md, docs/details.md, docs/details.zh-TW.md, CHANGELOG.md
+  - New: tests/phone-month-view.test.ts, docs/images/phone-month-view.png
+  - Modified: manifest.json, src/view.ts, src/month-view.ts, src/core/popover-position.ts, src/main.ts, src/settings-tab.ts, styles.css, tests/stubs/obsidian.ts, tests/popover-position.test.ts, scripts/screenshots/capture.py, scripts/screenshots/shim/obsidian.ts, scripts/screenshots/demo/main.ts, scripts/screenshots/README.md, README.md, README.zh-TW.md, docs/details.md, docs/details.zh-TW.md, CHANGELOG.md
+  - Removed (moved to the macOS Trash): src/core/phone-weeks.ts, src/phone-week-list.ts, tests/phone-weeks.test.ts, tests/phone-week-list.test.ts, docs/images/phone-week-list.png

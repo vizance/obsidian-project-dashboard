@@ -1,5 +1,7 @@
 ## 1. 計算
 
+> 第 1 節、2.2–2.4、4.1–4.2 與 5.1 是第一版的手機週清單（0.6.0-beta.1）。朱騏在手機上實測後改成手機月視圖，這些工作由第 6 節取代，程式與文件在第 6 節拿掉或改寫。
+
 - [x] 1.1 手機週清單的純計算（The phone week list shows this week and the next three weeks；Overdue tasks are kept in the 之前還沒做 section；設計：手機週清單沿用月視圖的週與任務計算）：新增 src/core/phone-weeks.ts，匯出 `phoneWeekLabels`、`phoneWeekGroups`、`overdueLines`、`scheduleToThisWeekDays`，只用既有的 `isoWeekOfDate`、`mondayOfWeek`、`taskLinesForWeek`、`weekOfTaskDate`、`scheduleDateForWeek`，不碰畫面與 Obsidian。驗證：tests/phone-weeks.test.ts 涵蓋規格的「Four weeks from today」（含 where each task appears 範例）、「The four weeks cross into the next year」、「The Saturday rule decides the week」、「Projects follow the dashboard's row order」、「Earlier days of this week are not overdue」、「Scheduling an overdue task into this week」與「Scheduling into this week with the Saturday exception」的天數計算。
 
 ## 2. 手機畫面與編輯
@@ -23,4 +25,19 @@
 ## 5. 驗收
 
 - [x] 5.1 自動驗收與部署：`npm test`、`npm run lint`、`npm run build` 全部通過，部署到本機 vault；在電腦上打開儀表板確認年視圖、月視圖、說明面板與行事曆和 0.5.0 相同。驗證：貼出指令結果，並以 4.1 重新產生的 10 張電腦版截圖佐證畫面沒變。
-- [ ] 5.2 朱騏在手機上實測：打開清單、打勾與取消、`▶` 移一週、`排到本週`、點專案名稱再按返回回到儀表板、設定頁的 Calendars 只顯示一句說明。驗證：朱騏在對話中確認；按返回回不到儀表板時，依設計的風險處理改成開新分頁並更新規格與 README。
+
+## 6. 手機改用月視圖
+
+- [ ] 6.1 鎖定驗收（Phone layout is chosen by Obsidian's phone check；The phone shows the month view with a fixed project column；Month cells are edited from a phone the same way as on a computer；A project note opens in the dashboard's tab on a phone；Calendars are not set up or read on a phone；設計：手機直接畫電腦的月視圖，不另做一套畫面、手機上的浮窗沿用電腦的浮窗、在手機上開啟筆記改用同一個分頁）：由一段只寫測試的 Codex 對話新增 tests/phone-month-view.test.ts，並在 tests/popover-position.test.ts 加 `margin` 的案例；主代理讀過、確認每個情境都對得上規格後鎖定（記下雜湊），之後寫程式的對話不能改。驗證：在目前的程式上執行，新測試因為手機還是週清單、`placePopover` 沒有 `margin` 而失敗，既有測試仍通過。
+- [ ] 6.2 拿掉週清單（設計：拿掉第一版的週清單）：主代理把 src/core/phone-weeks.ts、src/phone-week-list.ts、tests/phone-weeks.test.ts、tests/phone-week-list.test.ts、docs/images/phone-week-list.png 移到 macOS 垃圾桶；view.ts 拿掉 `buildPhoneLayout`、`runPhoneEdit` 與 `PhoneWeekList` 的 import 和欄位；styles.css 拿掉只給週清單用的 `.pd-phone .phone-*` 規則。驗證：`rg -n "PhoneWeekList|phone-weeks|phoneWeek|overdueLines|之前還沒做|這週沒有任務|排到本週" src tests styles.css scripts/screenshots/demo scripts/screenshots/shim scripts/screenshots/capture.py` 沒有結果；`npm run build` 通過。
+- [ ] 6.3 手機版面與控制列（Phone layout is chosen by Obsidian's phone check；The phone shows the month view with a fixed project column；設計：手機直接畫電腦的月視圖，不另做一套畫面、手機上收起來的功能）：src/view.ts 的手機分支不畫 header、說明面板、`?`、年／月切換、`顯示已結案`、`編輯分類與狀態`；控制列放 `顯示暫停（n）` 與月份導覽 `◀ 標題 ▶ 本月`；`scale` 固定是 `'month'`，打開時 `shownMonth` 是今天這週的月份；不寫 `dashboard.scale`、`dashboard.viewMode`、`dashboard.projColWidth`；`calendarRow()` 回傳 `null`；`registerInteractions` 只註冊週浮窗與點專案名稱。驗證：tests/phone-month-view.test.ts 的「A phone gets the month view」「Shortcuts do nothing on a phone」「The phone always opens on this month」「Changing the month on a phone」「A closed project never shows on a phone」「No General row on a phone」通過，既有測試全部通過。
+- [ ] 6.4 手機欄寬與左右捲動（The phone shows the month view with a fixed project column；設計：手機的欄寬與左右捲動）：src/month-view.ts 在表格上記下週數；手機上 view 把 `--proj-col-width` 設成 96px；styles.css 在 `.pd-phone` 底下設 4 週與 5 週表格的最小寬度、週欄平均分寬、`還沒排` 欄 48px、`#chart` 左右捲、名稱欄固定在左邊、藏 `.resize-handle`、⚠ 與分類狀態選單、名稱與任務文字換行、控制列按鈕至少 44×44px。驗證：scripts/screenshots/capture.py 在 390px 寬量到名稱欄 96px、W45 與 W46 完整在畫面內、分頁本身沒有左右捲；把表格捲到最右時 W49 與 `還沒排` 看得到、名稱欄仍在左邊；800px 寬時 5 週與 `還沒排` 都看得到且週欄等寬；量不對時腳本失敗。電腦版 10 張截圖逐位元相同。
+- [ ] 6.5 手機上的浮窗（Month cells are edited from a phone the same way as on a computer；設計：手機上的浮窗沿用電腦的浮窗，只調大小）：src/core/popover-position.ts 的 `placePopover` 加可以選的 `margin`，沒給時等於 `POPOVER_MARGIN`；手機上 view 傳 8，並在浮窗元素加手機專用類別；styles.css 在那個類別底下設最寬 `calc(100vw - 16px)`、按鈕與核取方塊可點範圍至少 44×44px。驗證：tests/popover-position.test.ts 的 `margin` 案例與既有案例通過；tests/phone-month-view.test.ts 的「Ticking a task from a phone」「Moving a task one week later from a phone」「Scheduling an undated task from a phone」「A changed line is not overwritten from a phone」通過並比對寫回筆記的整行文字；capture.py 在 390px 寬點最右邊看得到的格子，量到浮窗左緣至少 8px、右緣不超過 382px。
+- [ ] 6.6 手機上開筆記（A project note opens in the dashboard's tab on a phone；設計：在手機上開啟筆記改用同一個分頁）：src/view.ts 的 `openNoteFromHeader` 與 `jumpToTaskLine` 加手機分支：先關浮窗，再用儀表板自己的分頁 `openFile`，`↗` 照電腦版選取那一行；筆記打開之後的提示改用 Obsidian 的 `Notice`；名稱欄的專案名稱沿用第一版的 `openProjectNote` 手機分支。驗證：tests/phone-month-view.test.ts 的「Opening a note and going back」「Jumping to a task line on a phone」通過（呼叫的是儀表板自己分頁的 `openFile`、沒有 `createLeafBySplit`），電腦版既有的開筆記測試仍通過。
+- [ ] 6.7 手機截圖（README teaches setup and everyday use；設計：README 與截圖加上手機版）：scripts/screenshots/capture.py 把 `phone-week-list.png` 換成 docs/images/phone-month-view.png（畫布寬 390px、今天 2026-11-20、範例資料、2026 年 11 月），並加上 6.4、6.5 的版面量測；scripts/screenshots/README.md 更新圖片清單。驗證：`npm run screenshots:build` 再跑 `python3 scripts/screenshots/capture.py`，量測全部通過；新圖逐張目視檢查沒有切字、沒有真實資料；10 張電腦版截圖與重新產生前逐位元相同。
+- [ ] 6.8 README、details 與更新紀錄（README teaches setup and everyday use；設計：README 與截圖加上手機版）：README.md 與 README.zh-TW.md 的手機一節改寫成手機月視圖並放 phone-month-view.png（直放看約 2 週、左右滑、橫放看整個月、點格子編輯、點名稱開筆記再按返回、手機上沒有的功能）；docs/details.md 與 docs/details.zh-TW.md 的手機段落改寫成欄寬、打開時是本月、筆記開在同一個分頁、手機上沒有的功能；CHANGELOG.md 的 0.6.0 改寫成手機月視圖的英文與中文說明。驗證：重讀差異，確認情境「Both READMEs explain the phone month view」與「Both READMEs have the same sections and images」成立；`rg -n "週清單|week list|phone-week-list|之前還沒做" README.md README.zh-TW.md docs CHANGELOG.md` 沒有結果。
+
+## 7. 驗收
+
+- [ ] 7.1 自動驗收、部署與測試版：`npm test`、`npm run lint`、`npm run build` 全部通過；部署到本機 vault；在電腦上打開儀表板確認年視圖、月視圖、說明面板與行事曆和 0.5.0 相同；版本改成 0.6.0-beta.2，從乾淨複本建置、比對雜湊、跑隱私檢查後發布測試版（不設成最新版）。驗證：貼出指令結果、三個檔案的雜湊與 Release 網址。
+- [ ] 7.2 朱騏在手機上實測：直放與橫放各看一次、左右滑、點格子打勾與取消、`▶` 移一週、從還沒排排進週、新增任務、點專案名稱再按返回、`↗` 再按返回、設定頁的 Calendars 只顯示一句說明。驗證：朱騏在對話中確認；按返回回不到儀表板時，依設計的風險處理改成開新分頁並更新規格與 README。

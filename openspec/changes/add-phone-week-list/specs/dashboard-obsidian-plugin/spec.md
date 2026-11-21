@@ -32,7 +32,7 @@ The project SHALL provide `npm run build`, which type-checks and bundles the plu
 ---
 ### Requirement: README teaches setup and everyday use
 
-The repository SHALL have two README files with the same content: `README.md` in English and `README.zh-TW.md` in Traditional Chinese, each linking to the other in its first lines. Each SHALL be written as a step-by-step tutorial in plain language, in this order: what the plugin is, with a screenshot of the dashboard; installing with BRAT and manually, saying that the plugin runs on computers, tablets, and phones, that a tablet shows the same views as a computer, and that on a tablet dragging to reorder categories or to resize the name column needs a mouse or trackpad; first-time setup (the project folder, the frontmatter fields a project note uses, and how task dates are written); the year view, the week popover, the month view, and the `還沒排` column; the calendar General row; paused projects and changing a project's status; using the dashboard on a phone, with a screenshot of the phone week list; the settings tab; network use; bundled third-party code; further reading; and a short development section. Every screenshot SHALL be stored under `docs/images/` and SHALL show only neutral example data — no real note, person, client, or calendar. The detailed behaviour rules that do not fit a tutorial SHALL be kept in `docs/details.md` and `docs/details.zh-TW.md`, linked from the README sections they belong to.
+The repository SHALL have two README files with the same content: `README.md` in English and `README.zh-TW.md` in Traditional Chinese, each linking to the other in its first lines. Each SHALL be written as a step-by-step tutorial in plain language, in this order: what the plugin is, with a screenshot of the dashboard; installing with BRAT and manually, saying that the plugin runs on computers, tablets, and phones, that a tablet shows the same views as a computer, and that on a tablet dragging to reorder categories or to resize the name column needs a mouse or trackpad; first-time setup (the project folder, the frontmatter fields a project note uses, and how task dates are written); the year view, the week popover, the month view, and the `還沒排` column; the calendar General row; paused projects and changing a project's status; using the dashboard on a phone, with a screenshot of the phone month view; the settings tab; network use; bundled third-party code; further reading; and a short development section. Every screenshot SHALL be stored under `docs/images/` and SHALL show only neutral example data — no real note, person, client, or calendar. The detailed behaviour rules that do not fit a tutorial SHALL be kept in `docs/details.md` and `docs/details.zh-TW.md`, linked from the README sections they belong to.
 
 The further-reading section SHALL link to these articles on the author's website, and the English README SHALL say that they are written in Traditional Chinese:
 
@@ -58,9 +58,9 @@ The screenshots SHALL be produced by a script under `scripts/screenshots/` that 
 - **THEN** every image MUST be created from the script's example projects and example calendar
 - **AND** no file under `docs/images/` MUST show a name from the maintainer's vault or a real calendar address
 
-#### Scenario: Both READMEs explain the phone week list
+#### Scenario: Both READMEs explain the phone month view
 
 - **WHEN** a reader opens `README.md` or `README.zh-TW.md`
 - **THEN** each MUST have a phone section between the paused-projects section and the settings section
-- **AND** that section MUST show `docs/images/phone-week-list.png`
+- **AND** that section MUST show `docs/images/phone-month-view.png`
 - **AND** neither README MUST say that the plugin is desktop only
