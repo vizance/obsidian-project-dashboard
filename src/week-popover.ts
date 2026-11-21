@@ -186,7 +186,10 @@ export class WeekPopover {
 	private drawRow(list: HTMLElement, line: TaskLine, weekLabel: string): void {
 		const row = list.createDiv({ cls: 'wp-row' });
 
-		const checkbox = row.createEl('input', { cls: 'wp-check', attr: { type: 'checkbox' } });
+		// 只在手機增加 label，電腦的 DOM 與間距保持原樣。
+		const checkHost = this.el.classList.contains('pd-popover-phone')
+			? row.createEl('label', { cls: 'wp-check-hit' }) : row;
+		const checkbox = checkHost.createEl('input', { cls: 'wp-check', attr: { type: 'checkbox' } });
 		checkbox.checked = line.done;
 		const togglable = line.checkbox && !line.recurring;
 		checkbox.disabled = !togglable;

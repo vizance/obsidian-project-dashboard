@@ -57,6 +57,7 @@ export class MonthView {
 		const todayIdx = todayWeekIndex(weeks, today);
 
 		const table = container.createEl('table', { cls: 'gantt month-grid' });
+		table.dataset.weeks = String(weeks.length);
 		const thead = table.createEl('thead');
 		const headRow = thead.createEl('tr');
 		renderProjectColHeader(headRow, 1);

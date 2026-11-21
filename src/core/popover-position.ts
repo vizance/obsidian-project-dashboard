@@ -25,6 +25,7 @@ export interface PopoverPlacementInput {
 	// 儀表板分頁的內容範圍：水平方向優先待在這裡面，才不會蓋到右邊的筆記。
 	pane: PopoverRect;
 	viewport: PopoverViewport;
+	margin?: number;
 }
 
 export interface PopoverPlacement {
@@ -42,24 +43,24 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 export function placePopover(input: PopoverPlacementInput): PopoverPlacement {
-	const { anchor, size, pane, viewport } = input;
+	const { anchor, size, pane, viewport, margin = POPOVER_MARGIN } = input;
 
 	// 儀表板範圍先跟視窗交集：分頁被捲出視窗的部分不能拿來放浮窗。
 	const paneLeft = Math.max(0, Math.min(pane.left, viewport.width));
 	const paneRight = Math.max(paneLeft, Math.min(pane.right, viewport.width));
 	// 範圍不夠寬就退回整個視窗，寧可蓋到旁邊的筆記，也不要把浮窗壓扁或切掉。
-	const fitsInPane = paneRight - paneLeft >= size.width + POPOVER_MARGIN * 2;
+	const fitsInPane = paneRight - paneLeft >= size.width + margin * 2;
 	const boundLeft = fitsInPane ? paneLeft : 0;
 	const boundRight = fitsInPane ? paneRight : viewport.width;
 
 	let left = anchor.left;
 	// 往右會越界就改成靠齊格子右緣、往左展開。
-	if (left + size.width > boundRight - POPOVER_MARGIN) left = anchor.right - size.width;
-	left = clamp(left, boundLeft + POPOVER_MARGIN, boundRight - POPOVER_MARGIN - size.width);
+	if (left + size.width > boundRight - margin) left = anchor.right - size.width;
+	left = clamp(left, boundLeft + margin, boundRight - margin - size.width);
 
 	let top = anchor.bottom + POPOVER_GAP;
-	if (top + size.height > viewport.height - POPOVER_MARGIN) {
-		top = Math.max(POPOVER_MARGIN, anchor.top - POPOVER_GAP - size.height);
+	if (top + size.height > viewport.height - margin) {
+		top = Math.max(margin, anchor.top - POPOVER_GAP - size.height);
 	}
 
 	return { left, top };

@@ -540,32 +540,40 @@
 }
 .pd-calendar-row .pd-calendar-error[hidden] { display: none; }
 
-/* 手機以直向閱讀與行內操作為主，所有規則只作用於手機分頁。 */
-.pd-phone { font-size: 16px; }
-.pd-phone #chart { padding: 0 12px 24px; overflow-x: visible; }
-.pd-phone .phone-paused { display: flex; align-items: center; min-height: 44px; min-width: 44px; padding: 0 12px; gap: 8px; }
-.pd-phone .phone-paused[hidden] { display: none; }
-.pd-phone .phone-check-hit { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; width: 44px; height: 44px; flex: 0 0 44px; cursor: pointer; }
-.pd-phone .phone-check,
-.pd-phone .phone-paused input { margin: 0; flex: 0 0 auto; }
-.pd-phone .phone-overdue,
-.pd-phone .phone-week { padding: 6px 0; border-bottom: 1px solid var(--grid-soft); }
-.pd-phone .phone-week-heading { font-size: 18px; margin: 0; line-height: 1.3; overflow-wrap: anywhere; }
-.pd-phone .phone-overdue-heading,
-.pd-phone .phone-project-name,
-.pd-phone .phone-action { min-width: 44px; min-height: 44px; height: auto; white-space: normal; cursor: pointer; }
-.pd-phone .phone-overdue-heading { width: 100%; text-align: left; justify-content: flex-start; padding: 8px; margin: 8px 0; }
-.pd-phone .phone-project + .phone-project { margin-top: 8px; }
-.pd-phone .phone-project-name { display: flex; align-items: center; gap: 8px; background: transparent; box-shadow: none; border: 0; color: var(--text); font-weight: 600; text-align: left; padding: 0; margin: 0; max-width: 100%; line-height: 1.25; overflow-wrap: anywhere; }
-.pd-phone .cat-dot { display: inline-block; width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--pd-cat-color); }
-.pd-phone .phone-task { display: flex; align-items: center; gap: 4px; min-height: 48px; padding: 2px 0; }
-.pd-phone .phone-task-body { flex: 1; min-width: 0; line-height: 1.25; }
-.pd-phone .phone-task-text { white-space: normal; overflow-wrap: anywhere; word-break: normal; }
-.pd-phone .phone-date { display: block; font-size: 13px; color: var(--text-dim); }
-.pd-phone .phone-actions { display: flex; align-items: center; flex: 0 0 auto; gap: 4px; margin-left: auto; }
-.pd-phone .phone-action { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; }
-.pd-phone .phone-overdue .phone-action { width: auto; padding: 0 10px; white-space: nowrap; }
-.pd-phone .phone-empty,
-.pd-phone .phone-done { color: var(--text-dim); }
-.pd-phone .phone-late,
-.pd-phone .phone-late .phone-date { color: var(--overflow-red); }
+/* 手機沿用月視圖，表格在自己的容器內捲動，分頁保留固定寬度。 */
+.pd-phone { overflow-x: hidden; }
+.pd-phone #chart { overflow-x: auto; cursor: pointer; }
+.pd-phone table.month-grid[data-weeks="4"] { min-width: calc(96px + 4 * 120px + 48px); }
+.pd-phone table.month-grid[data-weeks="5"] { min-width: calc(96px + 5 * 120px + 48px); }
+.pd-phone table.month-grid[data-weeks="6"] { min-width: calc(96px + 6 * 120px + 48px); }
+.pd-phone table.month-grid th.month-unscheduled,
+.pd-phone table.month-grid td.month-unscheduled { width: 48px; min-width: 48px; max-width: 48px; }
+.pd-phone .resize-handle,
+.pd-phone td.proj-cell .warn,
+.pd-phone td.proj-cell .project-editors { display: none; }
+.pd-phone table.month-grid th.proj-col,
+.pd-phone table.month-grid td.proj-cell { padding: 6px 8px; }
+.pd-phone td.proj-cell .name,
+.pd-phone .mc-line,
+.pd-phone .controls .month-title { white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+.pd-phone table.month-grid th.month-week .mw-range { white-space: normal; overflow-wrap: anywhere; }
+.pd-phone .controls { padding: 4px 8px; flex-wrap: wrap; gap: 4px 8px; }
+.pd-phone .controls .month-nav { flex-wrap: wrap; min-width: 0; }
+.pd-phone .controls label { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; }
+.pd-phone .controls label[hidden] { display: none; }
+.pd-phone .controls .month-nav-btn { min-width: 44px; min-height: 44px; height: auto; }
+
+/* 浮窗掛在 body，使用獨立的手機類別，避免改到電腦的大小與間距。 */
+.pd-week-popover.pd-popover-phone {
+	width: 420px;
+	min-width: min(240px, calc(100vw - 16px));
+	max-width: calc(100vw - 16px);
+}
+.pd-popover-phone button { min-width: 44px; min-height: 44px; height: auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.pd-popover-phone .wp-check-hit { display: flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; flex: 0 0 44px; cursor: pointer; }
+.pd-popover-phone .wp-check { margin: 0; }
+.pd-popover-phone .wp-row { flex-wrap: wrap; }
+.pd-popover-phone .wp-text { flex: 1 1 calc(100% - 50px); }
+.pd-popover-phone .wp-actions { flex-wrap: wrap; max-width: 100%; }
+.pd-popover-phone .wp-date,
+.pd-popover-phone .wp-sat { white-space: normal; overflow-wrap: anywhere; }

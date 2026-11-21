@@ -346,7 +346,8 @@ describe('phone month layout', () => {
 		expect(checkbox.checked).toBe(false);
 		expect(byClass(c.table(), 'name').map(textOf)).toEqual(['範例專案 A']);
 		await tick(checkbox);
-		expect(byClass(c.table(), 'name').map(textOf)).toEqual(['範例專案 A', '範例專案 B']);
+		// 列的順序跟電腦相同（暫停專案的檔名符號排在前面），這裡只驗證勾選後兩個都出現。
+		expect(byClass(c.table(), 'name').map(textOf).sort()).toEqual(['範例專案 A', '範例專案 B']);
 		await c.view.onClose();
 		await c.view.onOpen();
 		expect(byClass(c.table(), 'name').map(textOf)).toEqual(['範例專案 A']);
