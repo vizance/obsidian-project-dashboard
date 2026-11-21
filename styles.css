@@ -569,11 +569,11 @@
 	min-width: min(240px, calc(100vw - 16px));
 	max-width: calc(100vw - 16px);
 }
-.pd-popover-phone button { min-width: 44px; min-height: 44px; height: auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.pd-week-popover.pd-popover-phone button { min-width: 44px; min-height: 44px; height: auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .pd-popover-phone .wp-check-hit { display: flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; flex: 0 0 44px; cursor: pointer; }
 .pd-popover-phone .wp-check { margin: 0; }
 .pd-popover-phone .wp-row { flex-wrap: wrap; }
 .pd-popover-phone .wp-text { flex: 1 1 calc(100% - 50px); }
-.pd-popover-phone .wp-actions { flex-wrap: wrap; max-width: 100%; }
+.pd-week-popover.pd-popover-phone .wp-actions { flex-wrap: wrap; max-width: 100%; }
 .pd-popover-phone .wp-date,
 .pd-popover-phone .wp-sat { white-space: normal; overflow-wrap: anywhere; }

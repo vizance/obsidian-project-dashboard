@@ -37,7 +37,7 @@
 - [x] 6.7 手機截圖（README teaches setup and everyday use；設計：README 與截圖加上手機版）：scripts/screenshots/capture.py 把 `phone-week-list.png` 換成 docs/images/phone-month-view.png（畫布寬 390px、今天 2026-11-20、範例資料、2026 年 11 月），並加上 6.4、6.5 的版面量測；scripts/screenshots/README.md 更新圖片清單。驗證：`npm run screenshots:build` 再跑 `python3 scripts/screenshots/capture.py`，量測全部通過；新圖逐張目視檢查沒有切字、沒有真實資料；10 張電腦版截圖與重新產生前逐位元相同。
 - [x] 6.8 README、details 與更新紀錄（README teaches setup and everyday use；設計：README 與截圖加上手機版）：README.md 與 README.zh-TW.md 的手機一節改寫成手機月視圖並放 phone-month-view.png（直放看約 2 週、左右滑、橫放看整個月、點格子編輯、點名稱開筆記再按返回、手機上沒有的功能）；docs/details.md 與 docs/details.zh-TW.md 的手機段落改寫成欄寬、打開時是本月、筆記開在同一個分頁、手機上沒有的功能；CHANGELOG.md 的 0.6.0 改寫成手機月視圖的英文與中文說明。驗證：重讀差異，確認情境「Both READMEs explain the phone month view」與「Both READMEs have the same sections and images」成立；`rg -n "週清單|week list|phone-week-list|之前還沒做" README.md README.zh-TW.md docs CHANGELOG.md` 沒有結果。
 
-- [ ] 6.9 審查後的修正（Month cells are edited from a phone the same way as on a computer；設計：手機上的浮窗沿用電腦的浮窗，只調大小）：手機上視窗大小改變時，開著的浮窗照同一套規則重新定位、不關閉；styles.css 的手機按鈕規則提高權重，讓還沒排浮窗的週按鈕也有 44×44px。驗證：tests/phone-month-view.test.ts 的「Turning the phone keeps the popover on the screen」通過；scripts/screenshots/capture.py 在 390px 寬打開還沒排浮窗，量到每個週按鈕至少 44×44px（情境「Week buttons are easy to tap on a phone」）；電腦版 10 張截圖逐位元相同。
+- [x] 6.9 審查後的修正（Month cells are edited from a phone the same way as on a computer；設計：手機上的浮窗沿用電腦的浮窗，只調大小）：手機上視窗大小改變時，開著的浮窗照同一套規則重新定位、不關閉；styles.css 的手機按鈕規則提高權重，讓還沒排浮窗的週按鈕也有 44×44px。驗證：tests/phone-month-view.test.ts 的「Turning the phone keeps the popover on the screen」通過；scripts/screenshots/capture.py 在 390px 寬打開還沒排浮窗，量到每個週按鈕至少 44×44px（情境「Week buttons are easy to tap on a phone」）；電腦版 10 張截圖逐位元相同。
 
 ## 7. 驗收
 

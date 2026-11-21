@@ -1071,11 +1071,18 @@ export class ProjectDashboardView extends ItemView {
 			if (typeof node?.contains !== 'function' || !node.contains(this.popoverAnchor)) return;
 			this.closeWeekPopover();
 		};
+		const onResize = (): void => {
+			if (this.popoverEl.hidden || !this.popoverAnchor) return;
+			// The phone keyboard also resizes the window, so preserve any task being typed.
+			this.positionWeekPopover(this.popoverAnchor);
+		};
 		doc.addEventListener('click', onClick);
 		win?.addEventListener('scroll', onScroll, true);
+		if (this.layout === 'phone') win?.addEventListener('resize', onResize);
 		this.unbindWeekPopoverWindowListeners = () => {
 			doc.removeEventListener('click', onClick);
 			win?.removeEventListener('scroll', onScroll, true);
+			if (this.layout === 'phone') win?.removeEventListener('resize', onResize);
 		};
 	}
 
