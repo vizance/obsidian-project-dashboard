@@ -16,6 +16,7 @@ import {
 	weekdayFromOption,
 	type DashboardSettings,
 } from './core/settings';
+import { ProjectFolderSuggest } from './folder-suggest';
 import type ProjectDashboardPlugin from './main';
 
 // 下拉選單的選項：值是 `"1"` 到 `"7"`，送進設定前由 weekdayFromOption 轉成整數。
@@ -79,15 +80,17 @@ export class DashboardSettingTab extends PluginSettingTab {
 
 		const folderSetting = new Setting(this.containerEl)
 			.setName('Project folder')
-			.setDesc('The folder where your project notes live. Only notes right inside this folder are used. Notes in folders inside it are skipped.');
+			.setDesc('The folder where your project notes live. Only notes right inside this folder are used. Notes in folders inside it are skipped. Tap or click the box to pick a folder from a list.');
 		folderSetting.settingEl.addClass('pd-setting-folder');
 		// 提示在輸入框之後建立，才會換行顯示在欄位下方。
 		let hintEl: HTMLElement;
 		folderSetting.addText((text) => {
-			text.setValue(this.settings.projectFolder).onChange((value) => {
-				this.patch({ projectFolder: value });
+			const updateFolder = (path: string): void => {
+				this.patch({ projectFolder: path });
 				this.updateFolderHint(hintEl);
-			});
+			};
+			text.setValue(this.settings.projectFolder).onChange(updateFolder);
+			new ProjectFolderSuggest(this.app, text.inputEl, updateFolder);
 		});
 		hintEl = folderSetting.controlEl.createDiv({ cls: 'pd-setting-hint', text: `Can't find this folder.` });
 		this.updateFolderHint(hintEl);
