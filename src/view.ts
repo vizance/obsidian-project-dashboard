@@ -231,6 +231,11 @@ export class ProjectDashboardView extends ItemView {
 		});
 	}
 
+	onResize(): void {
+		// 拖拉旁邊的分割或搬到別的視窗時，視窗本身沒有 resize，需靠窗格通知更新。
+		if (this.layout === 'full') this.updateThisWeekButton();
+	}
+
 	async onClose(): Promise<void> {
 		this.unsubscribeVaultSource?.();
 		this.unsubscribeVaultSource = null;
@@ -792,6 +797,8 @@ export class ProjectDashboardView extends ItemView {
 				const scrollLeft = this.chartEl.scrollLeft;
 				this.renderChart();
 				this.chartEl.scrollLeft = scrollLeft;
+				this.chartEl.querySelector<HTMLButtonElement>(`.quarter-toggle[data-quarter="${quarter}"]`)
+					?.focus({ preventScroll: true });
 				this.updateThisWeekButton();
 				// 重繪會移除按鈕；浮窗已關閉，不再把舊目標送往 document 的委派。
 				e.stopPropagation();

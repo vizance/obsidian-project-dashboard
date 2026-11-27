@@ -17,6 +17,6 @@
 ## 4. 驗收
 
 - [x] 4.1 獨立審查與修正：派 Codex 唯讀審查這次的差異；會出錯的問題先補規格與鎖定測試再修。驗證：審查報告沒有未處理的「會出錯」項目。
-- [ ] 4.4 審查後的修正（Quarters fold in the year view；The year view's 本週 button brings this week into view；設計：本週按鈕取代今年、預設、保留與重設、樣式）：src/view.ts 覆寫 `onResize()` 重新判斷 `本週`；按季標題重畫後把焦點放回同一季的新按鈕；styles.css 加 `.quarter-toggle:focus-visible` 外框。驗證：tests/year-quarter-fold-view.test.ts 的「Narrowing the pane shows 本週」「Keyboard focus stays on the quarter heading」通過；瀏覽器裡用 Tab 移到季標題時看得到外框；年視圖以外的截圖逐位元相同。
+- [x] 4.4 審查後的修正（Quarters fold in the year view；The year view's 本週 button brings this week into view；設計：本週按鈕取代今年、預設、保留與重設、樣式）：src/view.ts 覆寫 `onResize()` 重新判斷 `本週`；按季標題重畫後把焦點放回同一季的新按鈕；styles.css 加 `.quarter-toggle:focus-visible` 外框。驗證：tests/year-quarter-fold-view.test.ts 的「Narrowing the pane shows 本週」「Keyboard focus stays on the quarter heading」通過；瀏覽器裡用 Tab 移到季標題時看得到外框；年視圖以外的截圖逐位元相同。
 - [ ] 4.2 自動驗收、部署與測試版：`npm test`、`npm run lint`、`npm run build` 全部通過；部署到本機 vault；版本改成 0.6.0-beta.4，從乾淨複本建置、比對雜湊、跑隱私檢查後發布測試版（不設成最新版）。驗證：貼出指令結果、三個檔案的雜湊與 Release 網址。
 - [ ] 4.3 朱騏在電腦上實測：打開年視圖看 Q1～Q3 是否折起、點季標題展開與折起、捲走後按 `本週`、到 2027 再按 `本週`。驗證：朱騏在對話中確認。
