@@ -1,6 +1,6 @@
 {
   "name": "obsidian-project-dashboard",
-  "version": "0.6.0-beta.3",
+  "version": "0.6.0-beta.4",
   "private": true,
   "description": "Year-at-a-glance project dashboard for Obsidian project notes.",
   "main": "main.js",
