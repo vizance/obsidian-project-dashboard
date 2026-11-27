@@ -3,6 +3,7 @@
 from datetime import datetime
 from math import ceil, floor
 from pathlib import Path
+import re
 import shutil
 import sys
 import tempfile
@@ -110,6 +111,11 @@ def capture():
                 page.locator('#chart').evaluate('(el) => { el.scrollLeft = 0; }')
                 assert page.locator('#chart').evaluate('(el) => el.scrollWidth <= el.clientWidth + 1'), '年表仍超出截圖寬度'
 
+            def expand_all_quarters():
+                folded = page.locator('#chart th.quarter.q-folded .quarter-toggle')
+                while folded.count():
+                    folded.first.click()
+
             def calendar_heading():
                 return page.locator('.setting-item-heading').filter(
                     has=page.locator('.setting-item-name', has_text='Calendars')
@@ -191,18 +197,91 @@ def capture():
             assert page.locator('#chart tbody tr').count() == 8, '預設可見專案數量不符'
             assert page.locator('.bar-overflow').count() > 0, '缺少超出結束日期的任務'
             assert '2026 年' in page.locator('.month-title').inner_text(), '年份不符'
+            assert page.locator('th.quarter .quarter-toggle').all_text_contents() == [
+                'Q1 ▸', 'Q2 ▸', 'Q3 ▸', 'Q4 ▾',
+            ], '預設季標題或折疊狀態不符'
+            weeks = page.locator('th.week')
+            assert weeks.count() == 13, '預設週欄數量不符'
+            assert weeks.first.inner_text() == 'W41', '預設第一週不是 W41'
+            assert weeks.last.inner_text() == 'W53', '預設最後一週不是 W53'
+            gaps = page.locator('#chart th.q-fold-gap')
+            assert gaps.count() == 3, '折起的季沒有三個空白欄頭'
+            folded_cells = page.locator('#chart td.q-fold-cell')
+            assert folded_cells.count() == 3 * page.locator('#chart tbody tr').count(), '專案列的折疊窄欄數量不符'
+            for element in gaps.all() + folded_cells.all():
+                box = element.bounding_box()
+                assert box is not None and abs(box['width'] - 40) <= 1, '折疊窄欄寬度不是 40 像素'
+            assert folded_cells.locator('.bar').count() == 0, '折疊窄欄裡仍有色條'
+            for week in weeks.all():
+                box = week.bounding_box()
+                assert box is not None and abs(box['width'] - 32) <= 1, '展開的週欄寬度不是 32 像素'
+            assert page.locator('.month-nav').get_by_text('今年', exact=True).count() == 0, '年視圖仍有今年按鈕'
+            this_week = page.locator('.month-nav button').filter(has_text=re.compile(r'^本週$'))
+            assert this_week.count() == 1, '找不到唯一的本週按鈕'
             fit_year()
+            page.wait_for_timeout(100)
+            assert this_week.is_hidden(), '本週已在眼前時按鈕沒有隱藏'
             snapshot('year-view.png')
 
             step = '拍攝年視圖說明面板'
             page.locator('#help-fab').click()
             page.locator('#help-panel').wait_for(state='visible')
             assert page.get_by_role('tab', name='年視圖', exact=True).get_attribute('aria-selected') == 'true', '年視圖說明分頁未選中'
+            assert '折起來的一季' in page.locator('#help-panel [role=tabpanel]:visible').inner_text(), '年視圖說明缺少折疊窄欄'
             snapshot('help-year.png', area='help')
             page.locator('#help-panel .close-btn').click()
             page.locator('#help-panel').wait_for(state='hidden')
 
+            step = '年視圖的本週按鈕'
+            expand_all_quarters()
+            assert page.locator('th.week').count() == 53, '全部展開後週欄數量不是 53'
+            year_width = page.locator('#chart').evaluate('''(chart) => {
+                const project = chart.querySelector('th.proj-col');
+                return project ? chart.scrollWidth - project.getBoundingClientRect().width : null;
+            }''')
+            if year_width is None or abs(year_width - 53 * 32) > 5:
+                raise RuntimeError('全部展開後，全年週欄總寬不是 1,696 像素')
+            page.set_viewport_size({'width': 1100, 'height': 900})
+            page.locator('#chart').evaluate('(el) => { el.scrollLeft = 0; }')
+            page.wait_for_timeout(100)
+            assert this_week.is_visible(), '本週捲出畫面後按鈕沒有出現'
+            assert this_week.get_attribute('title') == '捲到本週', '本週按鈕提示不符'
+            this_week.click()
+            page.wait_for_timeout(100)
+            centers = page.evaluate('''() => {
+                const chart = document.querySelector('#chart');
+                const project = chart?.querySelector('th.proj-col');
+                const weeks = chart?.querySelectorAll('th.week.today-week');
+                if (!chart || !project || weeks?.length !== 1) return null;
+                const chartBox = chart.getBoundingClientRect();
+                const projectBox = project.getBoundingClientRect();
+                const weekBox = weeks[0].getBoundingClientRect();
+                if (chartBox.width <= 0 || projectBox.width <= 0 || weekBox.width <= 0
+                    || projectBox.right >= chartBox.right) return null;
+                return {
+                    week: (weekBox.left + weekBox.right) / 2,
+                    area: (projectBox.right + chartBox.right) / 2,
+                    weekLeft: weekBox.left,
+                    weekRight: weekBox.right,
+                    areaLeft: projectBox.right,
+                    areaRight: chartBox.right,
+                    scrollLeft: chart.scrollLeft,
+                    maxScroll: chart.scrollWidth - chart.clientWidth,
+                };
+            }''')
+            if centers is None:
+                raise RuntimeError('無法量測本週欄與表格可見範圍的中心')
+            if centers['weekLeft'] < centers['areaLeft'] - 1 or centers['weekRight'] > centers['areaRight'] + 1:
+                raise RuntimeError('按本週後，本週欄沒有完整在表格可見範圍內')
+            # W47 離年底只剩幾週，捲到最右仍到不了正中間時，只要求捲到最右。
+            at_end = centers['scrollLeft'] >= centers['maxScroll'] - 1 and centers['week'] > centers['area']
+            if abs(centers['week'] - centers['area']) > 1 and not at_end:
+                raise RuntimeError('本週欄與表格可見範圍的中心相差超過 1 像素，也沒有捲到最右')
+            assert this_week.is_hidden(), '捲到本週後按鈕沒有隱藏'
+            fit_year()
+
             step = '拍攝週浮窗'
+            assert page.locator('#chart th.q-folded').count() == 0, '週浮窗截圖前仍有折起的季'
             page.locator(COURSE_WEEK).click()
             page.locator(f'{POPOVER} .wp-row').first.wait_for()
             assert page.locator(f'{POPOVER} .wp-check:checked').count() > 0, '缺少完成的任務'
@@ -239,12 +318,14 @@ def capture():
             assert not page.locator('#edit-categories').is_checked(), '暫停列截圖不應開啟編輯'
             assert page.locator('#chart tr.status-pending').count() == 2, '暫停專案未全部顯示'
             assert page.locator('#chart tr.status-pending .bar-solid[data-week^="2026-"]').count() > 0, '暫停專案缺少年度任務'
+            assert page.locator('#chart th.q-folded').count() == 0, '暫停專案列截圖前仍有折起的季'
             snapshot('paused-rows.png', area='table')
 
             step = '拍攝編輯分類、狀態與暫停專案'
             page.locator('#edit-categories').check()
             assert page.locator('#chart tr.status-pending').count() == 2, '暫停專案未全部顯示'
             page.locator('.editing-categories .status-select').first.wait_for(state='visible')
+            assert page.locator('#chart th.q-folded').count() == 0, '編輯分類截圖前仍有折起的季'
             snapshot('status-editing.png')
 
             step = '拍攝 2027 年視圖'
@@ -254,6 +335,11 @@ def capture():
             assert page.locator('.month-title').inner_text() == '2027 年', '無法切到 2027 年'
             assert page.locator('.bar.bar-solid[data-week^="2027-"]').count() > 0, '缺少跨年排程'
             fit_year()
+            assert page.locator('th.quarter .quarter-toggle').all_text_contents() == [
+                'Q1 ▾', 'Q2 ▾', 'Q3 ▾', 'Q4 ▾',
+            ], '2027 年沒有展開四季'
+            assert page.locator('#chart th.q-folded').count() == 0, '2027 年仍有折起的季'
+            assert this_week.is_visible(), '2027 年沒有顯示本週按鈕'
             snapshot('year-2027.png')
 
             step = '拍攝行事曆設定'

@@ -386,7 +386,8 @@ describe('year quarter folding', () => {
 		expect(c.title()).toBe('2026 年 11 月（W45–W49）');
 		await click(scaleOption(c.root, '年視圖'));
 		expect(c.quarters().map(textOf)).toEqual(expected);
-		expect(c.saveLocalStorage.mock.calls.every(([key]) => key === 'dashboard.viewMode' || key === 'dashboard.scale')).toBe(true);
+		// 折疊狀態不存進偏好；第一次打開時說明面板會記下自己的狀態，不在這裡檢查。
+		expect(c.saveLocalStorage.mock.calls.some(([key]) => /fold|quarter/i.test(String(key)))).toBe(false);
 	});
 
 	it('Another year starts expanded', async () => {

@@ -19,7 +19,9 @@ interface QuarterFoldContract {
 	}) => number;
 	columnFullyVisible: (column: { left: number; right: number }, area: { left: number; right: number }) => boolean;
 }
-const { quarterOfWeek, defaultFoldedQuarters, yearColumns, centeredScrollLeft, columnFullyVisible } = quarterFold as unknown as QuarterFoldContract;
+// 指派給介面型別：模組的簽名對不上設計時，型別檢查就會失敗。
+const contract: QuarterFoldContract = quarterFold;
+const { quarterOfWeek, defaultFoldedQuarters, yearColumns, centeredScrollLeft, columnFullyVisible } = contract;
 
 const weeks = buildWeeks(2026);
 const indexOf = (week: number): number => weeks.findIndex((entry) => entry.week === week);

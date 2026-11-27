@@ -46,6 +46,8 @@
 
 .project-dashboard #chart { overflow-x: auto; }
 .project-dashboard table.gantt { border-collapse: separate; border-spacing: 0; min-width: 100%; }
+/* 年視圖的週欄固定 32px；折起季之後表格比畫面窄時也不能被撐寬。 */
+.project-dashboard table.gantt.year-grid { min-width: 0; }
 .project-dashboard table.gantt th { border-bottom: 1px solid var(--grid-soft); padding: 0; }
 .project-dashboard table.gantt td { border-bottom: 1px solid var(--grid-soft); padding: 0; }
 .project-dashboard table.gantt thead th { background: var(--panel); }
@@ -54,6 +56,35 @@
 .project-dashboard th.proj-col .resize-handle:hover, .project-dashboard th.proj-col .resize-handle.dragging { background: var(--grid); }
 .project-dashboard.col-resizing, .project-dashboard.col-resizing * { cursor: col-resize !important; user-select: none !important; }
 .project-dashboard th.quarter { text-align: center; font-size: 14px; font-weight: 700; color: var(--quarter-text); background: var(--quarter-bg); padding: 8px 0; letter-spacing: 2px; border-left: 2px solid var(--grid) !important; border-right: 2px solid var(--grid) !important; }
+.project-dashboard th.quarter .quarter-toggle {
+	font-family: inherit;
+	font-size: inherit;
+	font-weight: inherit;
+	color: inherit;
+	letter-spacing: inherit;
+	border: none;
+	background: none;
+	box-shadow: none;
+	width: 100%;
+	cursor: pointer;
+	padding: 0;
+	height: auto;
+}
+/* 窄欄只有 40px：去掉字距、不換行，`Q1 ▸` 才排得進一行。 */
+.project-dashboard th.quarter.q-folded .quarter-toggle { letter-spacing: 0; white-space: nowrap; }
+.project-dashboard th.quarter.q-folded,
+.project-dashboard th.q-fold-gap,
+.project-dashboard td.q-fold-cell {
+	width: 40px;
+	min-width: 40px;
+	max-width: 40px;
+	box-sizing: border-box;
+}
+.project-dashboard th.q-fold-gap,
+.project-dashboard td.q-fold-cell {
+	background: var(--panel);
+	border-left: 2px solid var(--grid);
+}
 .project-dashboard th.month-label { font-size: 12px; font-weight: 600; color: var(--text); background: var(--month-bg); padding: 5px 0; text-align: center; border-left: 1px solid var(--grid) !important; border-right: 1px solid var(--grid) !important; }
 .project-dashboard th.week { font-size: 10px; font-weight: 500; color: var(--text-dim); width: 32px; min-width: 32px; max-width: 32px; padding: 4px 0; text-align: center; background: var(--panel); box-sizing: border-box; }
 .project-dashboard td.week-cell { width: 32px; min-width: 32px; max-width: 32px; box-sizing: border-box; box-shadow: inset 1px 0 0 #f1f5f9; }

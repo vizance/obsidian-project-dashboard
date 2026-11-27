@@ -67,7 +67,9 @@ Each cell shows what is planned for that week:
 
 A dated task always appears in its week, including before the start or after the expected end. The expected end only decides whether a task week is red; it never hides a task. Closed projects use grey blocks when shown. Hover over `⚠` beside a name to learn about missing, inferred, or problem dates.
 
-Use `◀ 2026 年 ▶` to move between years and plan next year. `今年` means “this year” and brings you back.
+When you open this year's view, past quarters fold into narrow grey columns. Click a heading such as `Q1 ▸` to open that quarter. Click it again to fold it. Your choices stay while you view the same year. Changing years or reopening the tab resets them.
+
+Use `◀ 2026 年 ▶` to move between years and plan next year. When this week's column is out of view, `本週` (this week) appears after these controls. This happens if you scroll it away, fold its quarter, or view another year. Click it to return to this year, open this week's quarter, and scroll this week to the center of the table's visible area.
 
 ![Year view switched to 2027 to plan next year's example projects](docs/images/year-2027.png)
 

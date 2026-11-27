@@ -25,6 +25,7 @@ import {
 	resolveInitialHelpPanel,
 } from './core/prefs';
 import { placePopover } from './core/popover-position';
+import { centeredScrollLeft, columnFullyVisible, defaultFoldedQuarters, quarterOfWeek, yearColumns, type YearColumn } from './core/quarter-fold';
 import { detectStatus, filenameWithStatus, type ProjectRecord, type ProjectStatus } from './core/scan';
 import {
 	locateLine,
@@ -118,6 +119,8 @@ export class ProjectDashboardView extends ItemView {
 	private scale: 'year' | 'month' = 'year';
 	// 顯示中的期間只放在記憶體，重開分頁才回到今天，重繪保留正在規劃的期間。
 	private shownYear = 1970;
+	private foldedQuarters = new Set<number>();
+	private foldYear: number | null = null;
 	private shownMonth: MonthRef = { year: 1970, month: 1 };
 	private categoryOrder: string[] = [];
 	private pinnedCategory: string | null = null;
@@ -524,7 +527,7 @@ export class ProjectDashboardView extends ItemView {
 		this.registerDomEvent(this.periodNextBtn, 'click', () => this.shiftPeriod(1));
 		this.registerDomEvent(this.periodCurrentBtn, 'click', () => {
 			if (this.scale === 'month') this.showMonth(monthOfDate(this.today));
-			else this.showYear(Number(this.today.slice(0, 4)));
+			else this.showThisWeek();
 		});
 
 		this.updateScaleControls();
@@ -575,8 +578,8 @@ export class ProjectDashboardView extends ItemView {
 		this.scaleMonthBtn?.setAttribute('aria-pressed', String(isMonth));
 		this.periodPrevBtn.setAttribute('title', isMonth ? '上一個月' : '上一年');
 		this.periodNextBtn.setAttribute('title', isMonth ? '下一個月' : '下一年');
-		this.periodCurrentBtn.setText(isMonth ? '本月' : '今年');
-		this.periodCurrentBtn.setAttribute('title', isMonth ? '回到今天這週所屬的月份' : '回到今年');
+		this.periodCurrentBtn.setText(isMonth ? '本月' : '本週');
+		this.periodCurrentBtn.setAttribute('title', isMonth ? '回到今天這週所屬的月份' : '捲到本週');
 		if (isMonth) {
 			const { year, month } = this.shownMonth;
 			const current = monthOfDate(this.today);
@@ -584,8 +587,55 @@ export class ProjectDashboardView extends ItemView {
 			this.periodCurrentEl.hidden = year === current.year && month === current.month;
 		} else {
 			this.monthTitleEl.setText(`${this.shownYear} 年`);
-			this.periodCurrentEl.hidden = this.shownYear === Number(this.today.slice(0, 4));
+			this.updateThisWeekButton();
 		}
+	}
+
+	private updateThisWeekButton(): void {
+		if (this.scale !== 'year') return;
+		if (this.shownYear !== Number(this.today.slice(0, 4))) {
+			this.periodCurrentEl.hidden = false;
+			return;
+		}
+		const todayIdx = todayWeekIndex(this.weeks, this.today);
+		const week = this.weeks[todayIdx];
+		if (!week) {
+			this.periodCurrentEl.hidden = true;
+			return;
+		}
+		if (this.foldedQuarters.has(quarterOfWeek(week))) {
+			this.periodCurrentEl.hidden = false;
+			return;
+		}
+		const heading = this.chartEl.querySelector<HTMLElement>('th.week.today-week');
+		const projectHeading = this.chartEl.querySelector<HTMLElement>('th.proj-col');
+		const chartRect = this.chartEl.getBoundingClientRect();
+		this.periodCurrentEl.hidden = !!heading && !!projectHeading && chartRect.width > 0
+			&& columnFullyVisible(heading.getBoundingClientRect(), {
+				left: projectHeading.getBoundingClientRect().right,
+				right: chartRect.right,
+			});
+	}
+
+	private showThisWeek(): void {
+		const year = Number(this.today.slice(0, 4));
+		if (this.shownYear !== year) this.showYear(year);
+		const week = this.weeks[todayWeekIndex(this.weeks, this.today)];
+		if (week && this.foldedQuarters.delete(quarterOfWeek(week))) this.renderChart();
+		const heading = this.chartEl.querySelector<HTMLElement>('th.week.today-week');
+		const projectHeading = this.chartEl.querySelector<HTMLElement>('th.proj-col');
+		if (week && heading && projectHeading) {
+			const column = heading.getBoundingClientRect();
+			this.chartEl.scrollLeft = centeredScrollLeft({
+				scrollLeft: this.chartEl.scrollLeft,
+				columnLeft: column.left,
+				columnRight: column.right,
+				areaLeft: projectHeading.getBoundingClientRect().right,
+				areaRight: this.chartEl.getBoundingClientRect().right,
+				maxScrollLeft: this.chartEl.scrollWidth - this.chartEl.clientWidth,
+			});
+		}
+		this.updateThisWeekButton();
 	}
 
 	private buildHelpPanel(): void {
@@ -671,6 +721,10 @@ export class ProjectDashboardView extends ItemView {
 		const columns = addGroup(yearPanel, '顏色與欄位');
 		addLegendRow(columns, '', '專案的分類，對照上方圖例').createSpan({ cls: 'cat-dot' });
 		addLegendRow(columns, 'today-sample', '今天所在的週').addClass('today-col');
+		const foldedSample = addVisualRow(columns, '折起來的一季；點季標題展開或折起')
+			.createEl('table', { cls: 'legend-sample' });
+		foldedSample.createEl('thead').createEl('tr').createEl('th', { cls: 'quarter q-folded', text: 'Q1 ▸' });
+		foldedSample.createEl('tbody').createEl('tr').createEl('td', { cls: 'q-fold-cell' });
 
 		const taskText = addGroup(monthPanel, '格子裡的任務文字');
 		for (const [cls, sample, explanation] of [
@@ -698,7 +752,7 @@ export class ProjectDashboardView extends ItemView {
 		scale.createSpan({ text: '年 / 月，或按 ' });
 		scale.createEl('kbd', { text: 'M' });
 		scale.createSpan({ text: ' → 切換年視圖與月視圖' });
-		switching.createEl('li', { text: '◀ ▶ → 換年份或月份；今年、本月 回到現在' });
+		switching.createEl('li', { text: '◀ ▶ → 換年份或月份；本週、本月 回到現在' });
 		const timeline = switching.createEl('li');
 		timeline.createEl('kbd', { text: 'T' });
 		timeline.createSpan({ text: ' → 切換逐週與 Timeline（只在年視圖）' });
@@ -708,6 +762,11 @@ export class ProjectDashboardView extends ItemView {
 		const layout = addGroup(actionsPanel, '版面');
 		layout.createEl('li', { text: '點圖例 → 把一類置頂；拖拉圖例 → 調整分類順序' });
 		layout.createEl('li', { text: '拖拉專案欄的右邊 → 調整欄寬' });
+		// 拆成幾段文字：Q1 是季的名稱，不是句首，整句放在一段會被當成大小寫錯誤。
+		const fold = layout.createEl('li');
+		fold.createSpan({ text: '點季標題（例如 ' });
+		fold.createSpan({ text: 'Q1' });
+		fold.createSpan({ text: '） → 折起或展開那一季（只在年視圖）' });
 	}
 
 	private selectHelpTab(tabId: string, focus = false): void {
@@ -724,6 +783,19 @@ export class ProjectDashboardView extends ItemView {
 
 	private registerInteractions(): void {
 		if (this.layout === 'full') {
+			this.registerDomEvent(this.chartEl, 'scroll', () => this.updateThisWeekButton());
+			this.registerDomEvent(this.chartEl, 'click', (e: MouseEvent) => {
+				const toggle = (e.target as HTMLElement).closest<HTMLElement>('.quarter-toggle');
+				if (!toggle || this.scale !== 'year') return;
+				const quarter = Number(toggle.dataset.quarter);
+				if (!this.foldedQuarters.delete(quarter)) this.foldedQuarters.add(quarter);
+				const scrollLeft = this.chartEl.scrollLeft;
+				this.renderChart();
+				this.chartEl.scrollLeft = scrollLeft;
+				this.updateThisWeekButton();
+				// 重繪會移除按鈕；浮窗已關閉，不再把舊目標送往 document 的委派。
+				e.stopPropagation();
+			});
 			this.registerLegendDrag();
 			this.registerResizeHandle();
 			this.registerCategoryOverride();
@@ -893,6 +965,7 @@ export class ProjectDashboardView extends ItemView {
 				this.contentEl.removeClass('col-resizing');
 				target.classList.remove('dragging');
 				this.writeLocalStorage('dashboard.projColWidth', String(Math.round(this.projColWidth)));
+				this.updateThisWeekButton();
 			};
 
 			this.registerDomEvent(doc, 'mousemove', onMove);
@@ -1099,13 +1172,16 @@ export class ProjectDashboardView extends ItemView {
 			// The phone keyboard also resizes the window, so preserve any task being typed.
 			this.positionWeekPopover(this.popoverAnchor);
 		};
+		const onThisWeekResize = (): void => this.updateThisWeekButton();
 		doc.addEventListener('click', onClick);
 		win?.addEventListener('scroll', onScroll, true);
 		if (this.layout === 'phone') win?.addEventListener('resize', onResize);
+		else if (win) this.registerDomEvent(win, 'resize', onThisWeekResize);
 		this.unbindWeekPopoverWindowListeners = () => {
 			doc.removeEventListener('click', onClick);
 			win?.removeEventListener('scroll', onScroll, true);
 			if (this.layout === 'phone') win?.removeEventListener('resize', onResize);
+			else win?.removeEventListener('resize', onThisWeekResize);
 		};
 	}
 
@@ -1182,9 +1258,8 @@ export class ProjectDashboardView extends ItemView {
 		const start = Number(spanStart);
 		const weeks = Number(spanWeeks);
 		const row = bar.closest('tr');
-		const cells = row ? Array.from(row.querySelectorAll<HTMLElement>('td.week-cell')) : [];
-		const first = cells[start];
-		const last = cells[Math.min(start + weeks - 1, cells.length - 1)];
+		const first = row?.querySelector<HTMLElement>(`td.week-cell[data-week-index="${start}"]`);
+		const last = row?.querySelector<HTMLElement>(`td.week-cell[data-week-index="${start + weeks - 1}"]`);
 		const firstRect = (first ?? bar).getBoundingClientRect();
 		const lastRect = last ? last.getBoundingClientRect() : firstRect;
 		const width = first ? lastRect.right - firstRect.left : firstRect.width;
@@ -1199,7 +1274,7 @@ export class ProjectDashboardView extends ItemView {
 		const row = el.closest('tr');
 		const index = this.weeks.findIndex((w) => w.label === week);
 		if (!row || index === -1) return el;
-		return row.querySelectorAll<HTMLElement>('td.week-cell')[index] ?? el;
+		return row.querySelector<HTMLElement>(`td.week-cell[data-week-index="${index}"]`) ?? el;
 	}
 
 	// 錨點可能是年視圖的色條，也可能是月視圖的格子，所以超出預計結束日期要兩種都
@@ -1506,7 +1581,10 @@ export class ProjectDashboardView extends ItemView {
 		}
 
 		if (this.scale === 'month') this.renderMonthChart();
-		else this.renderYearChart();
+		else {
+			this.renderYearChart();
+			this.updateThisWeekButton();
+		}
 	}
 
 	private renderMonthChart(): void {
@@ -1562,55 +1640,73 @@ export class ProjectDashboardView extends ItemView {
 	private renderYearChart(): void {
 		const weeks = buildWeeks(this.shownYear);
 		this.weeks = weeks;
-		const quarterGroups = groupQuarters(weeks);
-		const monthGroups = groupMonths(weeks);
 		const todayIdx = this.shownYear === Number(this.today.slice(0, 4)) ? todayWeekIndex(weeks, this.today) : -1;
+		if (this.foldYear !== this.shownYear) {
+			this.foldedQuarters = new Set(defaultFoldedQuarters(weeks, todayIdx));
+			this.foldYear = this.shownYear;
+		}
+		const columns = yearColumns(weeks, this.foldedQuarters);
 		const visible = this.visibleSortedProjects();
 
-		const table = this.chartEl.createEl('table', { cls: 'gantt' });
+		// year-grid：年視圖不撐滿圖表寬度，週欄才會固定 32 像素（季折起後表格比畫面窄）。
+		const table = this.chartEl.createEl('table', { cls: 'gantt year-grid' });
 		const thead = table.createEl('thead');
 
 		const quarterRow = thead.createEl('tr');
 		renderProjectColHeader(quarterRow, 3);
-		for (const qg of quarterGroups) {
-			quarterRow.createEl('th', { cls: 'quarter', attr: { colspan: qg.count }, text: `Q${qg.q}` });
-		}
-
 		const monthRow = thead.createEl('tr');
-		for (const mg of monthGroups) {
-			monthRow.createEl('th', { cls: 'month-label', attr: { colspan: mg.count }, text: MONTH_NAMES[mg.month] ?? '' });
-		}
-
 		const weekRow = thead.createEl('tr');
-		for (const w of weeks) {
-			const cls = ['week'];
-			if (w.isQuarterStart) cls.push('q-start');
-			else if (w.isMonthStart) cls.push('m-start');
-			weekRow.createEl('th', { cls: cls.join(' '), text: `W${w.week}` });
+		for (const column of columns) {
+			const folded = column.kind === 'fold';
+			const expandedWeeks = column.kind === 'weeks' ? weeks.slice(column.start, column.end) : [];
+			const quarters = column.kind === 'fold'
+				? [{ q: column.quarter, count: 1 }]
+				: groupQuarters(expandedWeeks);
+			for (const { q, count } of quarters) {
+				const heading = quarterRow.createEl('th', {
+					cls: folded ? 'quarter q-folded' : 'quarter', attr: { colspan: count },
+				});
+				heading.createEl('button', {
+					cls: 'quarter-toggle', text: `Q${q} ${folded ? '▸' : '▾'}`,
+					attr: { type: 'button', 'data-quarter': q, 'aria-expanded': String(!folded), title: folded ? '展開這一季' : '折起這一季' },
+				});
+			}
+			if (column.kind === 'fold') {
+				monthRow.createEl('th', { cls: 'q-fold-gap', attr: { rowspan: 2 } });
+				continue;
+			}
+			for (const mg of groupMonths(expandedWeeks)) {
+				monthRow.createEl('th', { cls: 'month-label', attr: { colspan: mg.count }, text: MONTH_NAMES[mg.month] ?? '' });
+			}
+			for (const [offset, w] of expandedWeeks.entries()) {
+				const index = column.start + offset;
+				const cls = ['week'];
+				if (w.isQuarterStart) cls.push('q-start');
+				else if (w.isMonthStart) cls.push('m-start');
+				if (index === todayIdx) cls.push('today-week');
+				weekRow.createEl('th', { cls: cls.join(' '), text: `W${w.week}`, attr: { 'data-week-index': index } });
+			}
 		}
 
 		const tbody = table.createEl('tbody');
 		if (visible.length === 0) {
 			const tr = tbody.createEl('tr');
 			tr.createEl('td', { cls: 'proj-cell', text: '（沒有符合條件的專案）' });
-			tr.createEl('td', { attr: { colspan: weeks.length } });
+			this.renderYearRowCells(tr, weeks, columns, todayIdx);
 			return;
 		}
 
 		for (const project of visible) {
 			const tr = tbody.createEl('tr');
 			try {
-				this.renderProjectRow(tr, project, weeks, todayIdx);
+				this.renderProjectRow(tr, project, weeks, todayIdx, columns);
 			} catch {
 				// 清掉可能已畫出的一部分，避免失敗列仍留下能編輯的任務錨點。
 				tr.empty();
 				const head = tr.createEl('td', { cls: 'proj-cell' });
 				head.createSpan({ cls: 'name', text: project.name, attr: { 'data-path': project.path } });
 				head.createSpan({ cls: 'warn', text: '⚠', attr: { title: '這個專案的日期有問題' } });
-				for (const [i, w] of weeks.entries()) {
-					const borderCls = w.isQuarterStart ? 'q-start' : w.isMonthStart ? 'm-start' : '';
-					tr.createEl('td', { cls: ['week-cell', i === todayIdx ? 'today-col' : '', borderCls].filter(Boolean).join(' ') });
-				}
+				this.renderYearRowCells(tr, weeks, columns, todayIdx);
 				console.error(project.name);
 			}
 		}
@@ -1621,19 +1717,36 @@ export class ProjectDashboardView extends ItemView {
 		project: ProjectRecord,
 		weeks: WeekInfo[],
 		todayIdx: number,
+		columns: YearColumn[],
 	): void {
-		const stateCls = projectStateClass(project);
-
 		renderProjectHeadCell(tr, project, this.categoryOrder);
+		this.renderYearRowCells(tr, weeks, columns, todayIdx, project);
+	}
 
-		const cells = yearViewCells(project, weeks, this.settings, this.viewMode);
-		weeks.forEach((w, i) => {
-			const cell = cells[i]!;
-			const borderCls = w.isQuarterStart ? 'q-start' : w.isMonthStart ? 'm-start' : '';
-			const cellCls = ['week-cell', i === todayIdx ? 'today-col' : '', borderCls].filter(Boolean).join(' ');
-			const td = tr.createEl('td', { cls: cellCls });
-			this.renderBar(td, cell, project, stateCls, w.label, i);
-		});
+	// 空列與出錯列也共用欄序，折起的季才不會使後面的週錯位。
+	private renderYearRowCells(
+		tr: HTMLTableRowElement,
+		weeks: WeekInfo[],
+		columns: YearColumn[],
+		todayIdx: number,
+		project?: ProjectRecord,
+	): void {
+		const stateCls = project ? projectStateClass(project) : '';
+		for (const column of columns) {
+			if (column.kind === 'fold') {
+				tr.createEl('td', { cls: 'q-fold-cell' });
+				continue;
+			}
+			const expandedWeeks = weeks.slice(column.start, column.end);
+			const cells = project ? yearViewCells(project, expandedWeeks, this.settings, this.viewMode) : [];
+			for (const [offset, w] of expandedWeeks.entries()) {
+				const index = column.start + offset;
+				const borderCls = w.isQuarterStart ? 'q-start' : w.isMonthStart ? 'm-start' : '';
+				const cellCls = ['week-cell', index === todayIdx ? 'today-col' : '', borderCls].filter(Boolean).join(' ');
+				const td = tr.createEl('td', { cls: cellCls, attr: { 'data-week-index': index } });
+				if (project) this.renderBar(td, cells[offset]!, project, stateCls, w.label, index);
+			}
+		}
 	}
 
 	private renderBar(

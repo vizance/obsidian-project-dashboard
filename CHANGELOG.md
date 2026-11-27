@@ -7,12 +7,14 @@ You can now install Project Dashboard on a phone and plan with the same month ta
 On a phone, the plugin reads no calendars and makes no network requests. Set up calendars on a computer or tablet. Tablets keep the same year and month views as computers. On a tablet, dragging the legend to reorder categories or dragging the name column's edge to resize it needs a mouse or trackpad.
 
 - Tap or click `Project folder` to pick a folder from a list. Type to narrow the list, or keep typing the path yourself. This works on computers, tablets, and phones.
+- On computers and tablets, past quarters now start folded in this year's view, so recent weeks are easier to see. Click a quarter heading to open or fold it. When this week is out of view, click `本週` (this week) to return to this year, open its quarter, and scroll it to the center.
 
 現在可以在手機安裝 Project Dashboard，用和電腦相同的月表規劃任務。一列一個專案，方便對照每個專案在各週要做的事。打開就顯示今天這週所在的月份，表格停在本週，欄頭標示 `本週`。手機直放時左右滑看其他週，專案名稱固定在左邊；往下滑時，週數與月份控制留在上面。名稱欄藏起開頭的 `P-日期` 代碼，浮窗標題保留完整名稱。橫放且寬度夠時一次看完整個月。可以換月份、顯示暫停專案、點格子勾完成或移一週、挑還沒排日期的任務，或新增任務。點 `還沒排` 數字可以把任務排進某一週。點專案名稱或 `↗`，筆記開在同一個分頁，按 Obsidian 的返回就回到本月的儀表板並停在本週。
 
 手機上不讀行事曆，也不發任何網路請求；行事曆請在電腦或平板設定。平板維持和電腦相同的年視圖與月視圖。在平板上拖拉圖例來調整分類順序，或拖拉名稱欄邊緣來調整寬度，需要滑鼠或觸控板。
 
 - 點 `Project folder` 就能從清單選資料夾，打字可縮小範圍，也可以照舊自己打路徑。電腦、平板、手機都能用。
+- 電腦與平板打開今年的年視圖時，過去的季會先折起，方便看最近幾週；點季標題就能展開或折回去。本週不在眼前時，按 `本週` 就能回到今年、展開所在的季，並捲到正中間。
 
 ## 0.5.0 — 2026-11-20
 

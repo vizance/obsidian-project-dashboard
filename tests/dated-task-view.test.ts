@@ -50,6 +50,8 @@ function setup(projects: ProjectRecord[], scale: Scale, month = 11) {
 	};
 	Object.assign(fixture, {
 		projects, chartEl: new SettingsElement(), shownYear: 2026, today: '2026-11-20',
+		// 這裡驗的是色條與格子的畫法，不是季的折疊；固定四季展開，整年 53 欄都畫出來。
+		foldYear: 2026, foldedQuarters: new Set<number>(),
 		categoryOrder: ['other'], showClosed: true, showPaused: true,
 		viewMode: scale === 'timeline' ? 'timeline' : 'per-week', scale: scale === 'month' ? 'month' : 'year',
 		popover: { render: renderPopover }, positionWeekPopover: vi.fn(),

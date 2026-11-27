@@ -53,7 +53,9 @@ These task dates set which weeks have work. They never rewrite the project's exp
 
 The year view opens on today's local calendar year. It has every ISO week whose Thursday falls in the shown year: 53 weeks in 2026 and 52 in 2027. Today's week has a light red column only when it belongs to the shown year.
 
-Use `◀` and `▶` beside the year title to step by one year. `今年` (this year) appears only in another year and returns to this year. Only the year/month choice is remembered, not the year you were looking at.
+Use `◀` and `▶` beside the year title to step by one year. `本週` (this week), with the tip `捲到本週` (scroll to this week), appears after them when you view another year, fold this week's quarter, or scroll any part of this week's column out of view. The visible area runs from the right edge of the project name column to the right edge of the chart. The button updates when the chart is drawn or scrolled, the window size changes, or you resize the name column.
+
+Click `本週` to first return to today's calendar year if needed, then open this week's quarter if folded, then scroll this week's column to the center of that visible area. If the chart cannot scroll that far, it moves as close as it can. The button hides once the whole column is in view. If today's week is outside today's calendar year, the button only returns to that year and does not scroll. For example, `2027-01-01` is in `2026-W53`, outside the 2027 columns. The button stays hidden when that year is shown. Only the year/month choice is remembered, not the year you were looking at.
 
 In the per-week view, each cell is decided on its own:
 
@@ -72,6 +74,14 @@ For example, an expected end of `2026-11-06` and a task dated `2026-12-05` still
 An active or paused project with no task dates has one long dashed span over its project period in the year view. Clicking it picks the week under the pointer. In the month view it becomes separate dashed cells.
 
 Press `T` to switch to **Timeline**. This shows one continuous bar in the category color. It runs from the earlier of the start week and first task week to the later of the end week and last task week, clipped to the shown year. There are no idle gaps or red overflow parts. Closed bars stay grey. Clicking a Timeline bar opens its text only, with no edit controls. `T` has no effect in the month view and does not re-read notes or calendars.
+
+### Folding quarters
+
+On computers and tablets, click a quarter heading to fold or open it. An open heading reads `Q4 ▾`; a folded one reads `Q1 ▸`. When you open this year's view, quarters before the one holding today's week start folded. For example, in November 2026, Q1–Q3 start folded. Other years start with all four quarters open. So does this year if today's week is outside its columns.
+
+A folded quarter is one grey column, 40 pixels wide. It has no bars and cannot open a pop-up. Bars stop at its edges in both per-week and Timeline views. A bar that spans a folded quarter has a separate part on each side; a bar fully inside it is hidden. Open weeks stay 32 pixels wide.
+
+Your choices stay while the same year is shown, including after note or settings changes, changes to `顯示已結案` (show closed) or `顯示暫停` (show paused), pressing `T`, or switching to the month view and back to the same year. Changing years or reopening the dashboard tab resets the quarters to their starting state. Fold choices are not saved for later. Folding or opening a quarter closes any pop-up and keeps the sideways scroll position as far as the new width allows. The month view and phone layout stay the same.
 
 ## Week popover and editing
 
@@ -160,7 +170,7 @@ There are exactly five triggers:
 4. You paste a new link for a calendar that was already set up, keeping the same saved-link entry. It is read again right away.
 5. The list or order of calendars with a saved-link entry changes, after settings save, after outside settings arrive, or after a failed save restores the last saved settings.
 
-Renaming a calendar or changing its color does not start a read. There is no timer. Year/month navigation, `今年`, `本月`, switching views, and note edits do not start a read.
+Renaming a calendar or changing its color does not start a read. There is no timer. Year/month navigation, `本週`, `本月`, switching views, and note edits do not start a read.
 
 All open dashboards share the results. If another read is requested while one is running, one more read follows it with the settings then in effect. Refreshing keeps an open week popover in place when its cell remains available. Results live only in memory. Removing a calendar or changing its saved-link entry drops its old results at the next read; other calendars keep their own results. Unloading clears the results and ignores any late response or queued read.
 

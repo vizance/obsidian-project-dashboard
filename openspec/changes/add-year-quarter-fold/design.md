@@ -100,6 +100,7 @@ view 多兩個欄位：`foldedQuarters: Set<number>` 與 `foldYear: number | nul
 - `th.quarter .quarter-toggle`：繼承字型、字級、顏色與字距，沒有外框、底色、陰影，寬 100%，`cursor: pointer`；鍵盤焦點用 Obsidian 的焦點外框。
 - `th.quarter.q-folded`、`th.q-fold-gap`、`td.q-fold-cell`：寬、最小寬、最大寬都是 40 像素；`td.q-fold-cell` 與 `th.q-fold-gap` 底色 `var(--panel)`，左邊框 `2px solid var(--grid)`。
 - 說明面板的示範列用同樣的類別畫一格窄欄。
+- 年視圖的表格加類別 `year-grid`，`.project-dashboard table.gantt.year-grid` 設 `min-width: 0`。原本 `table.gantt` 的 `min-width: 100%` 會在表格比圖表區域窄時把每一欄撐寬（折起三季後週欄從 32 像素變成約 56 像素），違反週欄固定 32 像素。改了之後多出來的空間留在表格右邊。月視圖的表格沒有 `year-grid`，不受影響。
 
 ### 說明面板
 
