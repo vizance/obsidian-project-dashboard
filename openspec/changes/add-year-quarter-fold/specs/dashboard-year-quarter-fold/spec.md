@@ -2,7 +2,7 @@
 
 ### Requirement: Quarters fold in the year view
 
-In the year view, each quarter header SHALL hold a button that shows the quarter label followed by `▾` while the quarter is expanded, for example `Q4 ▾`, and by `▸` while it is folded, for example `Q1 ▸`. The button SHALL have the tooltip `折起這一季` while expanded and `展開這一季` while folded, and its `aria-expanded` SHALL match. Pressing the button SHALL fold an expanded quarter or expand a folded one. The month view and the phone layout SHALL NOT change.
+In the year view, each quarter header SHALL hold a button that shows the quarter label followed by `▾` while the quarter is expanded, for example `Q4 ▾`, and by `▸` while it is folded, for example `Q1 ▸`. The button SHALL have the tooltip `折起這一季` while expanded and `展開這一季` while folded, and its `aria-expanded` SHALL match. Pressing the button SHALL fold an expanded quarter or expand a folded one. The button SHALL show a visible outline while it has keyboard focus. After the button is pressed and the chart is drawn again, keyboard focus SHALL be on the button of the same quarter, without changing the chart's sideways scroll position. The month view and the phone layout SHALL NOT change.
 
 A folded quarter SHALL be drawn as one column 40 CSS pixels wide in place of all its week columns. In the header, the quarter row SHALL show the quarter's button over that column, and one empty heading cell SHALL fill the month row and the week row beneath it. In every project row, the folded column SHALL be one empty cell with the panel background. A folded column SHALL show no bar, SHALL NOT carry `data-path` or `data-week`, and clicking it SHALL NOT open a popover. Expanded quarters SHALL be drawn as before: each week column 32 CSS pixels wide, with the same month and quarter dividers, the same bars, and the same today column.
 
@@ -26,6 +26,13 @@ The fold state SHALL stay as the user left it while the same year stays shown. T
 - **WHEN** the user presses `Q2 ▸`
 - **THEN** the header MUST read `Q2 ▾` and the week headers W15 through W27 MUST be shown between the folded Q1 and the folded Q3
 - **AND** pressing `Q2 ▾` MUST fold Q2 again
+
+#### Scenario: Keyboard focus stays on the quarter heading
+
+- **GIVEN** the year view of 2026 shows Q2 folded and the `Q2 ▸` button has keyboard focus
+- **WHEN** the user presses Enter
+- **THEN** Q2 MUST be expanded
+- **AND** keyboard focus MUST be on the `Q2 ▾` button
 
 #### Scenario: The fold state survives drawing again
 
@@ -61,7 +68,7 @@ In the year view, the place in the controls row that the month view uses for `�
 - The shown year is not the calendar year of today's local date.
 - The shown year is that year, today's week is one of its week columns, and either the quarter that holds today's week is folded or today's week column is not fully inside the visible chart area to the right of the project column.
 
-Whether `本週` is shown SHALL be checked again after the chart is drawn, when the chart scrolls sideways, when the window is resized, and after the project column is resized.
+Whether `本週` is shown SHALL be checked again after the chart is drawn, when the chart scrolls sideways, when the window is resized, when the dashboard pane changes size (for example when the split beside it is dragged), and after the project column is resized.
 
 Pressing `本週` SHALL do these steps in order. When another year is shown, it SHALL show the calendar year of today's local date, with that year's starting fold state. When the quarter that holds today's week is folded, it SHALL expand that quarter. When today's week is one of the shown year's week columns, it SHALL scroll the chart sideways so that the center of today's week column is at the center of the visible chart area to the right of the project column, or as close to it as the scroll range allows. Afterwards `本週` SHALL be hidden whenever today's week column fits inside that area. When today's week is not one of the calendar year's week columns, for example on 2027-01-01, which belongs to 2026-W53, pressing `本週` SHALL show the calendar year and SHALL NOT scroll.
 
@@ -85,6 +92,12 @@ Pressing `本週` SHALL do these steps in order. When another year is shown, it 
 - **GIVEN** today is 2026-07-15, which is in 2026-W29 in Q3, every quarter of 2026 is expanded, and the chart is scrolled to its left edge
 - **WHEN** the user presses `本週`
 - **THEN** the center of the W29 column MUST be at the center of the visible chart area to the right of the project column, within 1 CSS pixel
+
+#### Scenario: Narrowing the pane shows 本週
+
+- **GIVEN** today is 2026-11-20, the year view of 2026 shows Q1, Q2, and Q3 folded, and `本週` is hidden because W47 is in view
+- **WHEN** the user drags the split beside the dashboard so that the pane becomes too narrow to show W47, without resizing the window
+- **THEN** `本週` MUST be shown
 
 #### Scenario: 本週 from another year
 

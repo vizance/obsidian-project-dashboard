@@ -77,7 +77,7 @@ view 多兩個欄位：`foldedQuarters: Set<number>` 與 `foldYear: number | nul
 
 所以：同一個年份的任何重繪（筆記改變、設定改變、顯示已結案、顯示暫停、`T`、切到月視圖再切回同一年）都保留；換年份就重設；分頁重開時 `foldYear` 是 `null`，也會重設。不寫入 local storage。
 
-按季標題：切換那一季在 `foldedQuarters` 的狀態，記下 `#chart.scrollLeft`，重畫圖表（重畫會照既有規則關掉浮窗），再把 `scrollLeft` 設回去（瀏覽器會夾在新的範圍內）。季標題的點擊用 `#chart` 上的委派事件處理，跟既有的點名稱、點色條同一個做法；處理完要停止，不要再落到「點外面就關閉浮窗」以外的分支。
+按季標題：切換那一季在 `foldedQuarters` 的狀態，記下 `#chart.scrollLeft`，重畫圖表（重畫會照既有規則關掉浮窗），再把 `scrollLeft` 設回去（瀏覽器會夾在新的範圍內），最後把焦點放回同一季的新按鈕（`focus({ preventScroll: true })`，不讓瀏覽器為了焦點捲動表格）。重畫會換掉原本的按鈕，不放回去的話用鍵盤的人會失去位置（審查時發現）。季標題的點擊用 `#chart` 上的委派事件處理，跟既有的點名稱、點色條同一個做法；處理完要停止，不要再落到「點外面就關閉浮窗」以外的分支。
 
 ### 本週按鈕取代今年
 
@@ -87,7 +87,7 @@ view 多兩個欄位：`foldedQuarters: Set<number>` 與 `foldYear: number | nul
   - 是今年，但 `todayIdx < 0`（今天的週不在這一年的欄裡）→ 不出現。
   - 今天那週所在的季被折起 → 出現。
   - 否則量 `th.week.today-week` 與 `th.proj-col` 的 `getBoundingClientRect()`，可見範圍是「名稱欄右緣」到「`#chart` 右緣」；`columnFullyVisible` 為 false → 出現。
-- 檢查的時機：年視圖每次畫完圖表、`#chart` 的 `scroll` 事件、視窗 `resize`、拖拉名稱欄寬結束。都用 `registerDomEvent` 註冊，分頁關閉時自動移除。
+- 檢查的時機：年視圖每次畫完圖表、`#chart` 的 `scroll` 事件、視窗 `resize`、儀表板窗格大小改變、拖拉名稱欄寬結束。都用 `registerDomEvent` 註冊，分頁關閉時自動移除。窗格大小改變用 Obsidian 的 `ItemView.onResize()`：拖拉旁邊的分割、把分頁搬到別的視窗時，視窗本身沒有 `resize`，只有窗格會收到這個通知（審查時發現）。
 - 按 `本週`：顯示的年份不是今年時先切到今年（走既有的 `showYear`，所以折疊會重設成今年的預設）；今天的季被折起就展開並重畫；最後若今天的週有欄位，用 `centeredScrollLeft` 算出 `#chart.scrollLeft`（`maxScrollLeft = scrollWidth − clientWidth`），然後再跑一次 `updateThisWeekButton()`。
 - `今年` 這兩個字不再出現在年視圖。
 
@@ -97,7 +97,7 @@ view 多兩個欄位：`foldedQuarters: Set<number>` 與 `foldYear: number | nul
 
 全部掛在 `.project-dashboard` 底下，只用新類別，不改既有規則的值：
 
-- `th.quarter .quarter-toggle`：繼承字型、字級、顏色與字距，沒有外框、底色、陰影，寬 100%，`cursor: pointer`；鍵盤焦點用 Obsidian 的焦點外框。
+- `th.quarter .quarter-toggle`：繼承字型、字級、顏色與字距，沒有外框、底色、陰影，寬 100%，`cursor: pointer`。去掉陰影也去掉了 Obsidian 用陰影畫的焦點外框，所以另加 `:focus-visible` 的 `outline: 2px solid var(--interactive-accent)`、`outline-offset: -2px`（審查時發現）。
 - `th.quarter.q-folded`、`th.q-fold-gap`、`td.q-fold-cell`：寬、最小寬、最大寬都是 40 像素；`td.q-fold-cell` 與 `th.q-fold-gap` 底色 `var(--panel)`，左邊框 `2px solid var(--grid)`。
 - 說明面板的示範列用同樣的類別畫一格窄欄。
 - 年視圖的表格加類別 `year-grid`，`.project-dashboard table.gantt.year-grid` 設 `min-width: 0`。原本 `table.gantt` 的 `min-width: 100%` 會在表格比圖表區域窄時把每一欄撐寬（折起三季後週欄從 32 像素變成約 56 像素），違反週欄固定 32 像素。改了之後多出來的空間留在表格右邊。月視圖的表格沒有 `year-grid`，不受影響。

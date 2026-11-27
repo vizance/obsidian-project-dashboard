@@ -117,7 +117,8 @@ class Element extends SettingsElement {
 			: this.clientWidth;
 	}
 	getBoundingClientRect() {
-		if (this.attributes.get('id') === 'chart') return rectangle(0, 1100);
+		// 圖表的右緣跟著 clientWidth，測試才能模擬窗格被拖窄。
+		if (this.attributes.get('id') === 'chart') return rectangle(0, this.clientWidth);
 		if (this.tagName === 'th' && this.classes.has('proj-col')) return rectangle(0, 280);
 		if ((this.tagName === 'th' && this.classes.has('week')) || (this.tagName === 'td' && this.classes.has('week-cell'))) {
 			const chart = required(this.closest('#chart'), '週欄所在的 #chart');
@@ -240,7 +241,7 @@ async function setup(notes: Note[] = [{ tasks: TASK }], mode: 'per-week' | 'time
 		expect(binding.callback({ target: null } as unknown as KeyboardEvent)).toBe(false);
 		await vi.advanceTimersByTimeAsync(0);
 	};
-	return { root, doc, chart, table, row, headers, heading, popover, title, current, quarters, pressT, vault, files, saveLocalStorage };
+	return { view, root, doc, chart, table, row, headers, heading, popover, title, current, quarters, pressT, vault, files, saveLocalStorage };
 }
 
 type Context = Awaited<ReturnType<typeof setup>>;
@@ -359,6 +360,17 @@ describe('year quarter folding', () => {
 		await click(button(c.table(), 'Q2 ▾'));
 		expectDefaultQuarters(c);
 		expect(c.headers().map(textOf)).toEqual(weekLabels(41, 53));
+	});
+
+	it('Keyboard focus stays on the quarter heading', async () => {
+		const c = await setup();
+		const before = button(c.table(), 'Q2 ▸') as Element;
+		before.focus();
+		expect(c.doc.activeElement).toBe(before);
+		await click(before);
+		const after = button(c.table(), 'Q2 ▾');
+		expect(after).not.toBe(before);
+		expect(c.doc.activeElement).toBe(after);
 	});
 
 	it('The fold state survives drawing again', async () => {
@@ -493,6 +505,16 @@ describe('year this-week navigation', () => {
 		const rect = c.heading(29).getBoundingClientRect();
 		expect(Math.abs((rect.left + rect.right) / 2 - (280 + 1100) / 2)).toBeLessThanOrEqual(1);
 		expect(hidden(c.current())).toBe(true);
+	});
+
+	it('Narrowing the pane shows 本週', async () => {
+		const c = await setup();
+		expect(hidden(c.current())).toBe(true);
+		// 拖窄旁邊的分割：視窗沒有 resize，只有窗格變窄；W47 右緣 280 + 3×40 + 7×32 = 624 超出 600。
+		c.chart().clientWidth = 600;
+		(c.view as unknown as { onResize(): void }).onResize();
+		expect(c.heading(47).getBoundingClientRect().right).toBeGreaterThan(600);
+		expect(hidden(c.current())).toBe(false);
 	});
 
 	it('本週 from another year', async () => {
