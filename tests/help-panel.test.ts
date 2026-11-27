@@ -168,6 +168,7 @@ describe('static help panel', () => {
 			'已完成或取消的專案（勾「顯示已結案」才會出現）',
 			'專案的分類，對照上方圖例',
 			'今天所在的週',
+			'折起來的一季；點季標題展開或折起',
 		]);
 		expect(textOf(panel)).toContain('⏳ 暫停');
 	});
@@ -198,11 +199,12 @@ describe('static help panel', () => {
 			'點專案名稱 → 在右側開啟筆記',
 			'勾「編輯分類與狀態」 → 改專案的分類，或改成暫停、完成、取消',
 			'年 / 月，或按 M → 切換年視圖與月視圖',
-			'◀ ▶ → 換年份或月份；今年、本月 回到現在',
+			'◀ ▶ → 換年份或月份；本週、本月 回到現在',
 			'T → 切換逐週與 Timeline（只在年視圖）',
 			'? → 打開或關閉這個面板',
 			'點圖例 → 把一類置頂；拖拉圖例 → 調整分類順序',
 			'拖拉專案欄的右邊 → 調整欄寬',
+			'點季標題（例如 Q1） → 折起或展開那一季（只在年視圖）',
 		]);
 		expect(find(section, (el) => el.tagName === 'kbd').map(textOf)).toEqual(['M', 'T', '?']);
 		expect(find(section, (el) => ['button', 'input', 'select', 'a'].includes(el.tagName))).toHaveLength(0);
@@ -226,6 +228,17 @@ describe('static help panel', () => {
 		const dot = withClass(section, 'cat-dot')[0]!;
 		expect(dot.parentElement!.tagName).toBe('td');
 		expect(dot.parentElement!.classes.has('proj-cell')).toBe(true);
+	});
+
+	it('shows a folded-quarter sample with the chart cell class', () => {
+		const section = setup().panels[0]!;
+		const description = withClass(section, 'help-description').find((el) => textOf(el) === '折起來的一季；點季標題展開或折起');
+		expect(description).toBeDefined();
+		const row = description!.parentElement!;
+		const samples = withClass(row, 'q-fold-cell');
+		expect(samples).toHaveLength(1);
+		expect(samples[0]!.tagName).toBe('td');
+		expect(withClass(samples[0]!, 'bar')).toHaveLength(0);
 	});
 
 	it('reuses month styles and keeps the unscheduled sample out of chart tables', () => {

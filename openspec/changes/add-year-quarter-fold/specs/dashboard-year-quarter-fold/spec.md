@@ -17,14 +17,14 @@ The fold state SHALL stay as the user left it while the same year stays shown. T
 - **GIVEN** today is 2026-11-20, which is in 2026-W47 in Q4
 - **WHEN** the user opens the year view of 2026
 - **THEN** the quarter headers MUST read `Q1 ▸`, `Q2 ▸`, `Q3 ▸`, and `Q4 ▾`
-- **AND** the week headers MUST be W40 through W53 only
+- **AND** the week headers MUST be W41 through W53 only
 - **AND** every project row MUST have three folded cells and no bar inside them
 
 #### Scenario: Expanding and folding a quarter
 
 - **GIVEN** today is 2026-11-20 and the year view of 2026 shows Q1, Q2, and Q3 folded
 - **WHEN** the user presses `Q2 ▸`
-- **THEN** the header MUST read `Q2 ▾` and the week headers W14 through W26 MUST be shown between the folded Q1 and the folded Q3
+- **THEN** the header MUST read `Q2 ▾` and the week headers W15 through W27 MUST be shown between the folded Q1 and the folded Q3
 - **AND** pressing `Q2 ▾` MUST fold Q2 again
 
 #### Scenario: The fold state survives drawing again
@@ -50,7 +50,7 @@ The fold state SHALL stay as the user left it while the same year stays shown. T
 
 - **GIVEN** today is 2026-11-20, the year view is in `timeline` mode, and a project runs from 2026-08-03 (W32) to 2026-11-30 (W49)
 - **WHEN** the year view of 2026 shows Q3 folded
-- **THEN** that project's row MUST have one timeline bar, starting at W40 and covering 10 weeks
+- **THEN** that project's row MUST have one timeline bar, starting at W41 and covering 9 weeks
 - **AND** after the user expands Q3, the row MUST have one timeline bar starting at W32 and covering 18 weeks
 
 ---
@@ -76,8 +76,15 @@ Pressing `本週` SHALL do these steps in order. When another year is shown, it 
 
 - **GIVEN** today is 2026-11-20, every quarter of 2026 is expanded, and the chart is scrolled to its left edge so that W47 is outside the visible chart area
 - **WHEN** the user presses `本週`
-- **THEN** the center of the W47 column MUST be at the center of the visible chart area to the right of the project column, within 1 CSS pixel
+- **THEN** the chart MUST be scrolled as close as its scroll range allows to putting the center of the W47 column at the center of the visible chart area to the right of the project column: within 1 CSS pixel of that center when the range allows it, and scrolled fully to the right when W47 is too near the end of the year
+- **AND** the W47 column MUST be fully inside the visible chart area
 - **AND** `本週` MUST be hidden
+
+#### Scenario: Centering a week in the middle of the year
+
+- **GIVEN** today is 2026-07-15, which is in 2026-W29 in Q3, every quarter of 2026 is expanded, and the chart is scrolled to its left edge
+- **WHEN** the user presses `本週`
+- **THEN** the center of the W29 column MUST be at the center of the visible chart area to the right of the project column, within 1 CSS pixel
 
 #### Scenario: 本週 from another year
 
