@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 — Unreleased
+## 0.6.0 — 2026-11-28
 
 You can now install Project Dashboard on a phone and plan with the same month table as on a computer. Each project has a row, so you can compare projects across weeks. Open the dashboard to see the month of today's week, with the table scrolled to this week and its heading marked `本週` (this week). Hold the phone upright and swipe to see more weeks, with project names fixed on the left. Week headings and month controls stay at the top as you scroll down. The name column hides a leading `P-date` code; pop-up titles keep the full name. Turn it sideways to see the whole month when there is enough room. Change months, show paused projects, tap cells to tick or move tasks, pick undated tasks, or add new ones. Tap a `還沒排` count to put a task into a week. Project names and `↗` open the note in the same tab; Obsidian's back control returns to this month's dashboard, scrolled to this week.
 
