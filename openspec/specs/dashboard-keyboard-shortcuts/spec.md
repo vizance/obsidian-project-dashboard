@@ -99,6 +99,7 @@ The help panel SHALL organize its content into three tabs labelled `年視圖`, 
 - **顏色與欄位**:
   - Category-colored dot → 專案的分類，對照上方圖例
   - Light red column → 今天所在的週
+  - Narrow grey column under `Q1 ▸` → 折起來的一季；點季標題展開或折起
 
 `月視圖` SHALL contain these groups and items:
 
@@ -122,12 +123,13 @@ The help panel SHALL organize its content into three tabs labelled `年視圖`, 
   - 勾「編輯分類與狀態」 → 改專案的分類，或改成暫停、完成、取消
 - **切換**:
   - `年` / `月`，或按 `M` → 切換年視圖與月視圖
-  - `◀` `▶` → 換年份或月份；`今年`、`本月` 回到現在
+  - `◀` `▶` → 換年份或月份；`本週`、`本月` 回到現在
   - `T` → 切換逐週與 Timeline（只在年視圖）
   - `?` → 打開或關閉這個面板
 - **版面**:
   - 點圖例 → 把一類置頂；拖拉圖例 → 調整分類順序
   - 拖拉專案欄的右邊 → 調整欄寬
+  - 點季標題（例如 `Q1`） → 折起或展開那一季（只在年視圖）
 
 When the panel is taller than the window, it SHALL scroll inside itself and SHALL NOT extend past the window. The help panel MUST be a static DOM structure (not dynamically generated from data) so its content is always available regardless of which projects are loaded.
 
@@ -149,7 +151,7 @@ When the panel is taller than the window, it SHALL scroll inside itself and SHAL
 
 - **WHEN** the `年視圖` tab is shown
 - **THEN** it MUST show the subheadings `每一格＝這週的任務`, `需要注意`, `整列＝專案狀態`, and `顏色與欄位`
-- **AND** it MUST include `⏳ 暫停`, `暫停的專案`, and `超出預計結束日期`
+- **AND** it MUST include `⏳ 暫停`, `暫停的專案`, `超出預計結束日期`, and `折起來的一季`
 
 #### Scenario: Month tab groups
 

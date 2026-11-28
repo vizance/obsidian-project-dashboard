@@ -65,7 +65,12 @@ The plugin SHALL register a settings tab. Its text SHALL be plain English that a
 
 `Project notes`:
 
-- `Project folder`: a text field holding `projectFolder`, described as `The folder where your project notes live. Only notes right inside this folder are used. Notes in folders inside it are skipped.`. When no folder with that path exists in the vault, the text `Can't find this folder.` SHALL be shown under the field.
+- `Project folder`: a text field holding `projectFolder`, described as `The folder where your project notes live. Only notes right inside this folder are used. Notes in folders inside it are skipped. Tap or click the box to pick a folder from a list.`. When no folder with that path exists in the vault, the text `Can't find this folder.` SHALL be shown under the field. The field SHALL have a folder list, built on Obsidian's own input suggestion, that works the same on computers, tablets, and phones:
+  - When the field gets focus, the list SHALL open under it and show the path of every folder in the vault, whatever the field holds.
+  - After the user types or deletes text in the field, the list SHALL show only the folder paths that contain the field's text, with spaces at both ends removed, anywhere in the path, without regard to case. When that text is empty, the list SHALL show every folder. When the field loses focus, the next focus SHALL show every folder again.
+  - The list SHALL never show the vault root (`/`), and SHALL be sorted by path in alphabetical order without regard to case.
+  - Picking a folder from the list SHALL put its path into the field, close the list, and change `projectFolder` exactly as typing that path does: the same delayed save, the same re-scan of open dashboards, and the same `Can't find this folder.` hint.
+  - Text that matches no folder SHALL still be accepted as typed.
 - `Projects to skip`: a multi-line text field holding `excludedProjects`, one entry per line, described as `Write one word or phrase on each line. A note whose name has any of them will not show on the dashboard.`.
 
 `Categories`:
@@ -142,6 +147,28 @@ The `Can't find this folder.` hint SHALL be evaluated against the normalized fol
 - **WHEN** the user presses that row's `Delete`
 - **THEN** the calendar MUST be removed from `calendars`
 - **AND** the value stored under `project-dashboard-calendar-a1b2c3d4` MUST be an empty string
+
+#### Scenario: Clicking the folder field lists every folder
+
+- **GIVEN** the vault has the folders `Work/Projects`, `Archive`, `Projects`, and `Work`, and `Project folder` holds `Projects`
+- **WHEN** the user taps or clicks the `Project folder` field
+- **THEN** the folder list MUST show `Archive`, `Projects`, `Work`, and `Work/Projects`, in this order
+- **AND** it MUST NOT show `/`
+
+#### Scenario: Typing narrows the folder list
+
+- **GIVEN** the vault has the folders `Archive`, `Projects`, `Work`, and `Work/Projects`
+- **WHEN** the user clears `Project folder` and types `proj`
+- **THEN** the folder list MUST show only `Projects` and `Work/Projects`, in this order
+
+#### Scenario: Picking a folder saves it
+
+- **GIVEN** a dashboard tab is open and the vault has a folder `Work/Projects` with project notes
+- **WHEN** the user opens the folder list of `Project folder` and picks `Work/Projects`
+- **THEN** the field MUST hold `Work/Projects` and the folder list MUST close
+- **AND** after the change is saved the plugin data MUST hold `"projectFolder": "Work/Projects"`
+- **AND** `Can't find this folder.` MUST NOT be shown
+- **AND** within 1 second the dashboard MUST show the projects from `Work/Projects`
 
 ---
 ### Requirement: Settings changes apply to open dashboards

@@ -19,14 +19,15 @@ The left-most column cells displaying project names (`td.proj-cell`) SHALL apply
 ---
 ### Requirement: 週欄寬度
 
-In the year view, each week column header (`th.week`) and body cell (`td.week-cell`) SHALL have a fixed width of 32px (set via `width`, `min-width`, and `max-width`). This creates breathing space between weekly labels (W14, W15, W16, ...) and increases the chart's overall density to a comfortable reading level. The month view's week columns use their own classes (`th.month-week`, `td.month-cell`) and share the available width instead, so this fixed width does not apply to them.
+In the year view, each week column header (`th.week`) and body cell (`td.week-cell`) SHALL have a fixed width of 32px (set via `width`, `min-width`, and `max-width`). This creates breathing space between weekly labels (W14, W15, W16, ...) and increases the chart's overall density to a comfortable reading level. The month view's week columns use their own classes (`th.month-week`, `td.month-cell`) and share the available width instead, so this fixed width does not apply to them. A folded quarter, described in `dashboard-year-quarter-fold`, SHALL replace its week columns with one 40px column; the week columns of expanded quarters SHALL keep the 32px width. The year view's table SHALL NOT stretch its columns to fill a chart area wider than the table; the space left over stays to the right of the table.
 
 #### Scenario: 週欄寬度套用
 
 - **WHEN** 儀錶板以年視圖載入完成
 - **THEN** 任一 `th.week` 的 computed `width` MUST 等於 `32px`
 - **AND** 任一 `td.week-cell` 的 computed `width` MUST 等於 `32px`
-- **AND** 53 個週欄總寬度 MUST 約等於 `53 × 32 = 1696px`（誤差 ≤ 5px，由 border / box-sizing 造成）
+- **AND** 沒有任何季折起時，53 個週欄總寬度 MUST 約等於 `53 × 32 = 1696px`（誤差 ≤ 5px，由 border / box-sizing 造成）
+- **AND** 折起 Q1～Q3、表格比圖表區域窄時，任一 `th.week` 仍 MUST 等於 `32px`，折起的窄欄仍 MUST 等於 `40px`
 
 ##### Example: W14-W18 視覺鬆開
 - **GIVEN** 修改前 W14-W18 五個週欄總寬度為 `5 × 24 = 120px`

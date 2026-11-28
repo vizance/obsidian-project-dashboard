@@ -76,11 +76,11 @@ The left column width SHALL be clamped to the range [120, 600] pixels (inclusive
 ---
 ### Requirement: 甘特圖區域不受影響
 
-In the year view, the chart area (week columns, bars, dividers) MUST remain visually and dimensionally unchanged by left-column resize: each week column SHALL stay at 32px width, the 53-column total SHALL stay at 1696px, bar geometry (start/end/promised_end), solid/dashed segments, closed grayscale fade, monthly/quarterly/weekly dividers, today red highlight, and Pin / sort controls SHALL all behave identically to before this change. In the month view, resizing the left column SHALL change only the width that the month's week columns share.
+In the year view, the chart area (week columns, bars, dividers) MUST remain visually and dimensionally unchanged by left-column resize: each week column SHALL stay at 32px width, the 53-column total SHALL stay at 1696px while no quarter is folded, each folded quarter column SHALL stay at 40px, bar geometry (start/end/promised_end), solid/dashed segments, closed grayscale fade, monthly/quarterly/weekly dividers, today red highlight, and Pin / sort controls SHALL all behave identically to before this change. In the month view, resizing the left column SHALL change only the width that the month's week columns share.
 
 #### Scenario: 拖拉左欄不改變週欄寬度
 
-- **GIVEN** 拖拉前任一週欄 width 為 32px
+- **GIVEN** 拖拉前任一週欄 width 為 32px，而且沒有任何季折起
 - **WHEN** 使用者把左欄從 280px 拖到 200px
 - **THEN** 任一週欄 width MUST 仍為 32px
 - **AND** 53 週總寬 MUST 仍為 1696px（誤差 ≤ 5px）
